@@ -149,6 +149,24 @@ Behaviour with a test behind it:
 | ERC-7579 module changes timelocked on all four routes | `test/FengceSafe7579Admin.t.sol` |
 | Tick wired into the guard: agents capped, groups share one budget, failed executions roll back | `test/FengceTickGuard.t.sol` |
 
+## App
+
+`app/` is a read-only Next.js app over live X Layer data (no wallet connection, nothing is sent):
+
+| Page or route | What |
+|---|---|
+| `/` and `/api/catalog` | Catalog entries (when `CATALOG_ADDRESS` is set) and known circuits on X Layer |
+| `/policy/[processor]/[id]` and `/api/circuit/[processor]/[id]` | Description, live test vectors, dependency tree, eval gas, tier |
+| `/simulator` and `POST /api/simulate` | A proposed transaction through a policy in one `eth_call`: facts, circuit input bits, output, decision |
+| `/install` and `POST /api/install` | Preflight per token and spender (checked, found, not checked, kept), then Safe Transaction Builder JSON |
+| `/safe/[address]` and `/api/safe/[address]` | Owners, modules, guards, Fengce configuration, recovery, timelock events |
+
+```sh
+cd sdk && npm ci && cd ../app && npm ci && npx next build && npx next start
+```
+
+`XLAYER_RPC` sets the RPC endpoint (default `https://xlayerrpc.okx.com`).
+
 ## Documentation
 
 - [docs/INTEGRATION.md](docs/INTEGRATION.md): pin a circuit, write a schema, install on a Safe, operate and recover

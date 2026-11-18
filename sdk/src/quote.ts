@@ -110,6 +110,12 @@ async function closure(client: PublicClient, block: bigint, root: Address, id: b
   return { refClosureHash: keccak256(parts.length ? concat(parts) : "0x"), processors };
 }
 
+/** The circuit and every circuit it references (REF), as a tree. */
+export async function circuitTree(client: PublicClient, processor: Address, circuitId: bigint, blockNumber?: bigint): Promise<TreeNode> {
+  const block = blockNumber ?? (await client.getBlockNumber());
+  return tree(client, block, processor, circuitId, new Map());
+}
+
 /**
  * The dependency closure of a circuit, computed exactly as PinRegistry.pin does: breadth-first over
  * REF records, distinct (processor, id) pairs, root excluded from the hash.

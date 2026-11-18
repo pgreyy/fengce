@@ -1,4 +1,4 @@
-export { quote, refClosure, certificateHash, canonicalJson, type Certificate, type TreeNode, type QuoteEnv, type QuoteOptions } from "./quote.js";
+export { quote, refClosure, circuitTree, certificateHash, canonicalJson, type Certificate, type TreeNode, type QuoteEnv, type QuoteOptions } from "./quote.js";
 export { parseRefs, type Ref } from "./netlist.js";
 export { TIERS, tierFor, type Tier } from "./tiers.js";
 export {
@@ -36,6 +36,8 @@ export {
   FengceSignatureVerifierArtifact,
   FengceStrictHandlerArtifact,
   CatalogArtifact,
+  PolicySimulatorArtifact,
+  TickArtifact,
 } from "./artifacts.js";
 export { readCatalog, catalogEntry, CATALOG_TIERS, type CatalogEntry, type CatalogTier, type CatalogManifest, type CatalogVector } from "./catalog.js";
 export { XLAYER, processorAbi } from "./abi.js";

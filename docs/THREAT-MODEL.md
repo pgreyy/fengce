@@ -138,6 +138,13 @@ Safe with modules). After install, enabling a module needs the admin timelock.
   can differ near a threshold. The description and URI are the lister's text. Install fees are split 80% to the
   designer and 20% to the treasury and withdrawn by each (pull payments).
 
+### App
+
+The app in `app/` only reads chain data and builds calldata; it never signs or sends. Blocked transactions are
+not visible on its status page: a transaction the guard blocks reverts and leaves no event. `npm audit` reports
+PostCSS advisories through Next 15 (build-time CSS processing of the app's own stylesheet); the fix is Next 16,
+a breaking upgrade not done yet.
+
 ### Other limits
 
 - A dependency closure can contain at most 64 circuits (`PinRegistry.MAX_CLOSURE`).
