@@ -223,6 +223,14 @@ or earlier if something is already scheduled). `isBound(account, policyHash, min
 it holds and `earliestChange >= now + minNotice`. A Safe whose delays are shorter than `minNotice` is never bound.
 `src/binding/BoundVault.sol` is a complete example (minimum notice 1 day).
 
+## Policy floors
+
+An organisation can hold a Safe to a minimum rule. Before Fengce is configured, the Safe calls
+`floors.setFloor(owner, delay, floorPin, floorLayout, floorBindings)` and `guard.configureFloors(floors)`; anyone
+then calls `floors.verifyPolicy(safe, policyPin)`, which succeeds only if the floor circuit is in the policy's REF
+closure. Every transaction must then pass both circuits. The floor owner changes or removes the floor with
+`proposeChange` and, after the delay, `executeChange`.
+
 ## Using the core without a Safe
 
 `src/core` has no Safe dependency. To evaluate a pinned circuit from your own contract, inherit `PolicyEngine`

@@ -158,6 +158,16 @@ Limits: only the declared assets (at most 8) and spenders (at most 8) are measur
 any gas refund the Safe pays to a relayer; an asset whose balance cannot be read makes every checked
 transaction fail; transactions on the admin path (calls to the Safe or the guard) are not outcome-checked.
 
+### Policy floors (FengceFloors)
+
+A Safe can connect a floor: a minimum rule set once by the Safe, naming a floor owner and a change delay (at
+least 1 day). Every evaluation requires the floor circuit to be in the policy's REF closure (checked once per
+policy by walking the pinned netlists) and evaluates floor AND policy (`test/FengceFloors.t.sol`). Only the floor
+owner can change or remove the floor, after its delay; the Safe cannot detach the floors contract while a floor
+is set. Limits: owners holding every signature can still remove the guard through recovery; after the Safe
+changes its own policy, transactions fail until someone calls `verifyPolicy` for the new policy, and fail for
+good if the new policy does not contain the floor.
+
 ### Other limits
 
 - A dependency closure can contain at most 64 circuits (`PinRegistry.MAX_CLOSURE`).

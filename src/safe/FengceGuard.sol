@@ -19,6 +19,7 @@ import {MultiSendDecoder} from "./MultiSendDecoder.sol";
 import {FengceLimits} from "./FengceLimits.sol";
 import {Tick} from "../core/Tick.sol";
 import {FengceInspector} from "./FengceInspector.sol";
+import {FengceFloors} from "../core/FengceFloors.sol";
 import {IFengceDecoder} from "../core/interfaces/IFengceDecoder.sol";
 import {IFengcePolicy} from "../core/interfaces/IFengcePolicy.sol";
 
@@ -80,6 +81,7 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         address tick; // optional Tick state host (stateful policy)
         bytes32 tickGroup; // Tick policy group shared by this Safe
         address inspector; // optional FengceInspector (outcome facts)
+        address floors; // optional FengceFloors (floor AND policy)
     }
 
     mapping(address safe => Config) internal _configs;
@@ -232,6 +234,14 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
     function configureInspector(address inspector, bytes calldata data) external {
         _configs[msg.sender].inspector = inspector;
         if (inspector != address(0)) FengceInspector(inspector).configureFor(msg.sender, data);
+    }
+
+    /// @notice Called by the Safe: connect a FengceFloors contract. Same rule as configure. A Safe whose
+    /// current FengceFloors still holds a floor for it cannot switch away; the floor owner must remove it first.
+    function configureFloors(address floors) external {
+        address cur = _configs[msg.sender].floors;
+        if (cur != address(0) && cur != floors && FengceFloors(cur).hasFloor(msg.sender)) revert FengceBadConfig();
+        _configs[msg.sender].floors = floors;
     }
 
     /// @notice Called by the Safe. Same rule as configure: free until first configured, then timelocked.
@@ -506,6 +516,7 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         input = Schema.encode(l, TxFacts.values(f, c.bindings));
         out = _evaluate(c.pinId, input);
         if (uint8(out[0]) & 1 != 1) revert FengceDenied(safe, to);
+        if (c.floors != address(0)) FengceFloors(c.floors).check(safe, c.pinId, f);
     }
 
     function policyContextVersion() external pure override returns (uint16) {
@@ -574,6 +585,6 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         bytes4 sel = TxFacts.selectorOf(data);
         return sel == FengceGuard.configure.selector || sel == FengceGuard.setAllowlisted.selector
             || sel == FengceGuard.configureTick.selector || sel == FengceGuard.setDecoder.selector
-            || sel == FengceGuard.configureInspector.selector;
+            || sel == FengceGuard.configureInspector.selector || sel == FengceGuard.configureFloors.selector;
     }
 }
