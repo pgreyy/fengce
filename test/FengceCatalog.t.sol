@@ -38,8 +38,8 @@ contract FengceCatalogForkTest is Test {
         m.description = "Allow if amount <= 100 (input a = amount > 100, input b = 1).";
         m.schemaHash = schemaHash;
         m.vectors = new Catalog.Vector[](2);
-        m.vectors[0] = Catalog.Vector(hex"02", hex"01"); // a = 0: allow
-        m.vectors[1] = Catalog.Vector(hex"03", secondExpected); // a = 1: deny
+        m.vectors[0] = Catalog.Vector(hex"02", hex"01", ""); // a = 0: allow
+        m.vectors[1] = Catalog.Vector(hex"03", secondExpected, ""); // a = 1: deny
         m.designer = designer;
         m.installFee = 1 ether;
     }

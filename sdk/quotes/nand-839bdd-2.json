@@ -1,6 +1,6 @@
 {
   "certificate": {
-    "block": "76218440",
+    "block": "76233065",
     "chainId": 196,
     "circuit": {
       "gateCount": 3,
@@ -23,12 +23,17 @@
     "format": "fengce-quote/1",
     "gas": {
       "evalCall": "53045",
-      "fullPath": "175257",
+      "fullPath": "285175",
+      "intentEval": "105754",
       "method": "eth_estimateGas",
-      "path": "Safe v1.5.0 execTransaction (native transfer of 0) -> FengceGuard.checkTransaction -> PinRegistry.isPinned -> eval",
+      "outcomeEval": "138487",
+      "path": "Safe v1.5.0 execTransaction (native transfer carrying the probe input) -> FengceGuard intent pass (PinRegistry.isPinned -> eval) -> execution -> FengceInspector outcome pass (snapshot, verify, eval)",
       "probeAllowed": true,
       "probeInput": "0x00",
-      "safeBaseline": "72770"
+      "probeSchemaHash": null,
+      "probeSource": "zero",
+      "safeBaseline": "72770",
+      "tierBasis": "fullPath (Safe transaction with both evaluations)"
     },
     "processor": "0x839bdD6fa7A66416A609A735e11DE5411B98574e",
     "processors": [
@@ -36,18 +41,25 @@
     ],
     "refClosureHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
     "tier": "Green",
-    "tierReason": "measured 175257 gas on the path above",
+    "tierReason": "measured 285175 gas on the full path, including the intent pass and the outcome pass",
     "tierThresholds": {
       "amberMaxGas": "3500000",
       "greenMaxGas": "1000000"
     }
   },
-  "certificateHash": "0xff387be7e768b311734e3a40f4023040a4d565fe146ba7ddf995142d4b3a167c",
+  "certificateHash": "0x1308c3089dfcc05af95612fb880b4ecf1a621ab636659ae10d5409eb14b75b7a",
   "forkCheck": {
     "allMatch": true,
-    "certificateHashStored": "0xff387be7e768b311734e3a40f4023040a4d565fe146ba7ddf995142d4b3a167c",
+    "catalog": {
+      "certificateHash": "0x1308c3089dfcc05af95612fb880b4ecf1a621ab636659ae10d5409eb14b75b7a",
+      "certificateHashMatches": true,
+      "measuredEvalGas": "34265",
+      "tier": "Green",
+      "tierMatchesQuote": true
+    },
+    "certificateHashStored": "0x1308c3089dfcc05af95612fb880b4ecf1a621ab636659ae10d5409eb14b75b7a",
     "netlistHashStored": "0xc738359c3dde133a010e00bbc3dc1bd8685e3028a04e5df6e0f00cffa2ce2524",
-    "pinIdOnFork": "0x7c116e53ada28a309affc5393e98c8f32d06a7f700621b5efe130615c28a2347",
+    "pinIdOnFork": "0xb34b8bdc0b8e1c3b682eabbaaf2be59057de66dbf85df2bef610dce627d5570d",
     "refClosureHashStored": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
   }
 }

@@ -15,7 +15,7 @@ import {
   zeroAddress,
 } from "viem";
 import { XLAYER, processorAbi, proxyFactoryAbi, safeAbi } from "./abi.js";
-import { CatalogArtifact, FengceGuardArtifact, PinRegistryArtifact } from "./artifacts.js";
+import { CatalogArtifact, FengceGuardArtifact, FengceInspectorArtifact, PinRegistryArtifact } from "./artifacts.js";
 import { catalogEntry } from "./catalog.js";
 import { type SchemaFile, encodeInputs, parseSchema, schemaHash } from "./schema.js";
 import { MIN_DELAYS } from "./install.js";
@@ -53,6 +53,9 @@ export interface Certificate {
     fullPath: string | null;
     safeBaseline: string | null;
     evalCall: string | null;
+    intentEval: string | null; // pre-execution evaluation (pin checks + eval), measured alone
+    outcomeEval: string | null; // post-execution evaluation (FengceInspector outcome facts), measured alone
+    tierBasis: string | null; // the figure the tier is based on
   };
   tier: Tier | "Unsupported";
   tierReason: string;
@@ -219,8 +222,9 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
     if (r.status !== "success") throw new Error(`tx failed: ${req.functionName}`);
     return r;
   };
-  const deploy = async (name: "PinRegistry" | "FengceGuard" | "Catalog", args: unknown[]) => {
-    const a = name === "PinRegistry" ? PinRegistryArtifact : name === "Catalog" ? CatalogArtifact : FengceGuardArtifact;
+  const deploy = async (name: "PinRegistry" | "FengceGuard" | "Catalog" | "FengceInspector", args: unknown[]) => {
+    const a =
+      name === "PinRegistry" ? PinRegistryArtifact : name === "Catalog" ? CatalogArtifact : name === "FengceInspector" ? FengceInspectorArtifact : FengceGuardArtifact;
     const hash = await wallet.deployContract({ abi: a.abi as Abi, bytecode: a.bytecode, args: args as any, account, chain: null });
     const r = await fork.waitForTransactionReceipt({ hash });
     if (!r.contractAddress) throw new Error(`deploy failed: ${name}`);
@@ -229,10 +233,11 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
 
   const registry = await deploy("PinRegistry", [XLAYER.tapeoutFactory]);
   const guard = await deploy("FengceGuard", [registry.address, 30_000_000n]);
+  const inspector = await deploy("FengceInspector", [[guard.address]]);
 
   let gas: Certificate["gas"] = {
     method: "eth_estimateGas",
-    path: "Safe v1.5.0 execTransaction (native transfer carrying the probe input) -> FengceGuard.checkTransaction -> PinRegistry.isPinned -> eval",
+    path: "Safe v1.5.0 execTransaction (native transfer carrying the probe input) -> FengceGuard intent pass (PinRegistry.isPinned -> eval) -> execution -> FengceInspector outcome pass (snapshot, verify, eval)",
     probeInput,
     probeSource,
     probeSchemaHash,
@@ -240,6 +245,9 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
     fullPath: null,
     safeBaseline: null,
     evalCall: null,
+    intentEval: null,
+    outcomeEval: null,
+    tierBasis: null,
   };
   let tier: Certificate["tier"];
   let tierReason: string;
@@ -270,6 +278,9 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
       pinId, layout: p.layout, bindings: p.bindings, ...MIN_DELAYS,
       preflightTokens: [], preflightSpenders: [], acceptExistingApprovals: false, acceptExistingModules: false,
     };
+    // Outcome checks on: the Inspector watches native currency (the probe is a native transfer).
+    const watch = encodeAbiParameters([{ type: "address[]" }, { type: "address[]" }], [[zeroAddress], []]);
+    await send({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(guard.address, encodeFunctionData({ abi: guard.abi, functionName: "configureInspector", args: [inspector.address, watch] })) });
     await send({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(guard.address, encodeFunctionData({ abi: guard.abi, functionName: "configure", args: [cfg] })) });
     await send({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(safe, encodeFunctionData({ abi: [{ type: "function", name: "setGuard", inputs: [{ name: "g", type: "address" }], outputs: [], stateMutability: "nonpayable" }], functionName: "setGuard", args: [guard.address] })) });
 
@@ -290,8 +301,27 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
         : "FengceGuard.evaluate (PinRegistry.isPinned -> eval); a non-zero probe wider than 256 inputs cannot be carried by the probe transfer";
       gas.fullPath = (await fork.estimateContractGas({ address: guard.address, abi: guard.abi, functionName: "evaluate", args: [pinId, probeInput], account })).toString();
     }
-    tier = tierFor(BigInt(gas.fullPath));
-    tierReason = `measured ${gas.fullPath} gas on the path above`;
+    // Each evaluation alone: intent (pin checks + eval) and outcome (the same circuit on outcome facts).
+    gas.intentEval = (await fork.estimateContractGas({ address: guard.address, abi: guard.abi, functionName: "evaluate", args: [pinId, probeInput], account })).toString();
+    const outcomeFacts = {
+      kind: 3, to: zeroAddress, value: 0n, token: zeroAddress, amount: 0n, selector: "0x00000000", account: safe, actor: zeroAddress,
+      tokenOut: zeroAddress, minAmountOut: 0n, recipient: zeroAddress, deadline: 0n, action: 0, outflow: 0n, allowanceIncrease: 0n,
+    };
+    try {
+      gas.outcomeEval = (await fork.estimateContractGas({ address: guard.address, abi: guard.abi, functionName: "checkContext", args: [safe, outcomeFacts], account })).toString();
+    } catch {
+      gas.outcomeEval = gas.intentEval; // the circuit denies the zero outcome; its evaluation cost equals the intent pass
+    }
+    if (gas.probeAllowed) {
+      gas.tierBasis = "fullPath (Safe transaction with both evaluations)";
+      tier = tierFor(BigInt(gas.fullPath!));
+      tierReason = `measured ${gas.fullPath} gas on the full path, including the intent pass and the outcome pass`;
+    } else {
+      const total = BigInt(gas.intentEval) + BigInt(gas.outcomeEval);
+      gas.tierBasis = "intentEval + outcomeEval";
+      tier = tierFor(total);
+      tierReason = `intent ${gas.intentEval} + outcome ${gas.outcomeEval} = ${total} gas (the full Safe path could not be estimated with this probe)`;
+    }
   }
 
   const cert: Certificate = {
@@ -322,7 +352,7 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
     const catalog = await deploy("Catalog", [registry.address, 30_000_000n, account]);
     const out = (await fork.readContract({ address: guard.address, abi: guard.abi, functionName: "evaluate", args: [pinIdCheck, probeInput] })) as Hex;
     const manifest = {
-      pinId: pinIdCheck, description: "", schemaHash: pad("0x", { size: 32 }), vectors: [{ input: probeInput, expectedOutput: out }],
+      pinId: pinIdCheck, description: "", schemaHash: pad("0x", { size: 32 }), vectors: [{ input: probeInput, expectedOutput: out, state: "0x" }],
       designer: account, installFee: 0n, uri: "",
     };
     await send({ address: catalog.address, abi: catalog.abi, functionName: "list", args: [manifest] });

@@ -8,6 +8,8 @@ export type CatalogTier = (typeof CATALOG_TIERS)[number];
 export interface CatalogVector {
   input: Hex;
   expectedOutput: Hex;
+  /** stateful circuits only (run with step()); "0x" otherwise */
+  state: Hex;
 }
 
 /** Catalog.Manifest: what a lister submits. Every vector is run on-chain at listing. */

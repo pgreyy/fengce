@@ -26,6 +26,7 @@ contract Catalog is PolicyEngine {
     struct Vector {
         bytes input; // exactly ceil(nIn/8) bytes
         bytes expectedOutput; // exactly ceil(nOut/8) bytes
+        bytes state; // stateful circuits only: exactly ceil(nState/8) bytes, run with step(); empty otherwise
     }
 
     struct Manifest {
@@ -119,7 +120,9 @@ contract Catalog is PolicyEngine {
         uint32 denies;
         for (uint256 i; i < m.vectors.length; i++) {
             uint256 g = gasleft();
-            bytes memory out = _evaluate(pinId, m.vectors[i].input);
+            bytes memory out = c.nState == 0
+                ? _evaluate(pinId, m.vectors[i].input)
+                : _step(pinId, c, m.vectors[i].state, m.vectors[i].input);
             g -= gasleft();
             if (keccak256(out) != keccak256(m.vectors[i].expectedOutput)) revert CatalogVectorMismatch(i, out);
             if (g > maxGas) maxGas = g;
@@ -145,6 +148,23 @@ contract Catalog is PolicyEngine {
         e.uri = m.uri;
         _ids.push(pinId);
         emit Listed(pinId, m.designer, e.tier, uint64(maxGas), allows, denies);
+    }
+
+    /// @dev Stateful circuits: one step() from the vector's state, fail closed like _evaluate.
+    function _step(bytes32 pinId, PinRegistry.CircuitPin memory c, bytes calldata state, bytes calldata input)
+        private
+        view
+        returns (bytes memory out)
+    {
+        if (state.length != (uint256(c.nState) + 7) / 8 || input.length != (uint256(c.nIn) + 7) / 8) {
+            revert EngineInputLength(input.length, (uint256(c.nIn) + 7) / 8);
+        }
+        (bool ok, bytes memory ret) = c.processor.staticcall{gas: evalGasCap}(
+            abi.encodeWithSignature("step(uint256,bytes,bytes)", c.circuitId, state, input)
+        );
+        if (!ok || ret.length < 128) revert EngineEvalFailed(pinId);
+        (, out) = abi.decode(ret, (bytes, bytes));
+        if (out.length != (uint256(c.nOut) + 7) / 8) revert EngineOutputLength(out.length, (uint256(c.nOut) + 7) / 8);
     }
 
     function tierFor(uint256 gas) public pure returns (Tier) {
