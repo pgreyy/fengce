@@ -1,0 +1,12 @@
+# Vercel uploads only what the app build needs: app/, sdk/ and deployments/.
+/*
+!/app
+!/sdk
+!/deployments
+/app/node_modules
+/app/.next
+/app/.vercel
+/sdk/node_modules
+/sdk/dist
+/sdk/test
+**/.env*

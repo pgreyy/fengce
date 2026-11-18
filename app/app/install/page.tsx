@@ -52,7 +52,7 @@ export default function Install() {
       </p>
       <form onSubmit={(e) => { e.preventDefault(); run(); }}>
         <label>Safe</label><input className="mono" value={form.safe} onChange={set("safe")} required />
-        <label>FengceGuard</label><input className="mono" value={form.guard} onChange={set("guard")} placeholder="empty: predicted CREATE2 address (not deployed)" />
+        <label>FengceGuard</label><input className="mono" value={form.guard} onChange={set("guard")} placeholder="empty: the FengceGuard deployed on X Layer" />
         <label>Pin id</label><input className="mono" value={form.pinId} onChange={set("pinId")} required />
         <label>Policy</label>
         <select value={form.preset} onChange={set("preset")}>

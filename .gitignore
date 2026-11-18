@@ -23,3 +23,5 @@ sdk/dist/
 # Internal planning notes (not part of the published tree)
 .internal/
 sdk/LICENSE
+.vercel
+.env*

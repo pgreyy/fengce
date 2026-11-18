@@ -272,6 +272,7 @@ export async function safeStatus(safe: Address, lookback = 1_000n) {
     fengce,
     events,
     eventsWindowBlocks: lookback,
+    blockedAttemptsNote: null,
     blockedAttempts:
       "Owner transactions the guard blocks revert and leave no event; use the Simulator to see why one would be blocked. Agent calls through AgentExecutor are recorded as Denied events (below).",
   });
@@ -347,7 +348,7 @@ export async function install(req: {
       const schema = await presetSchema(p, BigInt(req.cap ?? "100"));
       const { calls } = await buildInstall(client as any, {
         safe: req.safe,
-        guard: req.guard ?? ADDR.predictedGuard,
+        guard: req.guard ?? ADDR.guard,
         pinId: req.pinId,
         schema,
         recoveryDelay: BigInt(req.recoveryDelay ?? "172800"),
@@ -370,7 +371,7 @@ export async function install(req: {
   } else {
     error = `${unresolved.length} existing approval(s) found. Revoke them, or mark them "kept" to install anyway (configure then emits a warning per approval).`;
   }
-  return plain({ preflight: rows, transactionBuilder: builder, guardNote: req.guard ? null : "Guard address is the predicted CREATE2 address; FengceGuard is not deployed on X Layer yet.", error });
+  return plain({ preflight: rows, transactionBuilder: builder, guardNote: req.guard ? null : `Guard: the FengceGuard deployed on X Layer (${ADDR.guard}).`, error });
 }
 
 export { PRESETS };
