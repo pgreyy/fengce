@@ -15,9 +15,10 @@ cd sdk && npm ci && npm run build
 node dist/cli/quote.js <processor> <circuitId> --out quote.json
 ```
 
-Quote reads the circuit and every circuit it references (REF), measures gas on the real Safe -> guard ->
-circuit path on a local fork, and assigns a tier (Green up to 1M gas, Amber up to 3.5M, Red above). If the
-circuit denies all-zero input, give a probe input with `--input 0x…` or `--schema file --values '{…}'`.
+Quote reads the circuit and every circuit it references (REF), measures gas on the full Safe path on a local
+fork (Safe execution overhead + the guard's pre-check + the outcome check, reported separately), and assigns a
+tier from the full Safe path (Green up to 1M gas, Amber up to 3.5M, Red above). If the circuit denies all-zero
+input, give an allowed probe input with `--input 0x…` or `--schema file --values '{…}'`.
 The `certificateHash` in the output is what you pin.
 
 ## 2. Write a schema
@@ -198,8 +199,9 @@ group and is denied when the circuit denies; state resets to zero at each period
 
 ## Catalog
 
-`catalog.list(pinId, tier, gasFullPath, uri)` lists a pinned circuit with the certificate hash stored in its pin;
-`readCatalog` in the SDK returns all entries.
+`catalog.list(manifest)` lists a pinned circuit with a description, its schema hash and allow/deny test vectors;
+the Catalog runs every vector on-chain and records a tier from eval gas (the circuit evaluation only; the full
+Safe path tier is in the Quote certificate). `readCatalog` in the SDK returns all entries.
 
 ## Accepting only bound accounts (FengceBinding)
 

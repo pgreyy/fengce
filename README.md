@@ -1,6 +1,6 @@
 # Fengce
 
-Fengce lets the wallet you already have obey any TapeOut circuit. No new wallet, no moving funds.
+Fengce lets the smart wallet you already have obey any TapeOut circuit. No new wallet, no moving funds.
 
 - **FengceGuard** plugs into a Safe v1.5.0 as its transaction guard and checks every owner transaction.
 - **Module guard** (the same FengceGuard, set with `setModuleGuard`) plugs into the Safe's module path and checks every module transaction.
@@ -20,9 +20,9 @@ It has three parts:
 | `src/core` | Wallet-agnostic contracts and libraries: `PinRegistry` (approved circuits), `Schema` (strict typed input encoding), `PolicyEngine` (fail-closed evaluation), `TxFacts` (call decoding), `ApprovalScan`, `Netlist` |
 | `src/safe` | `FengceGuard`: a Safe v1.5.0 transaction guard and module guard sharing one policy path, with recovery, an admin timelock and a MultiSend decoder. `FengceSignatureVerifier` and `FengceStrictHandler`: the same policy for off-chain signed approvals |
 | `src/erc7579` | `FengceHook`: the same policy as an ERC-7579 hook (tested on Safe7579) |
-| `src/core` (state and listing) | `Tick`: state host for stateful (LATCH) policies with per-period reset. `Catalog`: public list of pinned circuits with their certificate hash and tier |
+| `src/core` (state and listing) | `Tick`: state host for stateful (LATCH) policies with per-period reset. `Catalog`: public list of pinned circuits with their certificate hash and a tier from eval gas |
 | `src/safe` (agents) | `AgentExecutor`: a Safe module that lets an agent key act only through the Fengce module guard |
-| `sdk/` | TypeScript: schema file format and encoder, Quote certificates (dependency tree, measured gas, budget tier), install calldata builder, Catalog reader |
+| `sdk/` | TypeScript: schema file format and encoder, Quote certificates (dependency tree, full Safe path gas and tier), install calldata builder, Catalog reader |
 
 Status: version 0.1.0. Not deployed, not independently reviewed. All on-chain behaviour below is tested against
 X Layer mainnet state on local forks; no transaction has been sent.
@@ -43,7 +43,7 @@ delay they chose. Fengce makes overrides slow and visible, not impossible.
 - Approvals granted before install, beyond the tokens and spenders the install preflight was asked to check.
 - Upgrades of the TapeOut processor factory's own implementation (a contract cannot read it).
 - Quote certificates are not signed; their hash is only a commitment.
-- Gas budget tiers are reported by Quote but not enforced on-chain.
+- Gas tiers are reported (Quote: full Safe path; Catalog: eval gas) but not enforced on-chain.
 
 ## Install
 
@@ -93,8 +93,8 @@ processor would read: 4464n
 encodeInputs refuses: "a": value 70000 does not fit in 16 bit(s)
 ```
 
-**3. Quote a circuit** (starts an anvil fork of X Layer, deploys the contracts on it, measures gas on the real
-Safe -> guard -> circuit path):
+**3. Quote a circuit** (starts an anvil fork of X Layer, deploys the contracts on it, measures gas on the full
+Safe path: Safe execution overhead, the guard's pre-check and the outcome check):
 
 ```sh
 npm run build
@@ -103,7 +103,8 @@ node dist/cli/quote.js 0x839bdD6fa7A66416A609A735e11DE5411B98574e 2
 
 (Once the package is installed in another project, the same command is `npx fengce-quote`.)
 
-The certificate reports 3 gates, no dependencies, about 175,000 gas on the full path, tier Green, and a
+The certificate reports 3 gates, no dependencies, 288,485 gas on the full Safe path (72,770 Safe execution
+overhead + 116,448 pre-check + 99,267 outcome check), tier Green, and a
 `certificateHash` that matches what `PinRegistry` stores (see `sdk/quotes/nand-839bdd-2.json`).
 
 **4. Install on a Safe.** `sdk/examples/install-calldata.ts` builds the three Safe transactions (configure,
@@ -151,8 +152,8 @@ Behaviour with a test behind it:
 | Agent calls go through the circuit; owners can revoke | `test/AgentExecutor.t.sol` |
 | ERC-7579 account (Safe7579) blocked over the limit, including batches | `test/FengceHook7579.t.sol` |
 | Stateful cap: second spend in a period denied, allowed after reset | `test/FengceTick.t.sol` |
-| Catalog listing runs its test vectors on-chain (a wrong vector reverts); tier measured on-chain; fee split | `test/FengceCatalog.t.sol` |
-| Catalog entry matches the Quote certificate (hash and tier) | Quote run (`forkCheck.catalog`) |
+| Catalog listing runs its test vectors on-chain (a wrong vector reverts); tier from eval gas measured on-chain; fee split | `test/FengceCatalog.t.sol` |
+| Catalog entry carries the Quote certificate hash | Quote run (`forkCheck.catalog`) |
 | Swaps decoded (Uniswap V3): foreign recipient and over-cap amount denied, valid swap passes | `test/FengceDecoders.t.sol` |
 | ERC-7579 module changes timelocked on all four routes | `test/FengceSafe7579Admin.t.sol` |
 | Tick wired into the guard: agents capped, groups share one budget, failed executions roll back | `test/FengceTickGuard.t.sol` |
@@ -164,7 +165,7 @@ Behaviour with a test behind it:
 | Page or route | What |
 |---|---|
 | `/` and `/api/catalog` | Catalog entries (when `CATALOG_ADDRESS` is set) and known circuits on X Layer |
-| `/policy/[processor]/[id]` and `/api/circuit/[processor]/[id]` | Description, live test vectors, dependency tree, eval gas, tier |
+| `/policy/[processor]/[id]` and `/api/circuit/[processor]/[id]` | Description, construction, allow and deny vectors with reasons, dependency tree, eval gas and tier (eval gas) |
 | `/simulator` and `POST /api/simulate` | A proposed transaction through a policy in one `eth_call`: facts, circuit input bits, output, decision |
 | `/install` and `POST /api/install` | Preflight per token and spender (checked, found, not checked, kept), then Safe Transaction Builder JSON |
 | `/safe/[address]` and `/api/safe/[address]` | Owners, modules, guards, Fengce configuration, recovery, timelock events |

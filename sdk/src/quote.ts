@@ -50,8 +50,10 @@ export interface Certificate {
     probeSource: "zero" | "input" | "schema";
     probeSchemaHash: Hex | null;
     probeAllowed: boolean | null;
-    fullPath: string | null;
-    safeBaseline: string | null;
+    fullPath: string | null; // full Safe path: safeOverhead + preCheck + outcomeCheck
+    safeOverhead: string | null; // Safe transaction with no guard (execution overhead)
+    preCheck: string | null; // added by the guard's pre-execution check
+    outcomeCheck: string | null; // added by the outcome check (FengceInspector) after execution
     evalCall: string | null;
     intentEval: string | null; // pre-execution evaluation (pin checks + eval), measured alone
     outcomeEval: string | null; // post-execution evaluation (FengceInspector outcome facts), measured alone
@@ -157,11 +159,18 @@ const fieldsType = [
 /** A probe layout covering every input bit with uint fields of up to 256 bits, all fed from the
  * native value of the probe transfer. For nIn <= 256 the transfer value is the input itself; for
  * wider circuits only the all-zero probe can use the full path. */
-function probeLayout(netlistHash: Hex, nIn: number) {
+function probeLayout(netlistHash: Hex, nIn: number, input: Hex) {
   const fields: { kind: number; offset: number; width: number; fixedValue: bigint }[] = [];
+  if (nIn <= 256) {
+    // Every input bit is a flag fixed to the probe input, so the pre-check and the outcome check (which runs
+    // with the transaction fields at zero) evaluate the same input.
+    const v = inputToInt(input);
+    for (let i = 0; i < nIn; i++) fields.push({ kind: 2, offset: i, width: 1, fixedValue: (v >> BigInt(i)) & 1n });
+    return { layout: { netlistHash, nIn, fields }, schemaHash: schemaHash({ netlistHash, nIn, fields }), bindings: [] as { source: number; param: bigint }[] };
+  }
+  // Wide circuits: uint chunks fed from the transfer value (0), so only the all-zero probe fits.
   for (let off = 0; off < nIn; off += 256) fields.push({ kind: 0, offset: off, width: Math.min(256, nIn - off), fixedValue: 0n });
-  const hash = schemaHash({ netlistHash, nIn, fields });
-  return { layout: { netlistHash, nIn, fields }, schemaHash: hash, bindings: fields.map(() => ({ source: 1, param: 0n })) };
+  return { layout: { netlistHash, nIn, fields }, schemaHash: schemaHash({ netlistHash, nIn, fields }), bindings: fields.map(() => ({ source: 1, param: 0n })) };
 }
 
 /** Reads packed input bytes (LSB first) as an integer. */
@@ -214,7 +223,6 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
     probeInput = opts.input;
     probeSource = "input";
   }
-  const probeValue = inputToInt(probeInput);
 
   const send = async (req: any) => {
     const hash = await wallet.writeContract({ account, chain: null, ...req });
@@ -237,13 +245,15 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
 
   let gas: Certificate["gas"] = {
     method: "eth_estimateGas",
-    path: "Safe v1.5.0 execTransaction (native transfer carrying the probe input) -> FengceGuard intent pass (PinRegistry.isPinned -> eval) -> execution -> FengceInspector outcome pass (snapshot, verify, eval)",
+    path: "full Safe path: Safe v1.5.0 execTransaction (native transfer of 0) -> FengceGuard pre-check (PinRegistry.isPinned -> eval of the probe input) -> execution -> FengceInspector outcome check (snapshot, verify, eval)",
     probeInput,
     probeSource,
     probeSchemaHash,
     probeAllowed: null,
     fullPath: null,
-    safeBaseline: null,
+    safeOverhead: null,
+    preCheck: null,
+    outcomeCheck: null,
     evalCall: null,
     intentEval: null,
     outcomeEval: null,
@@ -258,49 +268,64 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
   } else {
     gas.evalCall = (await fork.estimateContractGas({ address: processor, abi: processorAbi, functionName: "eval", args: [circuitId, probeInput], account })).toString();
 
-    // Probe pin (certificateHash 0) and a fresh Safe owned by the anvil account.
-    const p = probeLayout(root.netlistHash, root.nIn);
+    // Probe pin (certificateHash 0); Safes owned by the anvil account.
+    const p = probeLayout(root.netlistHash, root.nIn, probeInput);
     const pinR = await send({ address: registry.address, abi: registry.abi, functionName: "pin", args: [processor, circuitId, p.schemaHash, pad("0x", { size: 32 })] });
     const pinId = pinR.logs.find((l) => l.address.toLowerCase() === registry.address.toLowerCase())!.topics[1] as Hex;
 
-    const init = encodeFunctionData({ abi: safeAbi, functionName: "setup", args: [[account], 1n, zeroAddress, "0x", XLAYER.fallbackHandler, zeroAddress, 0n, zeroAddress] });
-    const salt = BigInt(keccak256(toHex(`fengce-quote-${processor}-${circuitId}-${block}`)));
-    const sim = await fork.simulateContract({ address: XLAYER.safeProxyFactory, abi: proxyFactoryAbi, functionName: "createProxyWithNonce", args: [XLAYER.safeL2, init, salt], account });
-    await send({ address: XLAYER.safeProxyFactory, abi: proxyFactoryAbi, functionName: "createProxyWithNonce", args: [XLAYER.safeL2, init, salt] });
-    const safe = sim.result as Address;
     const sig = concat([pad(account, { size: 32 }), pad("0x", { size: 32 }), "0x01"]);
-    const execArgs = (to: Address, data: Hex, value = 0n) => [to, value, data, 0, 0n, 0n, 0n, zeroAddress, zeroAddress, sig] as const;
+    const execArgs = (to: Address, data: Hex) => [to, 0n, data, 0, 0n, 0n, 0n, zeroAddress, zeroAddress, sig] as const;
     const recipient = getAddress("0x00000000000000000000000000000000000f3c3e");
-
-    gas.safeBaseline = (await fork.estimateContractGas({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(recipient, "0x"), account })).toString();
-
+    const newSafe = async (tag: string) => {
+      const init = encodeFunctionData({ abi: safeAbi, functionName: "setup", args: [[account], 1n, zeroAddress, "0x", XLAYER.fallbackHandler, zeroAddress, 0n, zeroAddress] });
+      const salt = BigInt(keccak256(toHex(`fengce-quote-${processor}-${circuitId}-${block}-${tag}`)));
+      const sim = await fork.simulateContract({ address: XLAYER.safeProxyFactory, abi: proxyFactoryAbi, functionName: "createProxyWithNonce", args: [XLAYER.safeL2, init, salt], account });
+      await send({ address: XLAYER.safeProxyFactory, abi: proxyFactoryAbi, functionName: "createProxyWithNonce", args: [XLAYER.safeL2, init, salt] });
+      return sim.result as Address;
+    };
     const cfg = {
       pinId, layout: p.layout, bindings: p.bindings, ...MIN_DELAYS,
       preflightTokens: [], preflightSpenders: [], acceptExistingApprovals: false, acceptExistingModules: false,
     };
-    // Outcome checks on: the Inspector watches native currency (the probe is a native transfer).
-    const watch = encodeAbiParameters([{ type: "address[]" }, { type: "address[]" }], [[zeroAddress], []]);
-    await send({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(guard.address, encodeFunctionData({ abi: guard.abi, functionName: "configureInspector", args: [inspector.address, watch] })) });
-    await send({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(guard.address, encodeFunctionData({ abi: guard.abi, functionName: "configure", args: [cfg] })) });
-    await send({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(safe, encodeFunctionData({ abi: [{ type: "function", name: "setGuard", inputs: [{ name: "g", type: "address" }], outputs: [], stateMutability: "nonpayable" }], functionName: "setGuard", args: [guard.address] })) });
+    const setGuardAbi = [{ type: "function", name: "setGuard", inputs: [{ name: "g", type: "address" }], outputs: [], stateMutability: "nonpayable" }] as const;
+    const install = async (safe: Address, withInspector: boolean) => {
+      if (withInspector) {
+        // The Inspector watches native currency (the probe is a native transfer of 0).
+        const watch = encodeAbiParameters([{ type: "address[]" }, { type: "address[]" }], [[zeroAddress], []]);
+        await send({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(guard.address, encodeFunctionData({ abi: guard.abi, functionName: "configureInspector", args: [inspector.address, watch] })) });
+      }
+      await send({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(guard.address, encodeFunctionData({ abi: guard.abi, functionName: "configure", args: [cfg] })) });
+      await send({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(safe, encodeFunctionData({ abi: setGuardAbi, functionName: "setGuard", args: [guard.address] })) });
+    };
+    const estimate = async (safe: Address) =>
+      fork.estimateContractGas({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(recipient, "0x"), account });
 
-    const fullPathPossible = root.nIn <= 256 || probeValue === 0n;
+    // Three measurements of the same transfer: no guard; guard pre-check only; pre-check + outcome check.
+    const safeA = await newSafe("pre");
+    const overhead = await estimate(safeA);
+    gas.safeOverhead = overhead.toString();
+    const fullPathPossible = root.nIn <= 256 || inputToInt(probeInput) === 0n;
     try {
       if (!fullPathPossible) throw new Error("wide input");
-      // The probe transfer's value is the input (the probe layout binds every field to the value).
-      await fork.request({ method: "anvil_setBalance", params: [safe, toHex(probeValue + 10n ** 18n)] } as any);
-      gas.fullPath = (await fork.estimateContractGas({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(recipient, "0x", probeValue), account })).toString();
+      await install(safeA, false);
+      const pre = await estimate(safeA);
+      const safeB = await newSafe("full");
+      await install(safeB, true);
+      const full = await estimate(safeB);
+      gas.fullPath = full.toString();
+      gas.preCheck = (pre - overhead).toString();
+      gas.outcomeCheck = (full - pre).toString();
       gas.probeAllowed = true;
     } catch {
-      // Either the circuit denies the probe (the Safe transaction reverts and cannot be estimated) or
-      // a non-zero input is wider than 256 bits. Fall back to the guard's own evaluation path (pin
-      // check + eval), which returns the output instead of reverting.
+      // The circuit denies the probe input (the Safe transaction reverts and cannot be estimated), or a non-zero
+      // input is wider than 256 bits. Fall back to the guard's evaluation path, which returns instead of reverting.
       gas.probeAllowed = fullPathPossible ? false : null;
       gas.path = fullPathPossible
         ? "FengceGuard.evaluate (PinRegistry.isPinned -> eval); the full Safe path reverts because the circuit denies the probe input"
-        : "FengceGuard.evaluate (PinRegistry.isPinned -> eval); a non-zero probe wider than 256 inputs cannot be carried by the probe transfer";
+        : "FengceGuard.evaluate (PinRegistry.isPinned -> eval); a non-zero probe wider than 256 inputs is not supported on the full path";
       gas.fullPath = (await fork.estimateContractGas({ address: guard.address, abi: guard.abi, functionName: "evaluate", args: [pinId, probeInput], account })).toString();
     }
+    const safe = safeA;
     // Each evaluation alone: intent (pin checks + eval) and outcome (the same circuit on outcome facts).
     gas.intentEval = (await fork.estimateContractGas({ address: guard.address, abi: guard.abi, functionName: "evaluate", args: [pinId, probeInput], account })).toString();
     const outcomeFacts = {
@@ -313,12 +338,12 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
       gas.outcomeEval = gas.intentEval; // the circuit denies the zero outcome; its evaluation cost equals the intent pass
     }
     if (gas.probeAllowed) {
-      gas.tierBasis = "fullPath (Safe transaction with both evaluations)";
+      gas.tierBasis = "full Safe path";
       tier = tierFor(BigInt(gas.fullPath!));
-      tierReason = `measured ${gas.fullPath} gas on the full path, including the intent pass and the outcome pass`;
+      tierReason = `full Safe path: ${gas.fullPath} gas = Safe execution overhead ${gas.safeOverhead} + pre-check ${gas.preCheck} + outcome check ${gas.outcomeCheck}`;
     } else {
       const total = BigInt(gas.intentEval) + BigInt(gas.outcomeEval);
-      gas.tierBasis = "intentEval + outcomeEval";
+      gas.tierBasis = "eval gas: intentEval + outcomeEval (full Safe path not measurable with this probe)";
       tier = tierFor(total);
       tierReason = `intent ${gas.intentEval} + outcome ${gas.outcomeEval} = ${total} gas (the full Safe path could not be estimated with this probe)`;
     }

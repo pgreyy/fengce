@@ -56,8 +56,8 @@ export default function Install() {
         <label>Pin id</label><input className="mono" value={form.pinId} onChange={set("pinId")} required />
         <label>Policy</label>
         <select value={form.preset} onChange={set("preset")}>
-          <option value="nand-limit">Amount limit (NAND)</option>
-          <option value="nor-swap">Swap guard (NOR)</option>
+          <option value="nand-limit">Stablecoin Transfer Limit</option>
+          <option value="nor-swap">Protected Swap Policy</option>
         </select>
         <label>Cap</label><input value={form.cap} onChange={set("cap")} />
         <label>Tokens</label><textarea rows={3} value={form.tokens} onChange={set("tokens")} />

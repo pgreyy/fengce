@@ -11,7 +11,7 @@ export default async function CatalogPage() {
         <table>
           <thead>
             <tr>
-              <th>Pin</th><th>Tier</th><th>Measured gas</th><th>Vectors (allow / deny)</th><th>Certificate</th><th>Designer</th><th>Fee (wei)</th><th>Active</th><th>Description</th>
+              <th>Pin</th><th>Tier (eval gas)</th><th>Eval gas</th><th>Vectors (allow / deny)</th><th>Certificate</th><th>Designer</th><th>Fee (wei)</th><th>Active</th><th>Description</th>
             </tr>
           </thead>
           <tbody>

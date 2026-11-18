@@ -1,0 +1,67 @@
+{
+  "certificate": {
+    "block": "76237133",
+    "chainId": 196,
+    "circuit": {
+      "gateCount": 1,
+      "nIn": 2,
+      "nOut": 1,
+      "nState": 0,
+      "netlistHash": "0x2264f951c081419cda26506f341a82729d2ad2298e55c2d8371ce1a805730479"
+    },
+    "circuitId": "3",
+    "dependencyTree": {
+      "circuitId": "3",
+      "gateCount": 1,
+      "nIn": 2,
+      "nOut": 1,
+      "nState": 0,
+      "netlistHash": "0x2264f951c081419cda26506f341a82729d2ad2298e55c2d8371ce1a805730479",
+      "processor": "0xB04EB79D1A5EECaabAAfF7B77d7c27578EE693FF",
+      "refs": []
+    },
+    "format": "fengce-quote/1",
+    "gas": {
+      "evalCall": "48678",
+      "fullPath": "279273",
+      "intentEval": "101455",
+      "method": "eth_estimateGas",
+      "outcomeCheck": "94588",
+      "outcomeEval": "135628",
+      "path": "full Safe path: Safe v1.5.0 execTransaction (native transfer of 0) -> FengceGuard pre-check (PinRegistry.isPinned -> eval of the probe input) -> execution -> FengceInspector outcome check (snapshot, verify, eval)",
+      "preCheck": "111915",
+      "probeAllowed": true,
+      "probeInput": "0x02",
+      "probeSchemaHash": null,
+      "probeSource": "input",
+      "safeOverhead": "72770",
+      "tierBasis": "full Safe path"
+    },
+    "processor": "0xB04EB79D1A5EECaabAAfF7B77d7c27578EE693FF",
+    "processors": [
+      "0xB04EB79D1A5EECaabAAfF7B77d7c27578EE693FF"
+    ],
+    "refClosureHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+    "tier": "Green",
+    "tierReason": "full Safe path: 279273 gas = Safe execution overhead 72770 + pre-check 111915 + outcome check 94588",
+    "tierThresholds": {
+      "amberMaxGas": "3500000",
+      "greenMaxGas": "1000000"
+    }
+  },
+  "certificateHash": "0xd2f2b7e6063044a6ad5ec6dbc2535043683df663033c1b707e2e8f15ee8e9149",
+  "forkCheck": {
+    "allMatch": true,
+    "catalog": {
+      "certificateHash": "0xd2f2b7e6063044a6ad5ec6dbc2535043683df663033c1b707e2e8f15ee8e9149",
+      "certificateHashMatches": true,
+      "measuredEvalGas": "29954",
+      "tier": "Green",
+      "tierMatchesQuote": true
+    },
+    "certificateHashStored": "0xd2f2b7e6063044a6ad5ec6dbc2535043683df663033c1b707e2e8f15ee8e9149",
+    "netlistHashStored": "0x2264f951c081419cda26506f341a82729d2ad2298e55c2d8371ce1a805730479",
+    "pinIdOnFork": "0xecc27242fd612bbfb3647d1eeb55255d55994b70db8ac11aee567e8192ddbc06",
+    "refClosureHashStored": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+  }
+}

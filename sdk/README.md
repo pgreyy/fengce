@@ -47,8 +47,8 @@ fengce-quote <processor> <circuitId> [--rpc URL] [--port N] [--out FILE] [--inpu
 ```
 
 Needs `anvil` (Foundry) on PATH. Starts a local fork of X Layer, deploys PinRegistry and FengceGuard on it,
-measures gas on the full Safe -> guard -> circuit path, assigns a tier (`src/tiers.ts`: Green up to 1M gas,
-Amber up to 3.5M, Red above), pins the circuit on the fork with the resulting `certificateHash` and checks what
+measures gas on the full Safe path (Safe execution overhead, pre-check and outcome check, reported separately),
+assigns a tier from the full Safe path (`src/tiers.json`: Green up to 1M gas, Amber up to 3.5M, Red above), pins the circuit on the fork with the resulting `certificateHash` and checks what
 the registry stored. Nothing is sent to the real chain. Programmatic use: `quote(env, processor, id, options)`.
 
 The certificate hash is keccak256 of the certificate's canonical JSON (`canonicalJson`: keys sorted, no

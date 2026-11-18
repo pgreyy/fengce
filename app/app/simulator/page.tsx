@@ -43,8 +43,8 @@ export default function Simulator() {
       <form onSubmit={(e) => { e.preventDefault(); run(); }}>
         <label>Policy</label>
         <select value={preset} onChange={(e) => setPreset(e.target.value)}>
-          <option value="nand-limit">Amount limit (NAND)</option>
-          <option value="nor-swap">Swap guard (NOR)</option>
+          <option value="nand-limit">Stablecoin Transfer Limit</option>
+          <option value="nor-swap">Protected Swap Policy</option>
         </select>
         <label>Cap</label>
         <input value={cap} onChange={(e) => setCap(e.target.value)} />

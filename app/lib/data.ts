@@ -30,6 +30,7 @@ import { ADDR, AGENT_EXECUTOR, CATALOG, client } from "./chain";
 import { PRESETS, presetFor, type PolicyPreset } from "./policies";
 
 const cpuAbi = parseAbi([
+  "function step(uint256,bytes,bytes) view returns (bytes,bytes)",
   "function circuitInfo(uint256) view returns (uint32 nIn, uint32 nOut, uint32 nState, uint32 gateCount)",
   "function netlist(uint256) view returns (bytes)",
   "function eval(uint256,bytes) view returns (bytes)",
@@ -70,7 +71,7 @@ export async function circuit(processor: Address, id: bigint) {
   const preset = presetFor(processor, id);
   let evalGas: string | null = null;
   let tier: string | null = null;
-  const vectors: { input: Hex; inputBits: string; output: Hex | null; outputBits: string | null; meaning: string }[] = [];
+  const vectors: { input: Hex; state: Hex | null; inputBits: string; output: Hex | null; outputBits: string | null; expected: string; decision: string; reason: string }[] = [];
   if (nState === 0) {
     const zero = toHex(new Uint8Array(Math.ceil(nIn / 8)));
     try {
@@ -80,17 +81,32 @@ export async function circuit(processor: Address, id: bigint) {
     } catch {
       /* not estimable */
     }
-    const inputs: { input: Hex; meaning: string }[] =
-      preset?.vectors.length ? preset.vectors : nIn <= 4 ? [...Array(1 << nIn).keys()].map((x) => ({ input: toHex(new Uint8Array([x])), meaning: "" })) : [];
-    for (const v of inputs) {
-      let out: Hex | null = null;
-      try {
-        out = await client.readContract({ address: processor, abi: cpuAbi, functionName: "eval", args: [id, v.input] });
-      } catch {
-        out = null;
-      }
-      vectors.push({ ...v, inputBits: bits(v.input, nIn), output: out, outputBits: out ? bits(out, nOut) : null });
+  }
+  const presetVectors = preset?.vectors ?? [];
+  const inputs =
+    presetVectors.length ? presetVectors
+      : nState === 0 && nIn <= 4 ? [...Array(1 << nIn).keys()].map((x) => ({ input: toHex(new Uint8Array([x])), state: undefined, decision: "", reason: "" }))
+      : [];
+  for (const v of inputs) {
+    let out: Hex | null = null;
+    try {
+      out = nState === 0
+        ? await client.readContract({ address: processor, abi: cpuAbi, functionName: "eval", args: [id, v.input] })
+        : (await client.readContract({ address: processor, abi: cpuAbi, functionName: "step", args: [id, v.state ?? "0x00", v.input] }))[1];
+    } catch {
+      out = null;
     }
+    const bit0 = out ? (parseInt(out.slice(2, 4), 16) & 1) === 1 : null;
+    vectors.push({
+      input: v.input,
+      state: v.state ?? null,
+      inputBits: bits(v.input, nIn),
+      output: out,
+      outputBits: out ? bits(out, nOut) : null,
+      expected: v.decision,
+      decision: bit0 === null ? "reverted" : bit0 ? "allow" : "deny",
+      reason: v.reason,
+    });
   }
   return {
     block: block.toString(),
@@ -106,8 +122,10 @@ export async function circuit(processor: Address, id: bigint) {
     tree,
     evalGas,
     tier,
-    tierNote: "Tier from eth_estimateGas of eval on zero input (evaluation only, not the full Safe path).",
+    tierNote: "eval gas: eth_estimateGas of eval on zero input (the circuit evaluation only, not the full Safe path).",
+    name: preset?.name ?? null,
     description: preset?.description ?? null,
+    construction: preset?.construction ?? null,
     presetKey: preset?.key ?? null,
     vectors,
   };

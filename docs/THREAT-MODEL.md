@@ -84,7 +84,8 @@ proves who produced the certificate or that its gas figures are right; anyone ca
 
 ### Gas tiers are not enforced
 
-Quote assigns Green / Amber / Red from measured gas. The guard does not read the tier; it forwards at most the
+Quote assigns Green / Amber / Red from the full Safe path gas; the Catalog assigns one from eval gas. The guard
+does not read either tier; it forwards at most the
 `evalGasCap` set when the guard was deployed, and a circuit that runs out of gas denies the transaction.
 
 ### Approvals that existed before install
