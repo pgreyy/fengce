@@ -24,12 +24,16 @@ jobs:
           python-version: "3.12"
       - name: Install Slither
         run: pip install slither-analyzer==0.11.3
-      - name: Build
-        run: forge build --skip test --skip script
+      - name: Keep only src/ for analysis (this runner's copy)
+        # crytic-compile cannot parse the helper files Foundry generates for test linking, and only src/
+        # is in scope, so tests and scripts are removed from the runner's checkout before compiling.
+        run: rm -rf test script
       - name: Run Slither on src/
+        env:
+          FOUNDRY_DYNAMIC_TEST_LINKING: "false"
         run: |
-          slither . --foundry-compile-all \
-            --filter-paths "lib/|test/|script/|app/|sdk/" \
+          slither . \
+            --filter-paths "lib/|app/|sdk/" \
             --exclude-dependencies \
             --json slither.json --sarif slither.sarif || true
           python3 - <<'PY'
