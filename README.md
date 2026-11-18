@@ -170,7 +170,7 @@ Behaviour with a test behind it:
 | `/safe/[address]` and `/api/safe/[address]` | Owners, modules, guards, Fengce configuration, recovery, timelock events |
 
 ```sh
-cd sdk && npm ci && cd ../app && npm ci && npx next build && npx next start
+cd sdk && npm ci && cd ../app && npm ci && npm run build && npm start
 ```
 
 `XLAYER_RPC` sets the RPC endpoint (default `https://xlayerrpc.okx.com`).
