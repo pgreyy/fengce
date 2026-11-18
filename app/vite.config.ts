@@ -16,6 +16,11 @@ export default defineConfig({
     emptyOutDir: true,
     assetsInlineLimit: 0,
     chunkSizeWarningLimit: 900,
-    rollupOptions: { input: Object.fromEntries(PAGES.map((p) => [p, resolve(__dirname, `${p}.html`)])) },
+    rollupOptions: {
+      input: Object.fromEntries(PAGES.map((p) => [p, resolve(__dirname, `${p}.html`)])),
+      // Third-party code in one chunk whose name only changes when a dependency changes, so an app edit re-uploads
+      // only the small app chunks to DeWeb.
+      output: { manualChunks: (id) => (id.includes("node_modules") ? "vendor" : undefined) },
+    },
   },
 });

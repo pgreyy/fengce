@@ -9,6 +9,7 @@ checks, and which claims rest on mainnet evidence.
   pins, demo Safe) and [deployments/manifest-xlayer-196-v2.json](deployments/manifest-xlayer-196-v2.json) (per contract:
   salt, init code hash, constructor arguments, runtime code hash, full solc metadata). Built from commit `e260a37`,
   solc 0.8.28, via_ir, 200 runs, EVM cancun. All 18 contracts verified on Sourcify (exact match).
+- The app on TapeOut DeWeb: [deployments/deweb-xlayer-196.json](deployments/deweb-xlayer-196.json) (`6.2.180.tape`, container, files with SHA-256).
 - Release v1 (previous): [deployments/xlayer-196.json](deployments/xlayer-196.json), [deployments/manifest-xlayer-196.json](deployments/manifest-xlayer-196.json).
 - Event history (installs, Denied, timelocks) from the v2 deploy block: [app/public/events-snapshot.json](app/public/events-snapshot.json).
 - Every README claim with its evidence: [docs/claims.json](docs/claims.json) ([docs/CLAIMS.md](docs/CLAIMS.md)).
@@ -81,4 +82,5 @@ private one through the `XLAYER_RPC_URL` secret). Nothing in the test suite send
   some wallets let the hook be removed without running it (docs/WALLETS.md, "Known bypasses").
 - Catalog install fees, Tick groups and FengceFloors are deployed but unused on mainnet so far.
 - Explorer verification on OKX: not done (the API rejected every submission); Sourcify is complete.
-- TapeOut DeWeb hosting of the app: script ready ([script/DeployDeWeb.s.sol](script/DeployDeWeb.s.sol)), not published yet.
+- The app is published on TapeOut DeWeb as `6.2.180.tape` ([deployments/deweb-xlayer-196.json](deployments/deweb-xlayer-196.json));
+  republish changed files with [script/DeployDeWeb.s.sol](script/DeployDeWeb.s.sol), check with `app/scripts/deweb-check.mts`.

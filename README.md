@@ -10,7 +10,7 @@ rule takes days, and everyone can see it.
 
 **X Layer Mainnet · Chain ID 196 · v2 live**
 
-[Live app](https://getfengce.vercel.app) · [Try it](docs/TRY-IT.md) · [Demo video](#demo-video) · [Docs](docs/INTEGRATION.md) · [SDK](sdk/README.md) · [Sourcify](https://repo.sourcify.dev/196/0x9D2A482fFA86fa3193F85c451A44576E2f1C8E6e)
+[Live app](https://getfengce.vercel.app) · [On TapeOut DeWeb: 6.2.180.tape](https://6-2-180.tapekit.org/) · [Try it](docs/TRY-IT.md) · [Demo video](#demo-video) · [Docs](docs/INTEGRATION.md) · [SDK](sdk/README.md) · [Sourcify](https://repo.sourcify.dev/196/0x9D2A482fFA86fa3193F85c451A44576E2f1C8E6e)
 <!-- demo-video: replace the #demo-video link above with the video URL -->
 
 </div>
@@ -208,6 +208,12 @@ deployer with salts `fengce.<Name>.v2.0.0`. Manifests: [addresses](deployments/x
 | FengceBinding | [`0x2015…b6F8`](https://www.oklink.com/x-layer/address/0x20157A63Df8ab6728698630E38f6d7683Ca6b6F8) | [Sourcify](https://repo.sourcify.dev/196/0x20157A63Df8ab6728698630E38f6d7683Ca6b6F8) |
 
 All 18: [deployments/xlayer-196-v2.json](deployments/xlayer-196-v2.json), each with an exact Sourcify match ([list](docs/CLAIMS.md#sourcify-18)).
+
+**The app on TapeOut DeWeb.** The same static build is stored on X Layer and served by its on-chain name
+**`6.2.180.tape`** (`tape://6.2.180.tape/`, or through a gateway: [6-2-180.tapekit.org](https://6-2-180.tapekit.org/)): circuit #6 on
+TapeOut processor #180, container [`0xd136…9BB2`](https://www.oklink.com/x-layer/address/0xd136c115B2B6dB3179d240503834dE785bF29BB2), files in SiteRegistry [`0xd6EF…ADB6`](https://www.oklink.com/x-layer/address/0xd6EFb7adCc9c83dC4924Ad56f6a8E4e969b9ADB6), name paid on
+DomainBinding [`0x6880…66f9`](https://www.oklink.com/x-layer/address/0x68809Fd2fb343aA57D0aeB7f33Defe477c9666f9) ([bind](https://www.oklink.com/x-layer/tx/0x08dbe4406210c5d4e966a1fed75505984006f0d80b61b1a9ec9cfafcf579bc41)). Record: [deployments/deweb-xlayer-196.json](deployments/deweb-xlayer-196.json);
+check it the way a TAP-10 client does with `cd app && npx tsx scripts/deweb-check.mts` ([proof](docs/CLAIMS.md#deweb-hosted)).
 
 **Previous release (v1)**, salts `fengce.<Name>.v0.2.0`, still on chain: [deployments/xlayer-196.json](deployments/xlayer-196.json).
 

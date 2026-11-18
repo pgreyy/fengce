@@ -579,6 +579,51 @@
       ]
     },
     {
+      "id": "deweb-hosted",
+      "claim": "The app is hosted on TapeOut DeWeb as 6.2.180.tape: its files are stored on X Layer in SiteRegistry under the container of circuit #6 on processor #180, each with its SHA-256, and the name is paid on DomainBinding until 2036.",
+      "status": "mainnet",
+      "network": "X Layer mainnet (196)",
+      "release": "v2",
+      "evidence": [
+        {
+          "label": "container (opened)",
+          "url": "https://www.oklink.com/x-layer/address/0xd136c115B2B6dB3179d240503834dE785bF29BB2"
+        },
+        {
+          "label": "open container",
+          "url": "https://www.oklink.com/x-layer/tx/0x0a91b7f00fbe6672946a729a6caa0a0e8fb4b72fa8c503bfab1f339b7b727427"
+        },
+        {
+          "label": "SiteRegistry putFile index.html",
+          "url": "https://www.oklink.com/x-layer/tx/0xab30bef87a3147e0649bb73ddebb9a7a81c6ecf85509690c3bd22556c53f5ee6"
+        },
+        {
+          "label": "SiteRegistry setFallback",
+          "url": "https://www.oklink.com/x-layer/tx/0x69246117dadf1df6b54a61bec16ac6016c890e4095d507785f87929757a649ef"
+        },
+        {
+          "label": "DomainBinding bind 6.2.180.tape",
+          "url": "https://www.oklink.com/x-layer/tx/0x08dbe4406210c5d4e966a1fed75505984006f0d80b61b1a9ec9cfafcf579bc41"
+        },
+        {
+          "label": "tape-out of circuit #6",
+          "url": "https://www.oklink.com/x-layer/tx/0x7d9d35aee1d036ea695408420934034f0f1c6f5d73d643b29565360be6504a9f"
+        },
+        {
+          "label": "record",
+          "url": "deployments/deweb-xlayer-196.json"
+        },
+        {
+          "label": "TAP-10 resolution and SHA-256 check",
+          "url": "app/scripts/deweb-check.mts"
+        },
+        {
+          "label": "gateway",
+          "url": "https://6-2-180.tapekit.org/"
+        }
+      ]
+    },
+    {
       "id": "wallet-kernel",
       "claim": "ZeroDev Kernel v3.3: FengceHook blocks over-limit transfers and hidden batches; uninstall waits 2 days; validator and root changes are timelocked admin actions.",
       "status": "fork-tested",

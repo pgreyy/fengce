@@ -36,6 +36,7 @@ property of the code or setup). Test links point at the test function in this re
 | [mcp-read-only](#mcp-read-only) | documented | X Layer mainnet (196), read-only | v2 |
 | [agent-demo-fork](#agent-demo-fork) | fork-tested | X Layer mainnet fork | v2 |
 | [preflight-own-policy](#preflight-own-policy) | mainnet | X Layer mainnet (196), read-only | v2 |
+| [deweb-hosted](#deweb-hosted) | mainnet | X Layer mainnet (196) | v2 |
 | [wallet-kernel](#wallet-kernel) | fork-tested | X Layer mainnet fork (live Kernel v3.3 code) | v2 |
 | [wallet-nexus](#wallet-nexus) | fork-tested | X Layer mainnet fork with Nexus code from Base | v2 |
 | [wallet-etherspot](#wallet-etherspot) | fork-tested | X Layer mainnet fork with Etherspot code from Base | v2 |
@@ -313,6 +314,22 @@ Status: **mainnet** · Network: X Layer mainnet (196), read-only · Release: v2
 - [implementation](../app/src/lib/data.ts)
 - [API function](../app/api-src/preflight.ts)
 - [OpenAPI](../docs/openapi.yaml)
+
+## deweb-hosted
+
+The app is hosted on TapeOut DeWeb as 6.2.180.tape: its files are stored on X Layer in SiteRegistry under the container of circuit #6 on processor #180, each with its SHA-256, and the name is paid on DomainBinding until 2036.
+
+Status: **mainnet** · Network: X Layer mainnet (196) · Release: v2
+
+- [container (opened)](https://www.oklink.com/x-layer/address/0xd136c115B2B6dB3179d240503834dE785bF29BB2)
+- [open container](https://www.oklink.com/x-layer/tx/0x0a91b7f00fbe6672946a729a6caa0a0e8fb4b72fa8c503bfab1f339b7b727427)
+- [SiteRegistry putFile index.html](https://www.oklink.com/x-layer/tx/0xab30bef87a3147e0649bb73ddebb9a7a81c6ecf85509690c3bd22556c53f5ee6)
+- [SiteRegistry setFallback](https://www.oklink.com/x-layer/tx/0x69246117dadf1df6b54a61bec16ac6016c890e4095d507785f87929757a649ef)
+- [DomainBinding bind 6.2.180.tape](https://www.oklink.com/x-layer/tx/0x08dbe4406210c5d4e966a1fed75505984006f0d80b61b1a9ec9cfafcf579bc41)
+- [tape-out of circuit #6](https://www.oklink.com/x-layer/tx/0x7d9d35aee1d036ea695408420934034f0f1c6f5d73d643b29565360be6504a9f)
+- [record](../deployments/deweb-xlayer-196.json)
+- [TAP-10 resolution and SHA-256 check](../app/scripts/deweb-check.mts)
+- [gateway](https://6-2-180.tapekit.org/)
 
 ## wallet-kernel
 

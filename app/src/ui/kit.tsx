@@ -83,7 +83,12 @@ function Shell({ page, children }: { page: string; children: ReactNode }) {
       <footer className="foot">
         <div className="wrap">
           <span>Read-only. Every figure on this page is read from X Layer by your browser; nothing is sent.</span>
-          <span className="mono">chain 196 · release v2</span>
+          <span className="mono">
+            chain 196 · release v2 · on TapeOut DeWeb:{" "}
+            <a href="https://6-2-180.tapekit.org/" target="_blank" rel="noreferrer noopener" title="tape://6.2.180.tape (files stored on X Layer, verified by SHA-256)">
+              6.2.180.tape
+            </a>
+          </span>
         </div>
       </footer>
     </>
