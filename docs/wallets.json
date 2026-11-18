@@ -1,0 +1,238 @@
+{
+  "format": "fengce-wallets/1",
+  "chainId": 196,
+  "release": "v2",
+  "legend": {
+    "Mainnet": "adapter deployed on X Layer mainnet and exercised there with real transactions",
+    "Fork-tested": "adapter deployed on X Layer mainnet; behaviour proven by fork tests against live chain state",
+    "Agent-only": "agents are checked; the wallet's own owner key or keys are not",
+    "Partial": "pre-execution checks work, with a known way to remove the hook or skip the timelock",
+    "Not integrated": "no adapter for this wallet"
+  },
+  "fields": {
+    "adapterLiveOnMainnet": "address of the adapter on X Layer mainnet (release v2), or null",
+    "testEnvironment": "where the behaviour was tested",
+    "preExecutionCheck": "every call checked by the circuit before it executes",
+    "outcomeCheck": "FengceInspector checks balances and approvals after execution",
+    "safeConfigInvariants": "FengceInspector also fails the transaction if owners, threshold, modules, guards or fallback handler change",
+    "uninstallAdminProtection": "what stops the hook or guard from being removed or bypassed quickly",
+    "agentOnly": "only agents are checked, not the wallet's own owner key or keys",
+    "isBound": "FengceBinding.isBound can return true for this wallet",
+    "knownBypasses": "known ways around the check",
+    "evidence": "claim ids in docs/claims.json"
+  },
+  "wallets": [
+    {
+      "key": "safe",
+      "wallet": "Safe v1.5.0",
+      "status": "Mainnet",
+      "adapter": "FengceGuard (transaction guard and module guard)",
+      "adapterLiveOnMainnet": "0x9D2A482fFA86fa3193F85c451A44576E2f1C8E6e",
+      "testEnvironment": "X Layer mainnet; X Layer mainnet fork",
+      "preExecutionCheck": "yes",
+      "outcomeCheck": "yes (FengceInspector)",
+      "safeConfigInvariants": "yes (owners, threshold, modules, guards, fallback handler)",
+      "uninstallAdminProtection": "admin timelock (at least 1 day); guard removal only by recovery: all owners, at least 2 days",
+      "agentOnly": "no",
+      "isBound": "yes",
+      "knownBypasses": "none known",
+      "evidence": [
+        "enforced-at-execution",
+        "binds-owners",
+        "no-quiet-swap",
+        "outcome-check",
+        "verifiable"
+      ]
+    },
+    {
+      "key": "safe7579",
+      "wallet": "Safe + Safe7579 v1.0.0",
+      "status": "Partial",
+      "adapter": "FengceHook, with FengceGuard for Safe owner transactions",
+      "adapterLiveOnMainnet": "0xE538979145E67935B85D1912904ce8d5bF19669b",
+      "testEnvironment": "X Layer mainnet fork with Safe7579 code from Base",
+      "preExecutionCheck": "yes",
+      "outcomeCheck": "yes (FengceInspector, Safe-based)",
+      "safeConfigInvariants": "yes (Safe-based)",
+      "uninstallAdminProtection": "module changes timelocked on four routes",
+      "agentOnly": "no",
+      "isBound": "no",
+      "knownBypasses": "Safe7579 does not run a hook on its own uninstall",
+      "evidence": [
+        "wallet-safe7579"
+      ]
+    },
+    {
+      "key": "kernel",
+      "wallet": "ZeroDev Kernel v3.3",
+      "status": "Fork-tested",
+      "adapter": "FengceHook (root validation hook)",
+      "adapterLiveOnMainnet": "0xE538979145E67935B85D1912904ce8d5bF19669b",
+      "testEnvironment": "X Layer mainnet fork, live Kernel v3.3 code",
+      "preExecutionCheck": "yes",
+      "outcomeCheck": "available (setInspector), not tested on Kernel",
+      "safeConfigInvariants": "no (code hash only)",
+      "uninstallAdminProtection": "hook uninstall waits 2 days; validator, executor, fallback installs, root validator changes and upgrades are scheduled admin actions (2 days)",
+      "agentOnly": "no",
+      "isBound": "no",
+      "knownBypasses": "installing another hook is not checked; validations installed without FengceHook do not run it",
+      "evidence": [
+        "wallet-kernel"
+      ]
+    },
+    {
+      "key": "nexus",
+      "wallet": "Biconomy Nexus 1.2.0",
+      "status": "Partial",
+      "adapter": "FengceHook (global hook)",
+      "adapterLiveOnMainnet": "0xE538979145E67935B85D1912904ce8d5bF19669b",
+      "testEnvironment": "X Layer mainnet fork with Nexus code from Base",
+      "preExecutionCheck": "yes",
+      "outcomeCheck": "available, not tested on Nexus",
+      "safeConfigInvariants": "no (code hash only)",
+      "uninstallAdminProtection": "hook uninstall waits 2 days",
+      "agentOnly": "no",
+      "isBound": "no",
+      "knownBypasses": "emergencyUninstallHook (owner-signed, Nexus's own 1-day timelock) removes the hook without running it (from source, not tested)",
+      "evidence": [
+        "wallet-nexus"
+      ]
+    },
+    {
+      "key": "etherspot",
+      "wallet": "Etherspot ModularEtherspotWallet v1.0.0",
+      "status": "Partial",
+      "adapter": "FengceHook (global hook)",
+      "adapterLiveOnMainnet": "0xE538979145E67935B85D1912904ce8d5bF19669b",
+      "testEnvironment": "X Layer mainnet fork with Etherspot code from Base",
+      "preExecutionCheck": "yes",
+      "outcomeCheck": "available, not tested on Etherspot",
+      "safeConfigInvariants": "no (code hash only)",
+      "uninstallAdminProtection": "none: uninstallModule does not run the hook",
+      "agentOnly": "no",
+      "isBound": "no",
+      "knownBypasses": "uninstallModule removes the hook at once",
+      "evidence": [
+        "wallet-etherspot"
+      ]
+    },
+    {
+      "key": "mav2",
+      "wallet": "Alchemy Modular Account v2 (ERC-6900)",
+      "status": "Fork-tested",
+      "adapter": "FengceHook6900 (execution hooks)",
+      "adapterLiveOnMainnet": "0xAf481abCb80A73C9c300f16aAF1b61BcAaC3BEA5",
+      "testEnvironment": "X Layer mainnet fork, live Modular Account v2 code",
+      "preExecutionCheck": "yes",
+      "outcomeCheck": "yes (FengceInspector wired in the test)",
+      "safeConfigInvariants": "no (code hash only)",
+      "uninstallAdminProtection": "uninstall and account upgrade wait 2 days",
+      "agentOnly": "no",
+      "isBound": "no",
+      "knownBypasses": "performCreate with value 0 is allowed; other installs are not delayed",
+      "evidence": [
+        "wallet-mav2"
+      ]
+    },
+    {
+      "key": "7702",
+      "wallet": "EIP-7702 EOA (SemiModularAccount7702)",
+      "status": "Agent-only",
+      "adapter": "FengceHook6900",
+      "adapterLiveOnMainnet": "0xAf481abCb80A73C9c300f16aAF1b61BcAaC3BEA5",
+      "testEnvironment": "X Layer mainnet fork, live SemiModularAccount7702",
+      "preExecutionCheck": "yes, for agents",
+      "outcomeCheck": "available",
+      "safeConfigInvariants": "no",
+      "uninstallAdminProtection": "uninstall and upgrade wait 2 days",
+      "agentOnly": "yes",
+      "isBound": "no",
+      "knownBypasses": "the EOA key can always send a plain transaction",
+      "evidence": [
+        "wallet-7702"
+      ]
+    },
+    {
+      "key": "coinbase",
+      "wallet": "Coinbase Smart Wallet v1.1",
+      "status": "Agent-only",
+      "adapter": "FengceAgentOwner (an extra owner)",
+      "adapterLiveOnMainnet": "0xd857d1850684aC80E7DDa4ab52ea6E1B1CB0aD21",
+      "testEnvironment": "X Layer mainnet fork with Coinbase code from Base",
+      "preExecutionCheck": "yes, for agents",
+      "outcomeCheck": "available (setInspector)",
+      "safeConfigInvariants": "no",
+      "uninstallAdminProtection": "none: owners can remove FengceAgentOwner at any time",
+      "agentOnly": "yes",
+      "isBound": "no",
+      "knownBypasses": "owners are not checked",
+      "evidence": [
+        "wallet-coinbase"
+      ]
+    },
+    {
+      "key": "lightmulti",
+      "wallet": "Alchemy MultiOwnerLightAccount v2",
+      "status": "Agent-only",
+      "adapter": "FengceAgentOwner (same execute entry point)",
+      "adapterLiveOnMainnet": "0xd857d1850684aC80E7DDa4ab52ea6E1B1CB0aD21",
+      "testEnvironment": "not tested",
+      "preExecutionCheck": "yes, for agents (not tested)",
+      "outcomeCheck": "available",
+      "safeConfigInvariants": "no",
+      "uninstallAdminProtection": "none",
+      "agentOnly": "yes",
+      "isBound": "no",
+      "knownBypasses": "owners are not checked",
+      "evidence": []
+    },
+    {
+      "key": "metamask",
+      "wallet": "MetaMask EIP-7702 DeleGator",
+      "status": "Not integrated",
+      "adapter": "none",
+      "adapterLiveOnMainnet": null,
+      "testEnvironment": "none",
+      "preExecutionCheck": "no",
+      "outcomeCheck": "no",
+      "safeConfigInvariants": "no",
+      "uninstallAdminProtection": "n/a",
+      "agentOnly": "n/a",
+      "isBound": "no",
+      "knownBypasses": "agents use delegations and caveat enforcers; Fengce has no caveat enforcer yet",
+      "evidence": []
+    },
+    {
+      "key": "okx",
+      "wallet": "OKX Wallet (EIP-7702)",
+      "status": "Not integrated",
+      "adapter": "not checked",
+      "adapterLiveOnMainnet": null,
+      "testEnvironment": "none",
+      "preExecutionCheck": "not checked",
+      "outcomeCheck": "no",
+      "safeConfigInvariants": "no",
+      "uninstallAdminProtection": "n/a",
+      "agentOnly": "n/a",
+      "isBound": "no",
+      "knownBypasses": "not checked which contract it delegates to",
+      "evidence": []
+    },
+    {
+      "key": "light",
+      "wallet": "Alchemy LightAccount v2 (single owner)",
+      "status": "Not integrated",
+      "adapter": "none",
+      "adapterLiveOnMainnet": null,
+      "testEnvironment": "none",
+      "preExecutionCheck": "no",
+      "outcomeCheck": "no",
+      "safeConfigInvariants": "no",
+      "uninstallAdminProtection": "n/a",
+      "agentOnly": "n/a",
+      "isBound": "no",
+      "knownBypasses": "a single owner: FengceAgentOwner would replace the owner's own access",
+      "evidence": []
+    }
+  ]
+}

@@ -1,0 +1,322 @@
+openapi: 3.1.0
+info:
+  title: Fengce public API
+  version: "2.0.0"
+  summary: Read-only views of Fengce on X Layer mainnet (chain 196), release v2.
+  description: |
+    The same code that runs in the app's pages, run as Vercel functions. Every endpoint reads X Layer mainnet through the
+    public RPCs (rpc.xlayer.tech, xlayerrpc.okx.com); nothing is signed or sent. Numbers that can exceed 2^53 are strings.
+
+    `POST /api/simulate` is a simulation (one `eth_call`): it shows what a policy would decide for a transaction. It is not
+    on-chain enforcement. Enforcement happens only in the wallet, when FengceGuard or a Fengce hook runs during execution.
+  license:
+    name: MIT
+    identifier: MIT
+security: []  # public, read-only: no authentication
+servers:
+  - url: https://getfengce.vercel.app
+    description: Production (X Layer mainnet, release v2)
+tags:
+  - name: catalog
+    description: Policies listed in the Fengce Catalog
+  - name: circuits
+    description: TapeOut circuits and their vectors
+  - name: safes
+    description: Safe configuration and Fengce events
+  - name: simulation
+    description: Predicted decisions (eth_call), not enforcement
+  - name: install
+    description: Preflight and Safe Transaction Builder JSON
+paths:
+  /api/catalog:
+    get:
+      tags: [catalog]
+      operationId: getCatalog
+      summary: Listed policies with tier, gas and install counts
+      description: |
+        Reads every Catalog entry, its pin (processor and circuit), the stored Quote figures, and installs per policy:
+        distinct Safes whose FengceGuard `Configured` event names the pin, from the build's event snapshot plus a live
+        scan of newer blocks. Cached for 30 seconds.
+      responses:
+        "200":
+          description: The Catalog
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Catalog" }
+        "400": { $ref: "#/components/responses/Error" }
+  /api/circuit/{processor}/{id}:
+    get:
+      tags: [circuits]
+      operationId: getCircuit
+      summary: A TapeOut circuit with its vectors evaluated on chain
+      parameters:
+        - { name: processor, in: path, required: true, schema: { $ref: "#/components/schemas/Address" } }
+        - { name: id, in: path, required: true, schema: { type: string, pattern: "^[0-9]+$" }, description: Circuit id (token id on the processor) }
+      responses:
+        "200":
+          description: The circuit
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Circuit" }
+        "400": { $ref: "#/components/responses/Error" }
+  /api/safe/{address}:
+    get:
+      tags: [safes]
+      operationId: getSafe
+      summary: A Safe's configuration and its Fengce events
+      parameters:
+        - { name: address, in: path, required: true, schema: { $ref: "#/components/schemas/Address" } }
+      responses:
+        "200":
+          description: The Safe
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SafeStatus" }
+        "400": { $ref: "#/components/responses/Error" }
+  /api/simulate:
+    post:
+      tags: [simulation]
+      operationId: simulate
+      summary: What a policy would decide for a transaction (simulation, not enforcement)
+      description: |
+        Decodes the transaction into facts, encodes the circuit input with the policy's schema and evaluates the circuit,
+        all inside one `eth_call` (a PolicySimulator contract created in the call, never deployed). The result is a
+        prediction. Enforcement happens only in the wallet during execution.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SimulateRequest" }
+      responses:
+        "200":
+          description: The simulated decision
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Simulation" }
+        "400": { $ref: "#/components/responses/Error" }
+        "405": { $ref: "#/components/responses/Error" }
+  /api/install:
+    post:
+      tags: [install]
+      operationId: install
+      summary: Preflight and Safe Transaction Builder JSON for installing FengceGuard
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InstallRequest" }
+      responses:
+        "200":
+          description: Preflight rows and, if clean, the Transaction Builder JSON
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Install" }
+        "400": { $ref: "#/components/responses/Error" }
+        "405": { $ref: "#/components/responses/Error" }
+components:
+  responses:
+    Error:
+      description: The request could not be served (bad input, unknown policy, or the RPC did not answer)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+  schemas:
+    Address: { type: string, pattern: "^0x[0-9a-fA-F]{40}$" }
+    Hex: { type: string, pattern: "^0x[0-9a-fA-F]*$" }
+    Bytes32: { type: string, pattern: "^0x[0-9a-fA-F]{64}$" }
+    Uint: { type: string, pattern: "^[0-9]+$", description: Unsigned integer as a decimal string }
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        details: { type: [string, "null"] }
+    Coverage:
+      type: object
+      properties:
+        from: { $ref: "#/components/schemas/Uint" }
+        to: { $ref: "#/components/schemas/Uint" }
+        windows: { type: integer, description: eth_getLogs requests of 100 blocks }
+        failed: { type: integer, description: windows the RPC did not answer; their blocks were not read }
+    History:
+      type: object
+      description: Where event data came from
+      properties:
+        snapshot:
+          type: [object, "null"]
+          properties:
+            from: { $ref: "#/components/schemas/Uint" }
+            to: { $ref: "#/components/schemas/Uint" }
+            generatedAt: { type: string, format: date-time }
+        live: { oneOf: [{ $ref: "#/components/schemas/Coverage" }, { type: "null" }] }
+        gap:
+          type: [object, "null"]
+          description: blocks after the snapshot that were not scanned
+          properties:
+            from: { $ref: "#/components/schemas/Uint" }
+            to: { $ref: "#/components/schemas/Uint" }
+        head: { $ref: "#/components/schemas/Uint" }
+    FengceEvent:
+      type: object
+      required: [source, event, block, tx, logIndex, args]
+      properties:
+        source: { type: string, enum: [guard, agentExecutor, catalog] }
+        event: { type: string, examples: [Configured, Denied, AgentExecuted, AdminScheduled] }
+        block: { $ref: "#/components/schemas/Uint" }
+        tx: { $ref: "#/components/schemas/Bytes32" }
+        logIndex: { type: integer }
+        safe: { oneOf: [{ $ref: "#/components/schemas/Address" }, { type: "null" }] }
+        args:
+          type: object
+          description: Event arguments as strings; Denied.reason is decoded (for example FengceDenied(safe, target))
+          additionalProperties: true
+    CatalogEntry:
+      type: object
+      properties:
+        pinId: { $ref: "#/components/schemas/Bytes32" }
+        certificateHash: { $ref: "#/components/schemas/Bytes32" }
+        schemaHash: { $ref: "#/components/schemas/Bytes32" }
+        vectorsHash: { $ref: "#/components/schemas/Bytes32" }
+        allowVectors: { type: integer }
+        denyVectors: { type: integer }
+        measuredGas: { $ref: "#/components/schemas/Uint" }
+        tier: { type: string, enum: [Green, Amber, Red] }
+        lister: { $ref: "#/components/schemas/Address" }
+        designer: { $ref: "#/components/schemas/Address" }
+        installFee: { $ref: "#/components/schemas/Uint" }
+        listedAt: { $ref: "#/components/schemas/Uint" }
+        active: { type: boolean }
+        description: { type: string }
+        uri: { type: string }
+        processor: { $ref: "#/components/schemas/Address" }
+        circuitId: { $ref: "#/components/schemas/Uint" }
+        gateCount: { type: integer }
+        name: { type: [string, "null"] }
+        fullPathGas: { type: [string, "null"], description: Full Safe path gas from the Quote certificate }
+        quoteEvalGas: { type: [string, "null"] }
+        installs: { type: [integer, "null"], description: distinct Safes configured with this pin; null if the event history could not be read }
+    Catalog:
+      type: object
+      properties:
+        deployed: { type: boolean }
+        address: { $ref: "#/components/schemas/Address" }
+        head: { $ref: "#/components/schemas/Uint" }
+        entries: { type: array, items: { $ref: "#/components/schemas/CatalogEntry" } }
+        history: { oneOf: [{ $ref: "#/components/schemas/History" }, { type: "null" }] }
+        known: { type: array, items: { type: object } }
+    Vector:
+      type: object
+      properties:
+        input: { $ref: "#/components/schemas/Hex" }
+        state: { oneOf: [{ $ref: "#/components/schemas/Hex" }, { type: "null" }] }
+        inputBits: { type: string, description: "input bits, bit 0 first" }
+        output: { oneOf: [{ $ref: "#/components/schemas/Hex" }, { type: "null" }] }
+        outputBits: { type: [string, "null"] }
+        expected: { type: string }
+        decision: { type: string, enum: [allow, deny, reverted] }
+        reason: { type: string }
+    Circuit:
+      type: object
+      properties:
+        block: { $ref: "#/components/schemas/Uint" }
+        processor: { $ref: "#/components/schemas/Address" }
+        id: { $ref: "#/components/schemas/Uint" }
+        nIn: { type: integer }
+        nOut: { type: integer }
+        nState: { type: integer }
+        gateCount: { type: integer }
+        netlistHash: { $ref: "#/components/schemas/Bytes32" }
+        refClosureHash: { $ref: "#/components/schemas/Bytes32" }
+        processors: { type: array, items: { $ref: "#/components/schemas/Address" } }
+        tree: { type: object, description: "dependency tree: processor, circuitId, netlistHash, nIn, nOut, nState, gateCount, refs" }
+        evalGas: { type: [string, "null"] }
+        tier: { type: [string, "null"] }
+        name: { type: [string, "null"] }
+        description: { type: [string, "null"] }
+        construction: { type: [string, "null"] }
+        vectors: { type: array, items: { $ref: "#/components/schemas/Vector" } }
+    SafeStatus:
+      type: object
+      properties:
+        safe: { $ref: "#/components/schemas/Address" }
+        agentExecutor: { $ref: "#/components/schemas/Address" }
+        version: { type: string }
+        owners: { type: array, items: { $ref: "#/components/schemas/Address" } }
+        threshold: { $ref: "#/components/schemas/Uint" }
+        nonce: { $ref: "#/components/schemas/Uint" }
+        modules: { type: array, items: { $ref: "#/components/schemas/Address" } }
+        guard: { $ref: "#/components/schemas/Address" }
+        moduleGuard: { $ref: "#/components/schemas/Address" }
+        fallbackHandler: { $ref: "#/components/schemas/Address" }
+        fengce:
+          type: [object, "null"]
+          description: FengceGuard configuration (null if the guard is not a FengceGuard)
+          properties:
+            set: { type: boolean }
+            pinId: { $ref: "#/components/schemas/Bytes32" }
+            recoveryDelay: { $ref: "#/components/schemas/Uint" }
+            recoveryWindow: { $ref: "#/components/schemas/Uint" }
+            adminDelay: { $ref: "#/components/schemas/Uint" }
+            recovery: { type: object }
+        deniedAgentCalls: { type: array, items: { $ref: "#/components/schemas/FengceEvent" } }
+        agentEvents: { type: array, items: { $ref: "#/components/schemas/FengceEvent" } }
+        events: { type: array, items: { $ref: "#/components/schemas/FengceEvent" } }
+        history: { $ref: "#/components/schemas/History" }
+        blockedAttempts: { type: string }
+    SimulateRequest:
+      type: object
+      required: [preset, to]
+      properties:
+        preset: { type: string, enum: [nand-limit, comparator16, policy-floor, nor-swap], description: stateful presets (toggle-cap) are not simulated here }
+        cap: { $ref: "#/components/schemas/Uint" }
+        account: { $ref: "#/components/schemas/Address" }
+        to: { $ref: "#/components/schemas/Address" }
+        value: { $ref: "#/components/schemas/Uint" }
+        data: { $ref: "#/components/schemas/Hex" }
+    Simulation:
+      type: object
+      properties:
+        policy: { type: object }
+        tx: { type: object }
+        stage: { type: string, enum: [evaluated, pin failed, call not recognised, value does not fit the schema, evaluation failed] }
+        facts: { type: [object, "null"] }
+        input:
+          type: [object, "null"]
+          properties:
+            hex: { $ref: "#/components/schemas/Hex" }
+            bits: { type: string }
+            fields: { type: array, items: { type: string } }
+        output: { type: [object, "null"] }
+        decision: { type: string, enum: [allow, deny, "deny (fails closed)"] }
+        error: { type: [string, "null"] }
+    InstallRequest:
+      type: object
+      required: [safe, pinId, preset, tokens, spenders]
+      properties:
+        safe: { $ref: "#/components/schemas/Address" }
+        pinId: { $ref: "#/components/schemas/Bytes32" }
+        preset: { type: string }
+        cap: { $ref: "#/components/schemas/Uint" }
+        tokens: { type: array, items: { $ref: "#/components/schemas/Address" } }
+        spenders: { type: array, items: { $ref: "#/components/schemas/Address" } }
+        keep: { type: array, items: { type: string }, description: "token:spender pairs whose existing approvals are kept" }
+        guard: { $ref: "#/components/schemas/Address" }
+        recoveryDelay: { $ref: "#/components/schemas/Uint" }
+        recoveryWindow: { $ref: "#/components/schemas/Uint" }
+        adminDelay: { $ref: "#/components/schemas/Uint" }
+    Install:
+      type: object
+      properties:
+        preflight:
+          type: array
+          items:
+            type: object
+            properties:
+              token: { $ref: "#/components/schemas/Address" }
+              spender: { $ref: "#/components/schemas/Address" }
+              check: { type: string }
+              state: { type: string, enum: [checked, found, not checked, kept] }
+              amount: { type: [string, "null"] }
+        transactionBuilder: { type: [object, "null"], description: "Safe Transaction Builder JSON (version 1.0, chainId 196)" }
+        guardNote: { type: [string, "null"] }
+        error: { type: [string, "null"] }

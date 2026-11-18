@@ -1,227 +1,270 @@
+<div align="center">
+
 # Fengce
 
-Fengce lets the smart wallet you already have obey any TapeOut circuit. No new wallet, no moving funds.
+### Spending limits that even the wallet's owners can't quietly skip.
 
-- **FengceGuard** plugs into a Safe v1.5.0 as its transaction guard and checks every owner transaction.
-- **Module guard** (the same FengceGuard, set with `setModuleGuard`) plugs into the Safe's module path and checks every module transaction.
-- **FengceHook** plugs into ERC-7579 accounts (tested on Safe7579, Kernel v3.3, Nexus 1.2.0 and Etherspot) as a hook and checks every execution.
-- **FengceHook6900** plugs into ERC-6900 accounts (tested on Alchemy Modular Account v2, also as an EIP-7702 delegate) as execution hooks.
-- **FengceAgentOwner** gives agents a checked path on wallets with no hook system (tested on Coinbase Smart Wallet) by being one of their owners.
-- **AgentExecutor** plugs into a Safe as a module and lets an agent key act only through the policy.
-- **Signature verifier** (FengceSignatureVerifier) plugs into the Safe's fallback handler and checks off-chain Permit2 and EIP-2612 approvals.
+Other tools only limit an AI agent's key. With Fengce, every transaction from your wallet, whether it comes from you, a
+co-owner or an AI agent, has to pass a TapeOut circuit on X Layer first. If it fails, it doesn't go through. Changing the
+rule takes days, and everyone can see it.
 
-Fengce lets a [Safe](https://github.com/safe-global/safe-smart-account) v1.5.0 enforce a spending policy that is
-defined by a [TapeOut](https://github.com/TapeOutProtocol/TAPs) circuit on X Layer. The circuit is pinned: its
-wiring, every circuit it references and the code that evaluates it are recorded on-chain, and the guard refuses
-to run it if any of that changes.
+**X Layer Mainnet · Chain ID 196 · v2 live**
 
-It has three parts:
+[Live app](https://getfengce.vercel.app) · [Demo video](#demo-video) · [Docs](docs/INTEGRATION.md) · [SDK](sdk/README.md) · [Sourcify](https://repo.sourcify.dev/196/0x9D2A482fFA86fa3193F85c451A44576E2f1C8E6e)
+<!-- demo-video: replace the #demo-video link above with the video URL -->
 
-| Part | What it does |
-|---|---|
-| `src/core` | Wallet-agnostic contracts and libraries: `PinRegistry` (approved circuits), `Schema` (strict typed input encoding), `PolicyEngine` (fail-closed evaluation), `TxFacts` (call decoding), `ApprovalScan`, `Netlist` |
-| `src/safe` | `FengceGuard`: a Safe v1.5.0 transaction guard and module guard sharing one policy path, with recovery, an admin timelock and a MultiSend decoder. `FengceSignatureVerifier` and `FengceStrictHandler`: the same policy for off-chain signed approvals |
-| `src/erc7579` | `FengceHook`: the same policy as an ERC-7579 hook (tested on Safe7579, Kernel v3.3, Nexus 1.2.0, Etherspot) |
-| `src/erc6900` | `FengceHook6900`: the same policy as ERC-6900 execution hooks (tested on Alchemy Modular Account v2 and SemiModularAccount7702) |
-| `src/agent` | `FengceAgentOwner`: agent path for owner-only wallets (tested on Coinbase Smart Wallet) |
-| `src/core` (state and listing) | `Tick`: state host for stateful (LATCH) policies with per-period reset. `Catalog`: public list of pinned circuits with their certificate hash and a tier from eval gas |
-| `src/safe` (agents) | `AgentExecutor`: a Safe module that lets an agent key act only through the Fengce module guard |
-| `sdk/` | TypeScript: schema file format and encoder, Quote certificates (dependency tree, full Safe path gas and tier), install calldata builder, Catalog reader |
+</div>
 
-Status: release v2 deployed on X Layer mainnet (addresses: [deployments/xlayer-196-v2.json](deployments/xlayer-196-v2.json);
-v1: [deployments/xlayer-196.json](deployments/xlayer-196.json)).
-Not independently reviewed. The on-chain behaviour below is tested against X Layer mainnet state on local forks.
+Fengce is a wallet enforcement layer, not a new wallet, an agent framework, or an off-chain monitor.
 
-App: [getfengce.vercel.app](https://getfengce.vercel.app) (read-only, live X Layer data).
+| | Session keys & role modules (Zodiac Roles, Smart Sessions) | Off-chain policy engines | Pre-sign checkers | Fengce |
+|---|---|---|---|---|
+| Binds owners too | No: they scope delegated keys and modules; owners act directly | Only keys held by the provider | No: advisory | [yes](docs/CLAIMS.md#binds-owners) |
+| Enforced by the wallet at execution | Yes | No: enforced when signing, off chain | No | [yes](docs/CLAIMS.md#enforced-at-execution) |
+| Policy can't be swapped quietly | No: the account changes roles or sessions at once, unless a separate delay module is added | No: changed by the provider's admins, not visible on chain | n/a | [yes](docs/CLAIMS.md#no-quiet-swap) |
+| Other contracts can verify it | No standard check | No | No | [yes](docs/CLAIMS.md#verifiable) |
+| Rule is a TapeOut circuit | No | No | No | [yes](docs/CLAIMS.md#tapeout-circuit) |
+
+## The problem and the solution
+
+**The problem.** Spending limits on smart wallets today mostly bind the keys you hand out, such as session keys,
+delegated roles and AI agents, while the owners keep a direct path around them. Off-chain policy engines and pre-sign
+checkers decide outside the wallet, so a transaction signed another way is not stopped. And a limit that its own holders
+can switch off in one transaction protects no one from a hurried or compromised owner.
+
+**The solution.** Fengce plugs into the wallet you already have (a Safe guard, an ERC-7579 or ERC-6900 hook, or an agent
+owner) and makes the wallet itself run every transaction through a pinned TapeOut circuit on X Layer before it executes.
+The rule can be an amount cap, a budget per period, allowed recipients or tokens, approval limits, trading rules or a
+company-wide floor. **Owners choose a rule and set its values; circuit designers build the circuits; organisation admins
+set floors that team policies cannot go below; agents can only act inside them.** Changing or removing the rule waits for
+a public timelock, and removing the guard needs every owner.
+
+## Live mainnet proof
+
+Release v2, demo Safe [`0x0bb9…0707`](https://www.oklink.com/x-layer/address/0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707) (one owner, policy *Stablecoin Transfer Limit* with a 1 USDT0 cap, one agent through
+AgentExecutor). The agent tried 1.5 USDT0 first, then 0.5:
+
+| Agent transfer | Result | Transaction |
+|---|---|---|
+| 1.5 USDT0 (over the cap) | **Denied**, recorded as `Denied` with `FengceDenied(safe, USDT0)`; nothing moved | [0x9b70…4a1b](https://www.oklink.com/x-layer/tx/0x9b70d386a2782e269ab1d3b1df6de767534a5b5b7904998abd92a651d2584a1b) |
+| 0.5 USDT0 (within the cap) | **Allowed**; the Safe went from 1.5 to 1.0 USDT0 | [0x7a70…ccab](https://www.oklink.com/x-layer/tx/0x7a70f5c9713fd9236ecdd81287bcf775253d2cbea19c857524bb1047acfcccab) |
+
+Policy: [Stablecoin Transfer Limit](https://getfengce.vercel.app/policy/?processor=0x839bdD6fa7A66416A609A735e11DE5411B98574e&id=2) (pin
+`0x6661c56a…`, [pin transaction](https://www.oklink.com/x-layer/tx/0x7edc0878f7bdb77f1c7b1a2fa7dec42ebec4adf68ee756d1d56e6b0ce543f7eb)). Release: [v2 addresses](deployments/xlayer-196-v2.json),
+built from commit `e260a37`. The previous release ran the same demo: [0.5 allowed](https://www.oklink.com/x-layer/tx/0x6797257c0ea35fe0ec7b2d80f3bd29275a172e52286f9dbff96fc98e81f05e38), [1.5 denied](https://www.oklink.com/x-layer/tx/0xbfe43e982f563f9e3dc1a4641e259b04ace0635dfab769c59ec7532492e24760).
+
+- **Tests:** 112 pass in [CI for e260a37](https://github.com/pgreyy/fengce/actions/runs/44346520788): 44 unit, 53 core and Safe fork tests, 15 wallet fork tests.
+- **Sourcify:** 18/18 v2 contracts verified, exact match ([list](docs/CLAIMS.md#sourcify-18)).
+- **Every claim** in this README links to its evidence in [docs/CLAIMS.md](docs/CLAIMS.md) ([claims.json](docs/claims.json)).
+
+## A 2 minute path (for judges)
+
+1. Open [getfengce.vercel.app](https://getfengce.vercel.app). Everything is read from X Layer by your browser; nothing to connect.
+2. **Catalog**: five listed policies with tier, gas and installs.
+3. **Simulator**: pick *Numeric Transaction Limit* and press Run. Watch the 114-gate circuit evaluate level by level and
+   end on ALLOWED or DENIED, with the facts and input bits on the left.
+4. **Safe**: the demo Safe's guards, timelocks and the Denied agent call.
+5. Open the two transactions above on the explorer.
+
+## How it works
+
+1. A transaction leaves the wallet: an owner's Safe transaction, a module or agent call, or an ERC-7579 or ERC-6900 execution.
+2. The wallet's Fengce adapter decodes it into facts (recipient, token, amount, kind) and encodes them as circuit input bits
+   with the policy's schema.
+3. PolicyEngine checks the pin (netlist, every referenced circuit, the evaluator code) and evaluates the TapeOut circuit on X
+   Layer. Output bit 0 = 1 allows; anything else, including a revert or a broken pin, denies.
+4. Optionally FengceInspector checks the outcome after execution (outflow, approvals and, on a Safe, its configuration).
+5. Changing the policy waits for the admin timelock; removing the guard needs every owner and the recovery delay.
+
+```mermaid
+flowchart LR
+  O["Owner or co-owner"] --> W["Wallet: Safe, ERC-7579 or ERC-6900 account"]
+  AG["AI agent key"] --> AX["AgentExecutor"] --> W
+  W --> AD["Fengce adapter: FengceGuard, FengceHook or FengceHook6900"]
+  AD --> PE["PolicyEngine"]
+  PE --> PIN{"Pin intact?"}
+  PIN -- "no" --> DENY["Denied, nothing executes"]
+  PIN -- "yes" --> C["Pinned TapeOut circuit on X Layer"]
+  C -- "output 0" --> DENY
+  C -- "output 1" --> EX["Executes"]
+  EX --> IN["FengceInspector outcome check"]
+  IN -- "outcome not allowed" --> RV["Whole transaction reverts"]
+  ADMIN["Policy or guard change"] -. "admin timelock or recovery by all owners" .-> AD
+```
+
+## What you can build
+
+- **Treasuries**: a Safe whose owners cannot move more than the policy allows without a public, days-long change.
+- **AI agents**: give an agent a key through AgentExecutor; every call it makes passes the circuit, and refusals are on record.
+- **Trading desks**: swaps only through decoded routers, within caps, with proceeds back to the account.
+- **Protocols**: accept deposits only from accounts bound to a policy with a notice period, through `FengceBinding.isBound` or `BoundOnly`.
+- **Wallet providers**: ship the hook adapters for ERC-7579 and ERC-6900 accounts.
+- **Circuit designers**: build TapeOut circuits, list them in the Catalog with test vectors that run on chain, and earn install fees.
+- **Organisations with many wallets**: shared budgets per period across Safes (Tick) and floors that team policies cannot go below.
+
+## Integration quickstarts
+
+**Website.** On [Install](https://getfengce.vercel.app/install/), pick the wallet type, run the preflight for a Safe (existing approvals) and
+import the Safe Transaction Builder JSON. Other wallet types show the exact install calls.
+
+**SDK** ([sdk/README.md](sdk/README.md)):
+
+```ts
+import { preSign, buildInstall } from "@fengce/sdk";
+
+const verdict = await preSign(client, { processor, circuitId, schema }, safe, { to, value, data }); // "allow" | "deny", before signing
+const { calls } = await buildInstall(client, { safe, guard, pinId, schema, recoveryDelay: 172_800n, recoveryWindow: 172_800n, adminDelay: 86_400n });
+```
+
+```sh
+npx fengce-quote <processor> <circuitId>   # gas on the full Safe path and a tier, on a local fork of X Layer
+```
+
+**Solidity** ([src/binding](src/binding)):
+
+```solidity
+import {FengceBinding} from "fengce/src/binding/FengceBinding.sol";
+import {BoundOnlyBase} from "fengce/src/binding/BoundOnly.sol";
+
+contract Vault is BoundOnlyBase {
+    constructor(FengceBinding b, bytes32 policyHash) BoundOnlyBase(b, policyHash, 3 days) {}
+    function deposit() external payable onlyBound { /* msg.sender is a Safe bound to policyHash, no change possible for 3 days */ }
+}
+```
 
 ## Wallet compatibility
 
-| Wallet | On X Layer | Adapter | Owner path | Agents | Uninstall protection |
+**Mainnet**: adapter on X Layer mainnet and used there in real transactions. **Fork-tested**: adapter on mainnet, behaviour
+proven on a fork of live mainnet state. **Agent-only**: agents are checked, owners are not. **Partial**: pre-execution checks
+work, with a known way to remove the hook or skip the timelock. **Not integrated**: no adapter.
+
+Non-Safe hooks still check every call before it executes; what they lack is only the Safe configuration invariants (owners,
+threshold, modules, guards, fallback handler) that FengceInspector can read on a Safe.
+
+| Wallet | Status | Adapter live on mainnet | Test environment | Pre-execution check | Outcome check | Safe config invariants | Uninstall / admin protection | Agent-only | isBound | Known bypasses |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Safe v1.5.0 | **Mainnet** | [`0x9D2A…8E6e`](https://www.oklink.com/x-layer/address/0x9D2A482fFA86fa3193F85c451A44576E2f1C8E6e) | X Layer mainnet; X Layer mainnet fork | yes | yes (FengceInspector) | yes (owners, threshold, modules, guards, fallback handler) | admin timelock (at least 1 day); guard removal only by recovery: all owners, at least 2 days | no | yes | none known |
+| Safe + Safe7579 v1.0.0 | **Partial** | [`0xE538…669b`](https://www.oklink.com/x-layer/address/0xE538979145E67935B85D1912904ce8d5bF19669b) | X Layer mainnet fork with Safe7579 code from Base | yes | yes (FengceInspector, Safe-based) | yes (Safe-based) | module changes timelocked on four routes | no | no | Safe7579 does not run a hook on its own uninstall |
+| ZeroDev Kernel v3.3 | **Fork-tested** | [`0xE538…669b`](https://www.oklink.com/x-layer/address/0xE538979145E67935B85D1912904ce8d5bF19669b) | X Layer mainnet fork, live Kernel v3.3 code | yes | available (setInspector), not tested on Kernel | no (code hash only) | hook uninstall waits 2 days; validator, executor, fallback installs, root validator changes and upgrades are scheduled admin actions (2 days) | no | no | installing another hook is not checked; validations installed without FengceHook do not run it |
+| Biconomy Nexus 1.2.0 | **Partial** | [`0xE538…669b`](https://www.oklink.com/x-layer/address/0xE538979145E67935B85D1912904ce8d5bF19669b) | X Layer mainnet fork with Nexus code from Base | yes | available, not tested on Nexus | no (code hash only) | hook uninstall waits 2 days | no | no | emergencyUninstallHook (owner-signed, Nexus's own 1-day timelock) removes the hook without running it (from source, not tested) |
+| Etherspot ModularEtherspotWallet v1.0.0 | **Partial** | [`0xE538…669b`](https://www.oklink.com/x-layer/address/0xE538979145E67935B85D1912904ce8d5bF19669b) | X Layer mainnet fork with Etherspot code from Base | yes | available, not tested on Etherspot | no (code hash only) | none: uninstallModule does not run the hook | no | no | uninstallModule removes the hook at once |
+| Alchemy Modular Account v2 (ERC-6900) | **Fork-tested** | [`0xAf48…BEA5`](https://www.oklink.com/x-layer/address/0xAf481abCb80A73C9c300f16aAF1b61BcAaC3BEA5) | X Layer mainnet fork, live Modular Account v2 code | yes | yes (FengceInspector wired in the test) | no (code hash only) | uninstall and account upgrade wait 2 days | no | no | performCreate with value 0 is allowed; other installs are not delayed |
+| EIP-7702 EOA (SemiModularAccount7702) | **Agent-only** | [`0xAf48…BEA5`](https://www.oklink.com/x-layer/address/0xAf481abCb80A73C9c300f16aAF1b61BcAaC3BEA5) | X Layer mainnet fork, live SemiModularAccount7702 | yes, for agents | available | no | uninstall and upgrade wait 2 days | yes | no | the EOA key can always send a plain transaction |
+| Coinbase Smart Wallet v1.1 | **Agent-only** | [`0xd857…aD21`](https://www.oklink.com/x-layer/address/0xd857d1850684aC80E7DDa4ab52ea6E1B1CB0aD21) | X Layer mainnet fork with Coinbase code from Base | yes, for agents | available (setInspector) | no | none: owners can remove FengceAgentOwner at any time | yes | no | owners are not checked |
+| Alchemy MultiOwnerLightAccount v2 | **Agent-only** | [`0xd857…aD21`](https://www.oklink.com/x-layer/address/0xd857d1850684aC80E7DDa4ab52ea6E1B1CB0aD21) | not tested | yes, for agents (not tested) | available | no | none | yes | no | owners are not checked |
+| MetaMask EIP-7702 DeleGator | **Not integrated** | – | none | no | no | no | n/a | n/a | no | agents use delegations and caveat enforcers; Fengce has no caveat enforcer yet |
+| OKX Wallet (EIP-7702) | **Not integrated** | – | none | not checked | no | no | n/a | n/a | no | not checked which contract it delegates to |
+| Alchemy LightAccount v2 (single owner) | **Not integrated** | – | none | no | no | no | n/a | n/a | no | a single owner: FengceAgentOwner would replace the owner's own access |
+
+Evidence per row: [docs/WALLETS.md](docs/WALLETS.md) ([wallets.json](docs/wallets.json)).
+
+## Policy catalogue and gas
+
+**Full Safe path** = Safe overhead + pre-check + outcome check. **Eval gas** = circuit evaluation only. Tiers: Green up to
+1,000,000 gas on the full Safe path, Amber up to 3,500,000, Red above. Full breakdown: [docs/GAS.md](docs/GAS.md).
+
+| Policy | What it enforces | Gates | Eval gas (Catalog) | Full Safe path | Tier (Quote) |
 |---|---|---|---|---|---|
-| Safe v1.5.0 | yes | FengceGuard | checked | checked (AgentExecutor) | admin timelock, recovery |
-| Safe + Safe7579 | Safe7579 no | FengceHook + FengceGuard | checked | checked | gap: hook not run on its own uninstall |
-| Kernel v3.3 | yes | FengceHook (root validation hook) | checked | only validations with the hook (not tested) | delay enforced; validator and root changes timelocked |
-| Nexus 1.2.0 | no | FengceHook | checked | not tested | delay enforced; gap: `emergencyUninstallHook` (not tested) |
-| Etherspot modular | no | FengceHook | checked | not tested | gap: removable at once |
-| Modular Account v2 | yes | FengceHook6900 | checked | checked | uninstall and upgrade wait 2 days |
-| EIP-7702 EOA (SemiModularAccount7702) | yes | FengceHook6900 | not restricted | checked | 2 days |
-| MetaMask 7702 DeleGator, OKX Wallet 7702 | no / not checked | none | not restricted | not supported / not tested | n/a |
-| Coinbase Smart Wallet | no | FengceAgentOwner | not checked | checked | n/a (owners can remove it) |
-| MultiOwnerLightAccount v2 | yes | FengceAgentOwner | not checked | not tested | n/a |
+| Stablecoin Transfer Limit | a transfer passes only if its amount is at most the cap | 3 | 34,085 | 288,485 | Green |
+| Numeric Transaction Limit | a value must be at or below a limit (16-bit comparator) | 114 | 293,333 | 909,463 | Green |
+| Organization-Wide Policy Floor | a team policy plus an organisation's floor; both must allow | 6 | 159,800 | 524,222 | Green |
+| Periodic Spending Budget | one spend per period, reset each period (stateful, through Tick) | 5 | 33,191 | – | Unsupported |
+| Protected Swap Policy | a swap within the cap whose proceeds return to the account | 4 | 36,174 | 292,222 | Green |
 
-Only Safes guarded by FengceGuard can pass `FengceBinding.isBound`; hook-based accounts always return false.
-Details, sources and the test behind each cell: [docs/WALLETS.md](docs/WALLETS.md).
+## Deployment and verification
 
-## Security statement
+Current release **v2**, commit `e260a37`, solc 0.8.28 (via_ir, 200 runs, EVM cancun), deployed through the CREATE2
+deployer with salts `fengce.<Name>.v2.0.0`. Manifests: [addresses](deployments/xlayer-196-v2.json),
+[full manifest](deployments/manifest-xlayer-196-v2.json) (salt, init code hash, constructor arguments, solc metadata per contract).
 
-Fengce enforces circuit-defined policies across a Safe's owner and module execution paths, re-verifies the
-approved circuit identity on every evaluation, and makes privileged policy changes delayed and observable.
+| Contract | Address | Verification |
+|---|---|---|
+| FengceGuard | [`0x9D2A…8E6e`](https://www.oklink.com/x-layer/address/0x9D2A482fFA86fa3193F85c451A44576E2f1C8E6e) | [Sourcify](https://repo.sourcify.dev/196/0x9D2A482fFA86fa3193F85c451A44576E2f1C8E6e) |
+| FengceHook | [`0xE538…669b`](https://www.oklink.com/x-layer/address/0xE538979145E67935B85D1912904ce8d5bF19669b) | [Sourcify](https://repo.sourcify.dev/196/0xE538979145E67935B85D1912904ce8d5bF19669b) |
+| FengceHook6900 | [`0xAf48…BEA5`](https://www.oklink.com/x-layer/address/0xAf481abCb80A73C9c300f16aAF1b61BcAaC3BEA5) | [Sourcify](https://repo.sourcify.dev/196/0xAf481abCb80A73C9c300f16aAF1b61BcAaC3BEA5) |
+| FengceAgentOwner | [`0xd857…aD21`](https://www.oklink.com/x-layer/address/0xd857d1850684aC80E7DDa4ab52ea6E1B1CB0aD21) | [Sourcify](https://repo.sourcify.dev/196/0xd857d1850684aC80E7DDa4ab52ea6E1B1CB0aD21) |
+| AgentExecutor | [`0xc01b…590c`](https://www.oklink.com/x-layer/address/0xc01b590227149169260e030235b78d6e034E590c) | [Sourcify](https://repo.sourcify.dev/196/0xc01b590227149169260e030235b78d6e034E590c) |
+| FengceInspector | [`0xdeA3…EE1A`](https://www.oklink.com/x-layer/address/0xdeA3e3C305460247686c3EEeAe6552F33D98EE1A) | [Sourcify](https://repo.sourcify.dev/196/0xdeA3e3C305460247686c3EEeAe6552F33D98EE1A) |
+| PinRegistry | [`0xD905…3715`](https://www.oklink.com/x-layer/address/0xD905dde3A09a9777B98013AD196E3b3F988e3715) | [Sourcify](https://repo.sourcify.dev/196/0xD905dde3A09a9777B98013AD196E3b3F988e3715) |
+| PolicyEngine | [`0x2264…FAA9`](https://www.oklink.com/x-layer/address/0x2264B97828454374a56D7407f859fEA6eE7dFAA9) | [Sourcify](https://repo.sourcify.dev/196/0x2264B97828454374a56D7407f859fEA6eE7dFAA9) |
+| Catalog | [`0x26C5…1dFe`](https://www.oklink.com/x-layer/address/0x26C5437428cdD7e4854614DC5DDEFE2776B51dFe) | [Sourcify](https://repo.sourcify.dev/196/0x26C5437428cdD7e4854614DC5DDEFE2776B51dFe) |
+| Tick | [`0xFEb6…5370`](https://www.oklink.com/x-layer/address/0xFEb6FD15F8724bfC69a119C0448f480a7D7e5370) | [Sourcify](https://repo.sourcify.dev/196/0xFEb6FD15F8724bfC69a119C0448f480a7D7e5370) |
+| FengceFloors | [`0xD842…f7D4`](https://www.oklink.com/x-layer/address/0xD842C5B9EdDdd218d2Dbe91c3911934DdA7Ff7D4) | [Sourcify](https://repo.sourcify.dev/196/0xD842C5B9EdDdd218d2Dbe91c3911934DdA7Ff7D4) |
+| FengceBinding | [`0x2015…b6F8`](https://www.oklink.com/x-layer/address/0x20157A63Df8ab6728698630E38f6d7683Ca6b6F8) | [Sourcify](https://repo.sourcify.dev/196/0x20157A63Df8ab6728698630E38f6d7683Ca6b6F8) |
 
-Owners holding every signature remain the final authority: they can remove the guard through recovery, after a
-delay they chose. Fengce makes overrides slow and visible, not impossible.
+All 18: [deployments/xlayer-196-v2.json](deployments/xlayer-196-v2.json), each with an exact Sourcify match ([list](docs/CLAIMS.md#sourcify-18)).
 
-**Not covered** (details in [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md)):
+**Previous release (v1)**, salts `fengce.<Name>.v0.2.0`, still on chain: [deployments/xlayer-196.json](deployments/xlayer-196.json).
 
-- Off-chain signatures, unless the Safe uses the Fengce signature verifier. With it, Permit2 and EIP-2612
-  permits go through the policy; with Strict Signatures mode (`FengceStrictHandler`), signatures on any other
-  domain are refused. Without Strict mode, other domains still accept plain owner signatures.
-- Approvals granted before install, beyond the tokens and spenders the install preflight was asked to check.
-- Upgrades of the TapeOut processor factory's own implementation (a contract cannot read it).
-- Quote certificates are not signed; their hash is only a commitment.
-- Gas tiers are reported (Quote: full Safe path; Catalog: eval gas) but not enforced on-chain.
+| Contract | Address |
+|---|---|
+| FengceGuard | [`0xB056…c1Ac`](https://www.oklink.com/x-layer/address/0xB0562fc0B5dcd7E4a97DeCD344e55A682836c1Ac) |
+| AgentExecutor | [`0x2825…0214`](https://www.oklink.com/x-layer/address/0x28251f9364F86FD7F218cd5d591dF65f04510214) |
+| Catalog | [`0x17Df…Fde7`](https://www.oklink.com/x-layer/address/0x17Df6cc2882e3b4F5C4f5d6a788A8711d2D1Fde7) |
+| PinRegistry | [`0xE606…bC67`](https://www.oklink.com/x-layer/address/0xE606dfe83780359852Db7F8D531fD33681fAbC67) |
 
-## Install
+## Security model and trust boundaries
 
-Contracts (Foundry):
+| | What |
+|---|---|
+| **Enforced** | Every Safe owner and module transaction passes the pinned circuit before it executes; batches are decoded call by call; delegatecall is denied except to MultiSendCallOnly; policy and module changes wait for the admin timelock (at least 1 day); removing or replacing the guard needs every owner and the recovery delay (at least 2 days); a broken pin or reverting circuit denies (fails closed); agents act only through AgentExecutor. |
+| **Partially enforced** | Non-Safe accounts: pre-execution checks work, but some wallets can remove the hook without running it (see Wallet compatibility). Outcome checks cover only the assets and spenders an account watches. Off-chain signatures are checked only when they go through the Fengce signature verifier. |
+| **Not covered** | Whether a circuit expresses what its owners intend (read its vectors and construction). Approvals granted before install beyond the preflight's checks. An EIP-7702 EOA's own key. The TapeOut processor factory and circuit beacon are upgradeable and not sealed; if they change a pinned circuit, Fengce denies until owners recover. |
 
-```sh
-forge install pgreyy/fengce
-```
+**isBound.** `FengceBinding.isBound(account, policyHash, minNotice)` is true only for a Safe whose transaction guard and module
+guard are the trusted FengceGuard, configured with a pinned policy of that hash, where no policy, guard or admin change can
+execute for at least `minNotice` seconds. Accounts using the hooks or FengceAgentOwner always return false.
 
-Remappings used in this repository: `@fengce/core/=src/core/`, `@fengce/safe/=src/safe/`,
-`@safe/=lib/safe-smart-account/contracts/`.
+Slither: 0 High findings ([run for e260a37](https://github.com/pgreyy/fengce/actions/runs/44346519214)). This is static analysis, **not an audit**; Fengce has not been
+independently reviewed. More: [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md).
 
-SDK (not published yet; build from source, Node 20 or later):
+## Run it yourself
 
-```sh
-cd sdk && npm ci && npm run build
-```
+Prerequisites: [Foundry](https://getfoundry.sh), Node.js 22, Git.
 
-## Five-minute example
-
-Needs Foundry (`forge`, `anvil`) and Node 20+. Everything runs locally or on a local fork; nothing is sent to
-the chain.
-
-**1. Build and run the core fork test.** It pins the one-NAND test circuit (processor
-`0x839bdD6fa7A66416A609A735e11DE5411B98574e`, circuit 2), evaluates it, and shows that an oversized value is
-rejected instead of truncated.
-
-```sh
-git clone --recurse-submodules https://github.com/pgreyy/fengce && cd fengce
+```bash
+git clone --recursive https://github.com/pgreyy/fengce && cd fengce
 forge build
-forge test --match-path test/PinNand.t.sol
+forge test --match-path 'test/unit/*.t.sol'                            # unit tests, no network
+forge test --match-path 'test/{PinNand,Fengce*,AgentExecutor}.t.sol'    # fork tests on X Layer mainnet state
+forge test --match-path 'test/wallets/*.t.sol'                         # wallet fork tests (also reads code from Base)
+cd sdk && npm ci && npm test && cd ..
+cd app && npm ci && npm run build && npx vite preview                  # the app on http://localhost:4173
+forge script script/DeployLive.s.sol --rpc-url xlayer --sender <address>   # deployment simulation, sends nothing
 ```
 
-**2. Encode circuit inputs from a schema file** (offline):
-
-```sh
-cd sdk && npm ci
-npx tsx examples/encode.ts
-```
+## Repository map
 
 ```
-schemaHash (pin this): 0xf98ca2032a8ac8374dc5feca2d1b75af530bd435fcb0f5987d858e61d89b4827
-overLimit = false -> 0x02
-overLimit = true  -> 0x03
-a=430, b=400 -> 0xae019001
-processor would read: 4464n
-encodeInputs refuses: "a": value 70000 does not fit in 16 bit(s)
+src/core        PinRegistry, Schema, PolicyEngine, TxFacts, Netlist, Catalog, Tick, FengceFloors, ApprovalScan
+src/safe        FengceGuard, AgentExecutor, FengceInspector, FengceSignatureVerifier, FengceStrictHandler
+src/erc7579     FengceHook (ERC-7579 hook)
+src/erc6900     FengceHook6900 (ERC-6900 execution hooks)
+src/agent       FengceAgentOwner (agent path for owner-only wallets)
+src/binding     FengceBinding, BoundOnly, BoundVault
+src/decoders    Uniswap V2 and V3 routers, Aave V3 pool
+test            unit, fork and wallet tests (test/unit, test/fork, test/wallets)
+script          DeployLive (release), DeployDeWeb (static app on TapeOut DeWeb)
+sdk             TypeScript SDK and the Quote CLI; sdk/quotes holds the Quote certificates
+app             static app (Vite, React, viem) and the Vercel API functions
+deployments     addresses and manifests per release
+docs            documentation (below)
 ```
 
-**3. Quote a circuit** (starts an anvil fork of X Layer, deploys the contracts on it, measures gas on the full
-Safe path: Safe execution overhead, the guard's pre-check and the outcome check):
+## Docs
 
-```sh
-npm run build
-node dist/cli/quote.js 0x839bdD6fa7A66416A609A735e11DE5411B98574e 2
-```
-
-(Once the package is installed in another project, the same command is `npx fengce-quote`.)
-
-The certificate reports 3 gates, no dependencies, 288,485 gas on the full Safe path (72,770 Safe execution
-overhead + 116,448 pre-check + 99,267 outcome check), tier Green, and a
-`certificateHash` that matches what `PinRegistry` stores (see `sdk/quotes/nand-839bdd-2.json`).
-
-**4. Install on a Safe.** `sdk/examples/install-calldata.ts` builds the three Safe transactions (configure,
-`setGuard`, `setModuleGuard`) for a Safe, after checking it has no modules enabled. See
-[docs/INTEGRATION.md](docs/INTEGRATION.md) for the full flow.
-
-## What the guard does
-
-For every Safe transaction and every module transaction:
-
-1. A delegatecall is allowed only to MultiSendCallOnly v1.5.0; every call inside the batch is checked.
-2. A call to the guard itself: recovery (all owners must sign), timelock scheduling, configuration.
-3. A call to the Safe itself: installing this guard passes; changing either guard needs recovery; other admin
-   calls (`enableModule`, `disableModule`, owner and threshold changes, `setFallbackHandler`) need the timelock;
-   anything else is denied.
-4. Anything else is decoded into facts (recipient, token, amount, kind), encoded with the Safe's schema and
-   evaluated by the pinned circuit. Output bit 0 = 1 allows. Every error denies.
-
-Recognised calls: native transfers, ERC-20 `transfer`, `approve`, `increaseAllowance`, `setApprovalForAll`,
-Permit2 `approve`, and calls the Safe allowlisted by (contract, function). ERC-721 `approve` and
-`setApprovalForAll(true)` additionally require the allowlist.
-
-## Tests
-
-| Command | What |
-|---|---|
-| `forge test --match-path 'test/unit/*.t.sol'` | Unit and fuzz tests, no network |
-| `forge test --match-path 'test/*.t.sol'` and `'test/fork/*.t.sol'` | Fork tests against X Layer mainnet (`xlayer` RPC alias in `foundry.toml`) |
-| `cd sdk && npm test` | SDK unit tests |
-
-Behaviour with a test behind it:
-
-| Claim | Test |
-|---|---|
-| Pin fails closed when processor code, beacon implementation, implementation code, factory registration or chain change | `test/unit/PinRegistry.t.sol` |
-| Dependency closure of real REF circuits matches the SDK's independent computation | `test/fork/RefClosure.t.sol` |
-| Inputs and outputs must be exact length with zero padding; failures revert | `test/unit/PolicyEngine.t.sol` |
-| Oversized values are rejected, never truncated | `test/unit/Schema.t.sol`, `test/PinNand.t.sol` |
-| Owner, module and batched transfers over the limit are blocked | `test/FengceGuard.t.sol` |
-| Recovery works while the circuit is broken; guard swaps need recovery; recovery expires; one of two owners cannot schedule it | `test/FengceGuard.t.sol`, `test/FengceBatchB.t.sol` |
-| Admin calls wait for the timelock | `test/FengceBatchB.t.sol` |
-| Approvals go through the policy; NFT approvals need the allowlist; preflight finds existing allowances | `test/FengceApprovals.t.sol`, `test/FengceBatchB.t.sol`, `test/unit/ApprovalScan.t.sol` |
-| Minimum delays enforced; configure refuses Safes with modules unless overridden | `test/FengceLimits.t.sol` |
-| Signed Permit2 / EIP-2612 approvals go through the policy; Strict mode refuses unknown domains | `test/FengceSignatures.t.sol` |
-| Agent calls go through the circuit; owners can revoke | `test/AgentExecutor.t.sol` |
-| ERC-7579 account (Safe7579) blocked over the limit, including batches | `test/FengceHook7579.t.sol` |
-| Stateful cap: second spend in a period denied, allowed after reset | `test/FengceTick.t.sol` |
-| Catalog listing runs its test vectors on-chain (a wrong vector reverts); tier from eval gas measured on-chain; fee split | `test/FengceCatalog.t.sol` |
-| Catalog entry carries the Quote certificate hash | Quote run (`forkCheck.catalog`) |
-| Swaps decoded (Uniswap V3): foreign recipient and over-cap amount denied, valid swap passes | `test/FengceDecoders.t.sol` |
-| ERC-7579 module changes timelocked on all four routes | `test/FengceSafe7579Admin.t.sol` |
-| Kernel v3.3, Nexus 1.2.0, Etherspot: over the limit and batches blocked; hook uninstall delay or its gap per wallet; Kernel validator and root changes timelocked | `test/wallets/FengceKernel.t.sol`, `test/wallets/FengceNexus.t.sol`, `test/wallets/FengceEtherspot.t.sol` |
-| Alchemy Modular Account v2: over the limit and batches blocked; uninstall and upgrade wait 2 days | `test/wallets/FengceModularAccountV2.t.sol` |
-| EIP-7702: agents of a delegated EOA blocked over the limit; the EOA key itself is not restricted | `test/wallets/Fengce7702.t.sol` |
-| Coinbase Smart Wallet: agents blocked over the limit through FengceAgentOwner; owners not checked | `test/wallets/FengceAgentOwner.t.sol` |
-| Tick wired into the guard: agents capped, groups share one budget, failed executions roll back | `test/FengceTickGuard.t.sol` |
-
-## App
-
-`app/` is a read-only static site over live X Layer data (no wallet connection, nothing is sent), hosted at
-[getfengce.vercel.app](https://getfengce.vercel.app). Every page reads X Layer directly from the browser
-(`rpc.xlayer.tech`, `xlayerrpc.okx.com`; both accept browser requests); the pages make no server calls. The build is plain
-multi-page HTML with relative paths and self-hosted fonts, so the same `app/dist/` also runs from TapeOut DeWeb.
-
-| Page | What |
-|---|---|
-| `/` | Catalog: every listed policy with tier, eval gas, full Safe path gas (Quote), gates, installs, designer |
-| `/policy/?processor=…&id=…` | Allow and deny vectors evaluated on chain, circuit card, dependency tree |
-| `/simulator/?preset=…` | A transaction through a policy: facts and input bits (one `eth_call`), then the circuit evaluated gate by gate in the browser (`evaluateTrace`) and drawn as a gate graph; `&run=1` runs it on load |
-| `/install/` | Wallet-type picker with each wallet's guarantees; for a Safe, preflight per token and spender and the Safe Transaction Builder JSON |
-| `/safe/?address=…` | Owners, guards, timelocks, Denied agent calls and guard events (scanned in 100-block windows, the X Layer `eth_getLogs` limit; `&scan=all` scans back to the v2 deployment) |
-| `/wallets/` | Wallet compatibility (docs/WALLETS.md) |
-
-Public API, on Vercel only (the same code, run as Node functions): `GET /api/catalog`, `GET /api/circuit/:processor/:id`,
-`GET /api/safe/:address`, `POST /api/simulate`, `POST /api/install`.
-
-```sh
-cd sdk && npm ci && cd ../app && npm ci && npm run build      # static site in app/dist
-npm run build:vercel                                          # dist plus the API as a Vercel Build Output
-```
-
-Contract addresses come from `deployments/xlayer-196-v2.json`. In the API functions, `XLAYER_RPC`, `CATALOG_ADDRESS` and
-`AGENT_EXECUTOR` override the defaults.
-
-## Documentation
-
-- [docs/INTEGRATION.md](docs/INTEGRATION.md): pin a circuit, write a schema, install on a Safe, operate and recover
-- [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md): trust assumptions, what is enforced, known limits
+- [docs/INTEGRATION.md](docs/INTEGRATION.md): pin a circuit, write a schema, install, operate and recover
+- [docs/WALLETS.md](docs/WALLETS.md) and [docs/wallets.json](docs/wallets.json): wallet compatibility
+- [docs/CLAIMS.md](docs/CLAIMS.md) and [docs/claims.json](docs/claims.json): every claim with its evidence
+- [docs/GAS.md](docs/GAS.md): gas per policy
+- [docs/API.md](docs/API.md) and [docs/openapi.yaml](docs/openapi.yaml): public API
+- [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md): trust assumptions and limits
+- [docs/POLICY-INTERFACE.md](docs/POLICY-INTERFACE.md): the canonical policy context
 - [docs/ADDRESSES.md](docs/ADDRESSES.md): X Layer addresses Fengce depends on
-- [docs/WALLETS.md](docs/WALLETS.md): wallet compatibility, adapters and gaps per wallet
-- [sdk/README.md](sdk/README.md): SDK API and CLI
+- [docs/VERDICT.md](docs/VERDICT.md): the verdict checks
+- [sdk/README.md](sdk/README.md): SDK and CLI
+- [AGENTS.md](AGENTS.md): canonical data and checks, for tools and newcomers
 
-## License
+## Licence
 
-MIT. See [LICENSE](LICENSE).
+MIT, see [LICENSE](LICENSE).
