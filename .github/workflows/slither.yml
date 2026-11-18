@@ -1,0 +1,55 @@
+name: Slither
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  slither:
+    name: Slither (src/)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: v1.9.0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Slither
+        run: pip install slither-analyzer==0.11.3
+      - name: Build
+        run: forge build --skip test --skip script
+      - name: Run Slither on src/
+        run: |
+          slither . --foundry-compile-all \
+            --filter-paths "lib/|test/|script/|app/|sdk/" \
+            --exclude-dependencies \
+            --json slither.json --sarif slither.sarif || true
+          python3 - <<'PY'
+          import json, collections
+          d = json.load(open("slither.json"))
+          det = d.get("results", {}).get("detectors", [])
+          by = collections.Counter((x["impact"], x["check"]) for x in det)
+          for (impact, check), n in sorted(by.items()):
+              print(f"{impact:14} {check:40} {n}")
+          high = [x for x in det if x["impact"] == "High"]
+          print(f"TOTAL {len(det)}  HIGH {len(high)}")
+          for x in high:
+              print("HIGH", x["check"], x["description"].splitlines()[0])
+          open("high.count", "w").write(str(len(high)))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: slither
+          path: |
+            slither.json
+            slither.sarif
+      - name: Fail on High findings
+        run: test "$(cat high.count)" = "0"
