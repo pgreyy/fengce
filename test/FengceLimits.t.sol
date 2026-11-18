@@ -65,12 +65,12 @@ contract FengceLimitsForkTest is ForkBase {
         FengceGuard.ConfigInput memory c = _cfg(); // built first: _cfg() itself makes an external read
         vm.expectRevert(abi.encodeWithSelector(FengceGuard.FengceModulesEnabled.selector, 2));
         _configure(safe, c);
-        assertFalse(guard.configOf(address(safe)).set);
+        assertFalse(_isSet(address(safe)));
 
         c.acceptExistingModules = true;
         vm.recordLogs();
         assertTrue(_configure(safe, c));
-        assertTrue(guard.configOf(address(safe)).set);
+        assertTrue(_isSet(address(safe)));
 
         Vm.Log[] memory logs = vm.getRecordedLogs();
         bytes32 topic = FengceGuard.ExistingModuleAccepted.selector;

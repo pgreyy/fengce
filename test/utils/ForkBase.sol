@@ -68,6 +68,10 @@ abstract contract ForkBase is Test {
         c.adminDelay = DELAY;
     }
 
+    function _isSet(address safe) internal view returns (bool set) {
+        (set,,,,,,) = guard.configOf(safe);
+    }
+
     /// One owner: this contract.
     function _newSafe() internal returns (ISafe) {
         address[] memory owners = new address[](1);

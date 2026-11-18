@@ -128,9 +128,7 @@ contract FengceSignatureVerifier is ISafeSignatureVerifier {
     }
 
     function _check(address safe, address spender, address token, uint256 amount) private view {
-        guard.checkFacts(
-            safe, TxFacts.Facts(TxFacts.Kind.Approval, spender, 0, token, amount, TxFacts.PERMIT2_APPROVE)
-        );
+        guard.checkContext(safe, TxFacts.base(TxFacts.Kind.Approval, safe, spender, 0, token, amount, TxFacts.PERMIT2_APPROVE));
     }
 
     function _hashDetails(PermitDetails memory d) private pure returns (bytes32) {

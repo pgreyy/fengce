@@ -21,8 +21,21 @@ library TxFacts {
         Native,
         Transfer,
         Approval,
-        Call
+        Call,
+        Swap, // from a registered decoder: tokenIn = token, amountIn = amount
+        Lending // from a registered decoder: asset = token, onBehalfOf = recipient
     }
+
+    enum LendingAction {
+        None,
+        Supply,
+        Withdraw,
+        Borrow,
+        Repay
+    }
+
+    /// @notice Version of the canonical policy context (this Facts struct). See docs/POLICY-INTERFACE.md.
+    uint16 internal constant CONTEXT_VERSION = 1;
 
     /// @notice What feeds one non-Flag schema field, in field order.
     enum Source {
@@ -34,16 +47,33 @@ library TxFacts {
         AmountGt, // 1 if amount > param
         ToIs, // 1 if to == address(param)
         TokenIs, // 1 if token == address(param)
-        Selector // uint32 selector, 0 for native
+        Selector, // uint32 selector, 0 for native
+        // Context version 1 additions (appended; earlier indices unchanged)
+        Actor, // who initiated (owner tx sender, module, agent, entry point), as uint160
+        ActorIs, // 1 if actor == address(param)
+        TokenOut, // swap output token
+        MinAmountOut, // swap minimum output
+        Recipient, // where swap or lending proceeds go (0 when not applicable)
+        RecipientIsForeign, // 1 if recipient is set and is not the account
+        Deadline, // swap deadline (0 when the call has none)
+        Action // uint(LendingAction)
     }
 
+    /// @notice Canonical policy context, version 1 (docs/POLICY-INTERFACE.md).
     struct Facts {
         Kind kind;
-        address to;
-        uint256 value;
-        address token;
-        uint256 amount;
+        address to; // recipient, spender or call target
+        uint256 value; // native value
+        address token; // token, or swap tokenIn, or lending asset
+        uint256 amount; // amount, or swap amountIn (max for exact-output), or lending amount
         bytes4 selector;
+        address account; // the wallet the policy belongs to
+        address actor; // who initiated the action, if known
+        address tokenOut;
+        uint256 minAmountOut;
+        address recipient;
+        uint256 deadline;
+        LendingAction action;
     }
 
     struct Binding {
@@ -73,7 +103,7 @@ library TxFacts {
         view
         returns (Facts memory f)
     {
-        if (data.length == 0) return Facts(Kind.Native, target, value, address(0), value, bytes4(0));
+        if (data.length == 0) return base(Kind.Native, account, target, value, address(0), value, bytes4(0));
         bytes4 sel = selectorOf(data);
 
         if (value == 0 && data.length == 68) {
@@ -81,22 +111,22 @@ library TxFacts {
             uint256 b = _word(data, 1);
             if (a >> 160 == 0) {
                 address who = address(uint160(a));
-                if (sel == TRANSFER) return Facts(Kind.Transfer, who, 0, target, b, sel);
+                if (sel == TRANSFER) return base(Kind.Transfer, account, who, 0, target, b, sel);
                 if (sel == APPROVE) {
-                    if (!_isErc721(target)) return Facts(Kind.Approval, who, 0, target, b, sel);
+                    if (!_isErc721(target)) return base(Kind.Approval, account, who, 0, target, b, sel);
                     // ERC-721 approve(to, tokenId): denied unless (token, approve) is allowlisted,
                     // whatever the schema says; then it reaches the circuit as one token.
                     if (!allowlisted) revert TxNftApprovalDenied(target, who);
-                    return Facts(Kind.Approval, who, 0, target, 1, sel);
+                    return base(Kind.Approval, account, who, 0, target, 1, sel);
                 }
                 if (sel == INCREASE_ALLOWANCE) {
                     uint256 cur = _allowance(target, account, who);
                     uint256 total = cur > type(uint256).max - b ? type(uint256).max : cur + b;
-                    return Facts(Kind.Approval, who, 0, target, total, sel);
+                    return base(Kind.Approval, account, who, 0, target, total, sel);
                 }
                 if (sel == SET_APPROVAL_FOR_ALL && b <= 1) {
                     if (b == 1 && !allowlisted) revert TxApprovalForAllDenied(target, who);
-                    return Facts(Kind.Approval, who, 0, target, b == 1 ? type(uint256).max : 0, sel);
+                    return base(Kind.Approval, account, who, 0, target, b == 1 ? type(uint256).max : 0, sel);
                 }
             }
         }
@@ -107,12 +137,27 @@ library TxFacts {
             uint256 amt = _word(data, 2);
             uint256 exp = _word(data, 3);
             if (token >> 160 == 0 && spender >> 160 == 0 && amt >> 160 == 0 && exp >> 48 == 0) {
-                return Facts(Kind.Approval, address(uint160(spender)), 0, address(uint160(token)), amt, sel);
+                return base(Kind.Approval, account, address(uint160(spender)), 0, address(uint160(token)), amt, sel);
             }
         }
 
-        if (allowlisted) return Facts(Kind.Call, target, value, address(0), value, sel);
+        if (allowlisted) return base(Kind.Call, account, target, value, address(0), value, sel);
         revert TxUnsupportedCall(target, sel);
+    }
+
+    /// @notice A context with only the version 0 fields set (the rest zero).
+    function base(Kind kind, address account, address to, uint256 value, address token, uint256 amount, bytes4 sel)
+        internal
+        pure
+        returns (Facts memory f)
+    {
+        f.kind = kind;
+        f.account = account;
+        f.to = to;
+        f.value = value;
+        f.token = token;
+        f.amount = amount;
+        f.selector = sel;
     }
 
     function values(Facts memory f, Binding[] memory b) internal pure returns (uint256[] memory v) {
@@ -128,7 +173,15 @@ library TxFacts {
             else if (s == Source.AmountGt) v[i] = f.amount > p ? 1 : 0;
             else if (s == Source.ToIs) v[i] = uint160(f.to) == p ? 1 : 0;
             else if (s == Source.TokenIs) v[i] = uint160(f.token) == p ? 1 : 0;
-            else v[i] = uint32(f.selector); // Selector
+            else if (s == Source.Selector) v[i] = uint32(f.selector);
+            else if (s == Source.Actor) v[i] = uint160(f.actor);
+            else if (s == Source.ActorIs) v[i] = uint160(f.actor) == p ? 1 : 0;
+            else if (s == Source.TokenOut) v[i] = uint160(f.tokenOut);
+            else if (s == Source.MinAmountOut) v[i] = f.minAmountOut;
+            else if (s == Source.Recipient) v[i] = uint160(f.recipient);
+            else if (s == Source.RecipientIsForeign) v[i] = f.recipient != address(0) && f.recipient != f.account ? 1 : 0;
+            else if (s == Source.Deadline) v[i] = f.deadline;
+            else v[i] = uint256(f.action); // Action
         }
     }
 

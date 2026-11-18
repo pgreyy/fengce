@@ -93,3 +93,25 @@ real `verify()` call is still needed to confirm.
 The factory proxy keeps its implementation only in the ERC-1967 slot and exposes no getter, so a contract cannot
 check it. Verdict pins the factory by code hash only (`PinRegistry.pinContract(factory, 0)`); an implementation
 upgrade before settlement is not detected on-chain.
+
+## DeFi protocols on X Layer (checked 2026-11-18, read-only)
+
+| Protocol | Contract | Address | Check |
+|---|---|---|---|
+| Uniswap V3 | SwapRouter02 | `0x4f0C28f5926AFDA16bf2506D5D9e57Ea190f9bcA` | 24,497 bytes; `factory()` = V3 factory, `WETH9()` = WOKB, `factoryV2()` = V2 factory |
+| Uniswap V3 | UniswapV3Factory | `0x4B2ab38DBF28D31D467aA8993f6c2585981D6804` | 24,535 bytes; WOKB/USDT0 pools at 0.05% (`0xe3BE6A0137f1b0602Fc1a4841686f43B340a5082`) and 0.3% have liquidity |
+| Uniswap | UniversalRouter v2.0 | `0x5507749f2c558bb3e162c6e90c314c092e7372ff` | 19,499 bytes (no decoder yet) |
+| Uniswap V2 | UniswapV2Router02 | `0x182a927119d56008d921126764bf884221b10f59` | 21,902 bytes; `factory()` = `0xDf38F24fE153761634Be942F9d859f3DBA857E95`, `WETH()` = WOKB |
+| Wrapped OKB | WOKB | `0xe538905cf8410324e03A5A23C1c177a474D59b2b` | 3,474 bytes |
+| Aave V3 | Pool | `0xE3F3Caefdd7180F884c01E57f65Df979Af84f116` | proxy, 1,841 bytes; `ADDRESSES_PROVIDER()` = `0xdFf435BCcf782f11187D3a4454d96702eD78e092`; 13 reserves including USDT0 and WOKB (address from bgd-labs/aave-address-book `AaveV3XLayer.sol`) |
+| OKX DEX aggregator | DexRouter | not verified | OKX's docs pages for contract addresses return 404 and the OKX DEX SDK fetches the router address from its authenticated API at runtime; no address could be confirmed, so there is no decoder for it |
+
+Sources: Uniswap docs (v3 X Layer deployments, v2 deployments), bgd-labs/aave-address-book; every address
+above was confirmed with `eth_getCode` and the calls listed.
+
+## Gate circuits found on X Layer (read-only scan, `sdk/scripts/find-gate-circuits.ts`)
+
+Smallest stateless 2-input circuit per truth table (inputs 0..3; bit 0 = a, bit 1 = b), block 76,227,771:
+AND `0x73153e5fd2Acac604D49d6ca9fea27b750718F22` #5 (2 gates), NOR `0x87BFCa3494Aa228fF589ab9B642143A5e8c8F9a6`
+#52 (4 gates, used by the swap tests), OR `0x7995B5bF48AdB2B893F12A1ef32D8Db23D88Da1E` #6, XOR
+`0x839bdD6fa7A66416A609A735e11DE5411B98574e` #1, XNOR `0x7995…Da1E` #16.

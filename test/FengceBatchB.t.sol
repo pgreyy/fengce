@@ -157,6 +157,6 @@ contract FengceBatchBForkTest is ForkBase {
             address(safe), ApprovalScan.FindingKind.Erc20Allowance, USDT0, spender, 500
         );
         assertTrue(_exec(safe, address(guard), 0, abi.encodeCall(FengceGuard.configure, (c))));
-        assertTrue(guard.configOf(address(safe)).set);
+        assertTrue(_isSet(address(safe)));
     }
 }

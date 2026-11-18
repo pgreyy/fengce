@@ -5,6 +5,7 @@ import {PinRegistry} from "../core/PinRegistry.sol";
 import {PolicyEngine} from "../core/PolicyEngine.sol";
 import {Schema} from "../core/Schema.sol";
 import {TxFacts} from "../core/TxFacts.sol";
+import {IFengcePolicy} from "../core/interfaces/IFengcePolicy.sol";
 
 /// ERC-7579 module and hook interfaces (module type 4 = hook).
 interface IERC7579Module {
@@ -28,7 +29,7 @@ interface IERC7579Hook is IERC7579Module {
 /// denied, and so is any call to the account itself or to this hook. Uninstalling this hook needs a
 /// scheduled uninstall that waited UNINSTALL_DELAY. Other module installs and uninstalls are not
 /// checked (see docs/THREAT-MODEL.md).
-contract FengceHook is PolicyEngine, IERC7579Hook {
+contract FengceHook is PolicyEngine, IERC7579Hook, IFengcePolicy {
     uint256 internal constant TYPE_HOOK = 4;
     bytes4 internal constant EXECUTE = 0xe9ae5c53; // execute(bytes32,bytes)
     bytes4 internal constant EXECUTE_FROM_EXECUTOR = 0xd691c964; // executeFromExecutor(bytes32,bytes)
@@ -183,11 +184,35 @@ contract FengceHook is PolicyEngine, IERC7579Hook {
             if (callData.length == 4 && bytes4(callData) == this.scheduleUninstall.selector && value == 0) return;
             revert HookSelfCall(target);
         }
+        _policy(account, TxFacts.decode(account, target, value, callData, false), target);
+    }
+
+    function _policy(address account, TxFacts.Facts memory f, address target)
+        private
+        view
+        returns (bytes memory input, bytes memory out)
+    {
         Config storage c = _configs[account];
         if (!c.set) revert HookNotConfigured(account);
-        TxFacts.Facts memory f = TxFacts.decode(account, target, value, callData, false);
         Schema.Layout memory l = Schema.Layout(c.netlistHash, c.nIn, c.fields);
-        bytes memory out = _evaluate(c.pinId, Schema.encode(l, TxFacts.values(f, c.bindings)));
+        input = Schema.encode(l, TxFacts.values(f, c.bindings));
+        out = _evaluate(c.pinId, input);
         if (uint8(out[0]) & 1 != 1) revert HookDenied(account, target);
+    }
+
+    function policyContextVersion() external pure override returns (uint16) {
+        return TxFacts.CONTEXT_VERSION;
+    }
+
+    /// @notice IFengcePolicy: `account`'s policy on a canonical context; reverts unless allowed.
+    function checkContext(address account, TxFacts.Facts calldata ctx)
+        external
+        view
+        override
+        returns (bytes memory input, bytes memory output)
+    {
+        TxFacts.Facts memory f = ctx;
+        f.account = account;
+        return _policy(account, f, f.to);
     }
 }

@@ -18,6 +18,8 @@ import {SafeAdmin} from "./SafeAdmin.sol";
 import {MultiSendDecoder} from "./MultiSendDecoder.sol";
 import {FengceLimits} from "./FengceLimits.sol";
 import {Tick} from "../core/Tick.sol";
+import {IFengceDecoder} from "../core/interfaces/IFengceDecoder.sol";
+import {IFengcePolicy} from "../core/interfaces/IFengcePolicy.sol";
 
 /// @title FengceGuard
 /// @notice Safe v1.5.0 transaction guard and module guard that run every outgoing call through a
@@ -32,7 +34,7 @@ import {Tick} from "../core/Tick.sol";
 ///    recovery; the other admin calls need the timelock; anything else is denied.
 /// 4. Anything else: decode facts (TxFacts), encode them with the Safe's schema, evaluate.
 /// Steps 2 and 3 make no call to the circuit, its processors or the pin registry.
-contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard {
+contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard, IFengcePolicy {
     address public constant MULTI_SEND_CALL_ONLY = 0xA83c336B20401Af773B6219BA5027174338D1836;
     /// @notice Runtime code hash of MultiSendCallOnly v1.5.0 (same on every chain); checked, not just the address.
     bytes32 public constant MULTI_SEND_CALL_ONLY_CODEHASH = 0xcdbdcec38d2f1c7d961b0029ff8416b7e86e9974d6f0e9c9580c7d17fcfb6663;
@@ -80,6 +82,9 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
 
     mapping(address safe => Config) internal _configs;
     mapping(address safe => mapping(address target => mapping(bytes4 selector => bool))) public allowlisted;
+    /// @notice Per-Safe decoder registry: calls to (target, selector) are decoded by this decoder into
+    /// typed facts (swap, lending) instead of the generic ones.
+    mapping(address safe => mapping(address target => mapping(bytes4 selector => address))) public decoders;
 
     /// @notice A Safe set or changed its policy configuration.
     /// @param safe The Safe
@@ -121,6 +126,12 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
     /// @param tick Tick contract
     /// @param groupId Policy group
     event TickConfigured(address indexed safe, address tick, bytes32 groupId);
+    /// @notice A Safe registered (or removed, decoder = 0) a decoder for (target, selector).
+    /// @param safe The Safe
+    /// @param target Protocol contract
+    /// @param selector Function selector
+    /// @param decoder IFengceDecoder
+    event DecoderSet(address indexed safe, address indexed target, bytes4 indexed selector, address decoder);
 
     /// @notice Configuration went ahead although `module` is enabled on the Safe (override flag set).
     /// @param safe The Safe
@@ -214,6 +225,13 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         emit TickConfigured(msg.sender, tick, groupId);
     }
 
+    /// @notice Called by the Safe. Same rule as configure: free until first configured, then timelocked.
+    function setDecoder(address target, bytes4 selector, address decoder) external {
+        if (target == msg.sender || target == address(this)) revert FengceBadConfig();
+        decoders[msg.sender][target][selector] = decoder;
+        emit DecoderSet(msg.sender, target, selector, decoder);
+    }
+
     function _firstConfigPreflight(ConfigInput calldata input) private {
         ApprovalScan.Finding[] memory f = preflight(msg.sender, input.preflightTokens, input.preflightSpenders);
         if (f.length == 0) return;
@@ -243,8 +261,22 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         return ApprovalScan.scan(safe, tokens, spenders);
     }
 
-    function configOf(address safe) external view returns (Config memory) {
-        return _configs[safe];
+    /// @notice A Safe's configuration without the schema arrays (see `schemaOf`).
+    function configOf(address safe)
+        external
+        view
+        returns (
+            bool set,
+            bytes32 pinId,
+            uint64 recoveryDelay,
+            uint64 recoveryWindow,
+            uint64 adminDelay,
+            address tick,
+            bytes32 tickGroup
+        )
+    {
+        Config storage c = _configs[safe];
+        return (c.set, c.pinId, c.recoveryDelay, c.recoveryWindow, c.adminDelay, c.tick, c.tickGroup);
     }
 
     // ------------------------------------------------------------------ transaction guard
@@ -263,10 +295,10 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         address msgSender
     ) external override {
         address safe = msg.sender;
-        if (operation == Enum.Operation.DelegateCall) _checkBatch(safe, to, value, data);
+        if (operation == Enum.Operation.DelegateCall) _checkBatch(safe, to, value, data, msgSender);
         else if (to == address(this)) _checkGuardCall(safe, value, data, signatures, msgSender);
         else if (to == safe) _checkSafeCall(safe, value, data);
-        else _checkCall(safe, to, value, data);
+        else _checkCall(safe, to, value, data, msgSender);
     }
 
     function checkAfterExecution(bytes32, bool success) external override {
@@ -283,11 +315,11 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         address safe = msg.sender;
         if (operation == Enum.Operation.DelegateCall) {
             if (to == SAFE7579_UTIL) _check7579ModuleChange(safe, value, data, module);
-            else _checkBatch(safe, to, value, data);
+            else _checkBatch(safe, to, value, data, module);
         } else {
             // Modules never reach recovery, the timelock or Safe admin functions.
             if (to == safe || to == address(this)) revert FengceModuleAdminDenied(to);
-            _checkCall(safe, to, value, data);
+            _checkCall(safe, to, value, data, module);
         }
         return keccak256(abi.encode(safe, to, value, keccak256(data), operation, module));
     }
@@ -374,7 +406,7 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         }
     }
 
-    function _checkBatch(address safe, address to, uint256 value, bytes memory data) private {
+    function _checkBatch(address safe, address to, uint256 value, bytes memory data, address actor) private {
         if (to != MULTI_SEND_CALL_ONLY || value != 0 || to.codehash != MULTI_SEND_CALL_ONLY_CODEHASH) {
             revert FengceDelegateCallDenied(to);
         }
@@ -382,16 +414,21 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         for (uint256 i; i < calls.length; i++) {
             address t = calls[i].to;
             if (t == safe || t == address(this)) revert FengceInnerAdminDenied(t);
-            _checkCall(safe, t, calls[i].value, calls[i].data);
+            _checkCall(safe, t, calls[i].value, calls[i].data, actor);
         }
     }
 
     /// @dev The single policy path shared by both guards.
-    function _checkCall(address safe, address to, uint256 value, bytes memory data) private {
+    function _checkCall(address safe, address to, uint256 value, bytes memory data, address actor) private {
         Config storage c = _configs[safe];
         if (!c.set) revert FengceNotConfigured(safe);
-        bool listed = allowlisted[safe][to][TxFacts.selectorOf(data)];
-        TxFacts.Facts memory f = TxFacts.decode(safe, to, value, data, listed);
+        bytes4 sel = TxFacts.selectorOf(data);
+        address decoder = decoders[safe][to][sel];
+        TxFacts.Facts memory f = decoder != address(0)
+            ? IFengceDecoder(decoder).decode(safe, to, value, data)
+            : TxFacts.decode(safe, to, value, data, allowlisted[safe][to][sel]);
+        f.account = safe;
+        f.actor = actor;
         _policy(safe, c, f, to);
         _advanceTick(safe, c, f);
     }
@@ -426,18 +463,35 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         Tick(tick).rollback(group);
     }
 
-    function _policy(address safe, Config storage c, TxFacts.Facts memory f, address to) private view {
+    function _policy(address safe, Config storage c, TxFacts.Facts memory f, address to)
+        private
+        view
+        returns (bytes memory input, bytes memory out)
+    {
         Schema.Layout memory l = Schema.Layout(c.netlistHash, c.nIn, c.fields);
-        bytes memory out = _evaluate(c.pinId, Schema.encode(l, TxFacts.values(f, c.bindings)));
+        input = Schema.encode(l, TxFacts.values(f, c.bindings));
+        out = _evaluate(c.pinId, input);
         if (uint8(out[0]) & 1 != 1) revert FengceDenied(safe, to);
     }
 
-    /// @notice Runs `safe`'s policy on already decoded facts and reverts unless the circuit allows
-    /// them. Used by FengceSignatureVerifier for off-chain approvals (Permit2, EIP-2612). View only.
-    function checkFacts(address safe, TxFacts.Facts calldata f) external view {
-        Config storage c = _configs[safe];
-        if (!c.set) revert FengceNotConfigured(safe);
-        _policy(safe, c, f, f.to);
+    function policyContextVersion() external pure override returns (uint16) {
+        return TxFacts.CONTEXT_VERSION;
+    }
+
+    /// @notice IFengcePolicy: runs `account`'s policy on a canonical context and reverts unless the
+    /// circuit allows it. Used by FengceSignatureVerifier for off-chain approvals. View only: Tick is not
+    /// advanced on this path.
+    function checkContext(address account, TxFacts.Facts calldata ctx)
+        external
+        view
+        override
+        returns (bytes memory input, bytes memory output)
+    {
+        Config storage c = _configs[account];
+        if (!c.set) revert FengceNotConfigured(account);
+        TxFacts.Facts memory f = ctx;
+        f.account = account;
+        return _policy(account, c, f, f.to);
     }
 
     // ------------------------------------------------------------------ signatures
@@ -485,6 +539,6 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
     function _isGuardConfigCall(bytes memory data) internal pure override returns (bool) {
         bytes4 sel = TxFacts.selectorOf(data);
         return sel == FengceGuard.configure.selector || sel == FengceGuard.setAllowlisted.selector
-            || sel == FengceGuard.configureTick.selector;
+            || sel == FengceGuard.configureTick.selector || sel == FengceGuard.setDecoder.selector;
     }
 }

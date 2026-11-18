@@ -34,7 +34,26 @@ export interface SchemaField {
 }
 
 /** FengceGuard fact sources (TxFacts.Source in src/core/TxFacts.sol), in enum order. */
-export const BINDING_SOURCES = ["To", "Value", "Token", "Amount", "Kind", "AmountGt", "ToIs", "TokenIs", "Selector"] as const;
+export const BINDING_SOURCES = [
+  "To",
+  "Value",
+  "Token",
+  "Amount",
+  "Kind",
+  "AmountGt",
+  "ToIs",
+  "TokenIs",
+  "Selector",
+  // policy context version 1 (docs/POLICY-INTERFACE.md)
+  "Actor",
+  "ActorIs",
+  "TokenOut",
+  "MinAmountOut",
+  "Recipient",
+  "RecipientIsForeign",
+  "Deadline",
+  "Action",
+] as const;
 export type BindingSource = (typeof BINDING_SOURCES)[number];
 
 export interface SchemaBinding {
