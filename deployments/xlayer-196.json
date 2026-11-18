@@ -1,0 +1,35 @@
+{
+  "chainId": 196,
+  "contracts": {
+    "AaveV3PoolDecoder": "0xd8FbEA5246546b1aDb73134b4CFF7301D69c4dF9",
+    "AgentExecutor": "0x28251f9364F86FD7F218cd5d591dF65f04510214",
+    "BoundVault": "0x2282233a4Edd5e0540d97d89540a7e561119648B",
+    "Catalog": "0x17Df6cc2882e3b4F5C4f5d6a788A8711d2D1Fde7",
+    "FengceBinding": "0xEB8F721b188De251bE83346f857d122f44B496eb",
+    "FengceFloors": "0xc9d258ceFA3270083F2D0142492080c52212f8cD",
+    "FengceGuard": "0xB0562fc0B5dcd7E4a97DeCD344e55A682836c1Ac",
+    "FengceHook": "0xD0F8271217da4F611c432875D9998878Fd98e097",
+    "FengceInspector": "0x533E583D0D61dFf06A9289aa7798B3071B98bc67",
+    "FengceSignatureVerifier": "0x7AA60e55D1562b6EAC83472079F524D4661F06c4",
+    "FengceStrictHandler": "0xFFeFb5a00fBde84C61eC86BC701A28253F7839c1",
+    "PinRegistry": "0xE606dfe83780359852Db7F8D531fD33681fAbC67",
+    "PolicyEngine": "0xD282fc956957640ba14151EC265C0a5837Dfbd31",
+    "Tick": "0x94C4d576f1306b6E2d6E48Cdd1e7ad7060d44bCf",
+    "UniswapV2RouterDecoder": "0x40699111263c1708525070EB6671fA593FEAf9B0",
+    "UniswapV3RouterDecoder": "0xE5c57db07ef2CeCC3802080D4419b8e0964B0E8f"
+  },
+  "demoAgent": "0x81DeB61C444f5505F4d3343B366E71D31a4BF91E",
+  "demoSafe": "0x1277fEd36c00AFD5bA33f453d9c1054078a578af",
+  "deployer": "0x6eAC9821430aCa193a717a7C17D68f8033D46087",
+  "pins": {
+    "numericTransactionLimit": "0xc9ccba1f2e025335a938f0c0c200c562662d9a75221a1e8ca45fa20b05fe6c91",
+    "organizationWidePolicyFloor": "0xf3808a28038c0de5cf3e20b36755ed028c14e69ffe48142f966f4d21c9acba55",
+    "periodicSpendingBudget": "0x770ab5055cb42f22a0eece1848d7302e185439ac0292ccdba66d5c5a5bd7ec75",
+    "policyFloorCircuit": "0x5e9e98448adba0db3b8328bf5c47b5382d8bb1b1dcf73c2d5fc2931e54b3b182",
+    "protectedSwapPolicy": "0x54d27c7d8de303c0c572a7466a8511c5c755b2a632af5e48ab16dfb6894b25b8",
+    "stablecoinTransferLimit": "0x6661c56a76bc6769c7153d9a44a9b546b860543d42fce4cd34a4bf9d4d89ce44"
+  },
+  "status": "broadcast",
+  "treasurySafe": "0x040931Bfa7D744C91cdE7E73933069BF00dDf27D",
+  "version": "v0.2.0"
+}
