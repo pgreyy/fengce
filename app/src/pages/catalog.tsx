@@ -11,7 +11,7 @@ interface Row {
   tier: string;
   measuredGas: string;
   fullPathGas: string | null;
-  installs: number;
+  installs: number | null;
   designer: string;
   gateCount: number;
 }
@@ -42,7 +42,10 @@ function CatalogPage() {
               <Figure v={fmtInt(rows.length)} k="Policies listed" />
               <Figure v={fmtInt(rows.filter((r) => r.tier === "Green").length)} k="Green tier" tone="amber" />
               <Figure v={full.length ? fmtInt(full.reduce((a, b) => (a < b ? a : b))) : "–"} k="Lowest full Safe path gas" />
-              <Figure v={fmtInt(rows.reduce((a, r) => a + r.installs, 0))} k={`Installs, last ${fmtInt(range?.windows * 100)} blocks`} />
+              <Figure
+                v={range ? fmtInt(rows.reduce((a, r) => a + (r.installs ?? 0), 0)) : "–"}
+                k={range ? `Installs, last ${fmtInt(range.windows * 100)} blocks` : "Installs (not read)"}
+              />
             </div>
             <div className="tablewrap">
               <table className="dt">
@@ -76,7 +79,7 @@ function CatalogPage() {
                         <td className="num">{fmtInt(r.measuredGas)}</td>
                         <td className="num">{r.fullPathGas ? fmtInt(r.fullPathGas) : <span className="muted">–</span>}</td>
                         <td className="num">{fmtInt(r.gateCount)}</td>
-                        <td className="num">{fmtInt(r.installs)}</td>
+                        <td className="num">{r.installs === null ? <span className="muted">–</span> : fmtInt(r.installs)}</td>
                         <td>
                           <Addr a={r.designer} />
                         </td>
@@ -88,9 +91,19 @@ function CatalogPage() {
             </div>
             <p className="muted" style={{ fontSize: 12, marginTop: 12 }}>
               Eval gas: measured by the Catalog when the policy was listed. Full Safe path gas: the policy's Quote certificate (Safe execution,
-              pre-check and outcome check). Installs: FengceGuard <span className="mono">Configured</span> events in blocks{" "}
-              <span className="mono">{fmtInt(range?.from)}–{fmtInt(range?.to)}</span> ({range?.windows} requests of 100 blocks
-              {range?.complete ? ", back to the v2 deployment" : ""}).
+              pre-check and outcome check).{" "}
+              {range ? (
+                <>
+                  Installs: FengceGuard <span className="mono">Configured</span> events in blocks{" "}
+                  <span className="mono">
+                    {fmtInt(range.from)}–{fmtInt(range.to)}
+                  </span>{" "}
+                  ({range.windows} requests of 100 blocks{range.failed ? `, ${range.failed} not answered by the RPC` : ""}
+                  {range.complete ? ", back to the v2 deployment" : ""}).
+                </>
+              ) : (
+                "Installs: the public RPC did not answer the event scan (rate limit); reload to try again."
+              )}
             </p>
           </>
         )}

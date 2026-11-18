@@ -72,13 +72,16 @@ export interface ScanRange {
   to: string;
   /** number of eth_getLogs requests (100-block windows) */
   windows: number;
-  /** true when the scan reached the floor (the v2 deploy block or block 0) */
+  /** true when the scan reached the floor (the v2 deploy block or block 0) and no window failed */
   complete: boolean;
+  /** windows that still failed after one retry (public RPCs rate-limit); their blocks were not read */
+  failed: number;
 }
 
 /**
  * Scans logs backwards from `head` in 100-block windows (the X Layer RPC limit), at most `maxWindows` windows and
- * never below `floor`. Five windows are requested at a time in the browser, two on the server.
+ * never below `floor`. Three windows are requested at a time in the browser, two on the server. A window that fails is
+ * retried once after a pause; if it fails again it is counted in `failed` and the scan goes on.
  */
 export async function scanLogs<T>(
   fetchWindow: (from: bigint, to: bigint) => Promise<T[]>,
@@ -92,15 +95,29 @@ export async function scanLogs<T>(
     windows.push([from, to]);
   }
   const items: T[] = [];
-  const parallel = IN_BROWSER ? 5 : 2;
+  const parallel = IN_BROWSER ? 3 : 2;
+  let failed = 0;
+  const one = async (f: bigint, t: bigint): Promise<T[]> => {
+    try {
+      return await fetchWindow(f, t);
+    } catch {
+      await new Promise((r) => setTimeout(r, 1500));
+      try {
+        return await fetchWindow(f, t);
+      } catch {
+        failed += 1;
+        return [];
+      }
+    }
+  };
   for (let i = 0; i < windows.length; i += parallel) {
-    const got = await Promise.all(windows.slice(i, i + parallel).map(([f, t]) => fetchWindow(f, t)));
+    const got = await Promise.all(windows.slice(i, i + parallel).map(([f, t]) => one(f, t)));
     for (const g of got) items.push(...g);
   }
   const last = windows[windows.length - 1];
   return {
     items,
-    range: { from: (last ? last[0] : head).toString(), to: head.toString(), windows: windows.length, complete: !last || last[0] <= floor },
+    range: { from: (last ? last[0] : head).toString(), to: head.toString(), windows: windows.length, complete: (!last || last[0] <= floor) && failed === 0, failed },
   };
 }
 
@@ -342,7 +359,8 @@ export async function catalog() {
   const pins = await Promise.all(
     entries.map((e) => client.readContract({ address: ADDR.pinRegistry, abi: PinRegistryArtifact.abi as any, functionName: "circuitPin", args: [e.pinId] }) as Promise<any>),
   );
-  const installs = await installCounts(head);
+  // Install counts are a best-effort extra: a rate-limited scan must not hide the Catalog itself.
+  const installs = await installCounts(head).catch(() => ({ byPin: new Map<string, number>(), range: null as ScanRange | null }));
   const rows = entries.map((e, i) => {
     const processor = getAddress(pins[i].processor) as Address;
     const id = BigInt(pins[i].circuitId);
@@ -357,7 +375,7 @@ export async function catalog() {
       name: preset?.name ?? null,
       fullPathGas: q?.fullPath ?? null,
       quoteEvalGas: q?.evalCall ?? null,
-      installs: installs.byPin.get(key) ?? 0,
+      installs: installs.range ? (installs.byPin.get(key) ?? 0) : null,
     };
   });
   return plain({ deployed: true, address: CATALOG, head, entries: rows, installsRange: installs.range, known: PRESETS.map((p) => ({ key: p.key, name: p.name, processor: p.processor, id: p.id, stateful: !!p.stateful })) });
@@ -365,7 +383,7 @@ export async function catalog() {
 
 /** Installs per pin: FengceGuard Configured(safe, pinId) events of the v2 guard, scanned from the head down to the
  * v2 deploy block (at most `maxWindows` 100-block windows). */
-export async function installCounts(head: bigint, maxWindows = 60) {
+export async function installCounts(head: bigint, maxWindows = 20) {
   const ev = parseAbiItem("event Configured(address indexed safe, bytes32 indexed pinId)");
   const scan = await scanLogs(
     async (fromBlock, toBlock) => ((await client.getLogs({ address: ADDR.guard, event: ev, fromBlock, toBlock })) as any[]).map((l) => l.args.pinId as Hex),

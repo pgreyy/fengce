@@ -8,7 +8,8 @@ function Range({ r }: { r: any }) {
   if (!r) return <span className="muted">not scanned</span>;
   return (
     <span className="mono">
-      blocks {fmtInt(r.from)}–{fmtInt(r.to)} · {r.windows} × 100{r.complete ? " · back to the v2 deployment" : ""}
+      blocks {fmtInt(r.from)}–{fmtInt(r.to)} · {r.windows} × 100{r.failed ? ` · ${r.failed} not answered (rate limit)` : ""}
+      {r.complete ? " · back to the v2 deployment" : ""}
     </span>
   );
 }
