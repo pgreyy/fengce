@@ -53,6 +53,11 @@ export const BINDING_SOURCES = [
   "RecipientIsForeign",
   "Deadline",
   "Action",
+  // policy context version 2: outcome facts (FengceInspector)
+  "Outflow",
+  "OutflowGt",
+  "AllowanceIncrease",
+  "AllowanceIncreaseGt",
 ] as const;
 export type BindingSource = (typeof BINDING_SOURCES)[number];
 

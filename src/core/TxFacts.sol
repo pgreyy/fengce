@@ -35,7 +35,7 @@ library TxFacts {
     }
 
     /// @notice Version of the canonical policy context (this Facts struct). See docs/POLICY-INTERFACE.md.
-    uint16 internal constant CONTEXT_VERSION = 1;
+    uint16 internal constant CONTEXT_VERSION = 2;
 
     /// @notice What feeds one non-Flag schema field, in field order.
     enum Source {
@@ -56,7 +56,12 @@ library TxFacts {
         Recipient, // where swap or lending proceeds go (0 when not applicable)
         RecipientIsForeign, // 1 if recipient is set and is not the account
         Deadline, // swap deadline (0 when the call has none)
-        Action // uint(LendingAction)
+        Action, // uint(LendingAction)
+        // Context version 2 additions: outcome facts, set only by the post-execution check (0 before)
+        Outflow, // total decrease of the watched assets' balances
+        OutflowGt, // 1 if outflow > param
+        AllowanceIncrease, // total increase of allowances to the listed spenders
+        AllowanceIncreaseGt // 1 if allowanceIncrease > param
     }
 
     /// @notice Canonical policy context, version 1 (docs/POLICY-INTERFACE.md).
@@ -74,6 +79,8 @@ library TxFacts {
         address recipient;
         uint256 deadline;
         LendingAction action;
+        uint256 outflow; // outcome (v2): measured after execution, 0 before
+        uint256 allowanceIncrease; // outcome (v2): measured after execution, 0 before
     }
 
     struct Binding {
@@ -181,7 +188,11 @@ library TxFacts {
             else if (s == Source.Recipient) v[i] = uint160(f.recipient);
             else if (s == Source.RecipientIsForeign) v[i] = f.recipient != address(0) && f.recipient != f.account ? 1 : 0;
             else if (s == Source.Deadline) v[i] = f.deadline;
-            else v[i] = uint256(f.action); // Action
+            else if (s == Source.Action) v[i] = uint256(f.action);
+            else if (s == Source.Outflow) v[i] = f.outflow;
+            else if (s == Source.OutflowGt) v[i] = f.outflow > p ? 1 : 0;
+            else if (s == Source.AllowanceIncrease) v[i] = f.allowanceIncrease;
+            else v[i] = f.allowanceIncrease > p ? 1 : 0; // AllowanceIncreaseGt
         }
     }
 

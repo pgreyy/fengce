@@ -4,7 +4,7 @@ Every Fengce adapter (the Safe guard, the ERC-7579 hook, the signature verifier,
 **canonical policy context** and feeds it to a pinned circuit through a schema. This document fixes that
 context so circuits, schemas and decoders written today keep their meaning.
 
-**Version 1.** `TxFacts.CONTEXT_VERSION = 1`; adapters report it through
+**Version 2.** `TxFacts.CONTEXT_VERSION = 2` (version 1 plus outcome facts); adapters report it through
 `IFengcePolicy.policyContextVersion()`.
 
 ## Context fields (`TxFacts.Facts`)
@@ -24,6 +24,8 @@ context so circuits, schemas and decoders written today keep their meaning.
 | `recipient` | address | Where swap output or lending proceeds go (`onBehalfOf`, or `to` for withdraw); 0 when not applicable |
 | `deadline` | uint256 | Swap deadline, 0 when the call carries none (SwapRouter02) |
 | `action` | `LendingAction` | `None` 0, `Supply` 1, `Withdraw` 2, `Borrow` 3, `Repay` 4 |
+| `outflow` | uint256 | (v2, outcome) Total decrease of the watched assets' balances, measured after execution; 0 before |
+| `allowanceIncrease` | uint256 | (v2, outcome) Total increase of allowances to the listed spenders, measured after execution; 0 before |
 
 **State** is not part of the context: a stateful (LATCH) circuit's state is held by Tick per policy group and
 passed to `step()` by Tick itself (see THREAT-MODEL.md).
@@ -51,6 +53,14 @@ A schema binds each non-flag input field to one source. Indices are stable; new 
 | 14 | `RecipientIsForeign` | 1 if `recipient` is set and is not `account` (v1) |
 | 15 | `Deadline` | `deadline` (v1) |
 | 16 | `Action` | `action` (v1) |
+| 17 | `Outflow` | `outflow` (v2) |
+| 18 | `OutflowGt` | 1 if `outflow > param` (v2) |
+| 19 | `AllowanceIncrease` | `allowanceIncrease` (v2) |
+| 20 | `AllowanceIncreaseGt` | 1 if `allowanceIncrease > param` (v2) |
+
+**Outcome section.** A schema can bind fields to the outcome sources (17 to 20). The circuit is evaluated twice
+for a policy-checked transaction: before execution with the transaction fields set and the outcome fields 0, and
+after execution (FengceInspector) with the outcome fields set and the transaction fields 0. Both must allow.
 
 ## Where the context comes from
 

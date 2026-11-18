@@ -145,6 +145,19 @@ not visible on its status page: a transaction the guard blocks reverts and leave
 PostCSS advisories through Next 15 (build-time CSS processing of the app's own stylesheet); the fix is Next 16,
 a breaking upgrade not done yet.
 
+### Outcome facts (FengceInspector)
+
+For Safes that connect an Inspector (`configureInspector`), every policy-checked execution on the owner and
+module paths, and every ERC-7579 execution through `FengceHook`, is checked after it runs
+(`test/FengceInspector.t.sol`):
+- a change to owners, threshold, modules (first 64), guard, module guard or fallback handler outside the admin
+  path reverts the transaction;
+- the decrease of watched balances and the increase of allowances to listed spenders are evaluated by the same
+  circuit as outcome facts.
+Limits: only the declared assets (at most 8) and spenders (at most 8) are measured; native outflow includes
+any gas refund the Safe pays to a relayer; an asset whose balance cannot be read makes every checked
+transaction fail; transactions on the admin path (calls to the Safe or the guard) are not outcome-checked.
+
 ### Other limits
 
 - A dependency closure can contain at most 64 circuits (`PinRegistry.MAX_CLOSURE`).

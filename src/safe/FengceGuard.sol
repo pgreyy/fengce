@@ -18,6 +18,7 @@ import {SafeAdmin} from "./SafeAdmin.sol";
 import {MultiSendDecoder} from "./MultiSendDecoder.sol";
 import {FengceLimits} from "./FengceLimits.sol";
 import {Tick} from "../core/Tick.sol";
+import {FengceInspector} from "./FengceInspector.sol";
 import {IFengceDecoder} from "../core/interfaces/IFengceDecoder.sol";
 import {IFengcePolicy} from "../core/interfaces/IFengcePolicy.sol";
 
@@ -78,6 +79,7 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         TxFacts.Binding[] bindings;
         address tick; // optional Tick state host (stateful policy)
         bytes32 tickGroup; // Tick policy group shared by this Safe
+        address inspector; // optional FengceInspector (outcome facts)
     }
 
     mapping(address safe => Config) internal _configs;
@@ -225,6 +227,13 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         emit TickConfigured(msg.sender, tick, groupId);
     }
 
+    /// @notice Called by the Safe: connect a FengceInspector (outcome checks) and set its watched assets and
+    /// spenders (`data` = abi.encode(address[] assets, address[] spenders)). Same rule as configure.
+    function configureInspector(address inspector, bytes calldata data) external {
+        _configs[msg.sender].inspector = inspector;
+        if (inspector != address(0)) FengceInspector(inspector).configureFor(msg.sender, data);
+    }
+
     /// @notice Called by the Safe. Same rule as configure: free until first configured, then timelocked.
     function setDecoder(address target, bytes4 selector, address decoder) external {
         if (target == msg.sender || target == address(this)) revert FengceBadConfig();
@@ -295,14 +304,34 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         address msgSender
     ) external override {
         address safe = msg.sender;
-        if (operation == Enum.Operation.DelegateCall) _checkBatch(safe, to, value, data, msgSender);
-        else if (to == address(this)) _checkGuardCall(safe, value, data, signatures, msgSender);
-        else if (to == safe) _checkSafeCall(safe, value, data);
-        else _checkCall(safe, to, value, data, msgSender);
+        if (operation == Enum.Operation.DelegateCall) {
+            _checkBatch(safe, to, value, data, msgSender);
+            _snapshot(safe);
+        } else if (to == address(this)) {
+            _checkGuardCall(safe, value, data, signatures, msgSender);
+        } else if (to == safe) {
+            _checkSafeCall(safe, value, data);
+        } else {
+            _checkCall(safe, to, value, data, msgSender);
+            _snapshot(safe);
+        }
     }
 
     function checkAfterExecution(bytes32, bool success) external override {
-        if (!success) _rollbackTick(msg.sender);
+        _after(msg.sender, success);
+    }
+
+    /// @dev Outcome checks (FengceInspector): snapshot before a policy-checked execution, verify after.
+    /// Admin-path transactions take no snapshot, so their configuration changes are not flagged.
+    function _snapshot(address safe) private {
+        address i = _configs[safe].inspector;
+        if (i != address(0)) FengceInspector(i).snapshot(safe);
+    }
+
+    function _after(address safe, bool success) private {
+        if (!success) _rollbackTick(safe);
+        address i = _configs[safe].inspector;
+        if (i != address(0)) FengceInspector(i).verify(safe, success, address(this));
     }
 
     // ------------------------------------------------------------------ module guard
@@ -314,18 +343,23 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
     {
         address safe = msg.sender;
         if (operation == Enum.Operation.DelegateCall) {
-            if (to == SAFE7579_UTIL) _check7579ModuleChange(safe, value, data, module);
-            else _checkBatch(safe, to, value, data, module);
+            if (to == SAFE7579_UTIL) {
+                _check7579ModuleChange(safe, value, data, module);
+            } else {
+                _checkBatch(safe, to, value, data, module);
+                _snapshot(safe);
+            }
         } else {
             // Modules never reach recovery, the timelock or Safe admin functions.
             if (to == safe || to == address(this)) revert FengceModuleAdminDenied(to);
             _checkCall(safe, to, value, data, module);
+            _snapshot(safe);
         }
         return keccak256(abi.encode(safe, to, value, keccak256(data), operation, module));
     }
 
     function checkAfterModuleExecution(bytes32, bool success) external override {
-        if (!success) _rollbackTick(msg.sender);
+        _after(msg.sender, success);
     }
 
     function supportsInterface(bytes4 id) external pure override returns (bool) {
@@ -539,6 +573,7 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
     function _isGuardConfigCall(bytes memory data) internal pure override returns (bool) {
         bytes4 sel = TxFacts.selectorOf(data);
         return sel == FengceGuard.configure.selector || sel == FengceGuard.setAllowlisted.selector
-            || sel == FengceGuard.configureTick.selector || sel == FengceGuard.setDecoder.selector;
+            || sel == FengceGuard.configureTick.selector || sel == FengceGuard.setDecoder.selector
+            || sel == FengceGuard.configureInspector.selector;
     }
 }

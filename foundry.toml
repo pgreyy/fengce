@@ -15,6 +15,10 @@ remappings = [
     "@fengce/safe/=src/safe/",
 ]
 
+# FengceGuard is compiled with the IR pipeline to stay under the 24,576-byte contract size limit.
+additional_compiler_profiles = [{ name = "ir", via_ir = true }]
+compilation_restrictions = [{ paths = "src/safe/FengceGuard.sol", via_ir = true }]
+
 [rpc_endpoints]
 xlayer = "https://rpc.xlayer.tech" # official; https://xlayerrpc.okx.com is the other OKX endpoint
 # Read-only source of Safe7579 bytecode for the ERC-7579 fork test (not deployed on X Layer).

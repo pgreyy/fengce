@@ -7,6 +7,13 @@ import {Schema} from "../core/Schema.sol";
 import {TxFacts} from "../core/TxFacts.sol";
 import {IFengcePolicy} from "../core/interfaces/IFengcePolicy.sol";
 
+/// The FengceInspector surface the hook uses (kept as an interface so the hook imports only src/core).
+interface IOutcomeInspector {
+    function configureFor(address account, bytes calldata data) external;
+    function snapshot(address account) external;
+    function verify(address account, bool success, address policy) external;
+}
+
 /// ERC-7579 module and hook interfaces (module type 4 = hook).
 interface IERC7579Module {
     function onInstall(bytes calldata data) external;
@@ -55,6 +62,8 @@ contract FengceHook is PolicyEngine, IERC7579Hook, IFengcePolicy {
 
     mapping(address account => Config) internal _configs;
     mapping(address account => uint256) public uninstallReadyAt;
+    /// @notice Optional outcome-check contract per account (a FengceInspector that lists this hook as an adapter).
+    mapping(address account => address) public inspectorOf;
 
     /// @notice An account installed the hook with this policy.
     /// @param account The ERC-7579 account
@@ -122,6 +131,13 @@ contract FengceHook is PolicyEngine, IERC7579Hook, IFengcePolicy {
         emit UninstallScheduled(msg.sender, readyAt);
     }
 
+    /// @notice Called by the account (an execution to this hook): connect a FengceInspector and set its
+    /// watched assets and spenders (`data` = abi.encode(address[] assets, address[] spenders)).
+    function setInspector(address inspector, bytes calldata data) external {
+        inspectorOf[msg.sender] = inspector;
+        if (inspector != address(0)) IOutcomeInspector(inspector).configureFor(msg.sender, data);
+    }
+
     function isModuleType(uint256 moduleTypeId) external pure override returns (bool) {
         return moduleTypeId == TYPE_HOOK;
     }
@@ -132,13 +148,18 @@ contract FengceHook is PolicyEngine, IERC7579Hook, IFengcePolicy {
 
     // ------------------------------------------------------------------ hook
 
-    function preCheck(address, uint256, bytes calldata msgData) external view override returns (bytes memory) {
+    function preCheck(address, uint256, bytes calldata msgData) external override returns (bytes memory) {
         address account = msg.sender;
         if (msgData.length < 4) return "";
         bytes4 sel = bytes4(msgData[:4]);
         if (sel == EXECUTE || sel == EXECUTE_FROM_EXECUTOR) {
             (bytes32 mode, bytes memory execData) = abi.decode(msgData[4:], (bytes32, bytes));
             _checkExecution(account, mode, execData);
+            address i = inspectorOf[account];
+            if (i != address(0)) {
+                IOutcomeInspector(i).snapshot(account);
+                return abi.encode(true);
+            }
         } else if (sel == UNINSTALL_MODULE) {
             (uint256 moduleType, address module,) = abi.decode(msgData[4:], (uint256, address, bytes));
             if (moduleType == TYPE_HOOK && module == address(this)) {
@@ -149,7 +170,11 @@ contract FengceHook is PolicyEngine, IERC7579Hook, IFengcePolicy {
         return "";
     }
 
-    function postCheck(bytes calldata) external pure override {}
+    function postCheck(bytes calldata hookData) external override {
+        if (hookData.length == 0) return;
+        address i = inspectorOf[msg.sender];
+        if (i != address(0)) IOutcomeInspector(i).verify(msg.sender, true, address(this));
+    }
 
     function _checkExecution(address account, bytes32 mode, bytes memory execData) private view {
         bytes1 callType = mode[0];
@@ -182,6 +207,7 @@ contract FengceHook is PolicyEngine, IERC7579Hook, IFengcePolicy {
         if (target == address(this)) {
             // The only call the account may make to the hook is scheduling its own uninstall.
             if (callData.length == 4 && bytes4(callData) == this.scheduleUninstall.selector && value == 0) return;
+            if (callData.length >= 4 && bytes4(callData) == this.setInspector.selector && value == 0) return;
             revert HookSelfCall(target);
         }
         _policy(account, TxFacts.decode(account, target, value, callData, false), target);
