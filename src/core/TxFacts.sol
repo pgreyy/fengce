@@ -9,7 +9,8 @@ pragma solidity 0.8.28;
 /// Recognised calls:
 /// - empty calldata: Native {to, value, amount = value}
 /// - ERC-20 transfer: Transfer {to = recipient, token, amount}
-/// - approve: Approval {to = spender, token, amount}; for an ERC-721 token (ERC-165) amount = max
+/// - approve: Approval {to = spender, token, amount}; for an ERC-721 token (ERC-165) it is denied
+///   unless the wallet allowlisted (token, approve), and then amount = 1
 /// - increaseAllowance: Approval with amount = current allowance + added (the new total)
 /// - setApprovalForAll: Approval with amount = max (true) or 0 (false); true needs the allowlist
 /// - Permit2 approve: Approval {token, to = spender, amount}
@@ -62,6 +63,7 @@ library TxFacts {
 
     error TxUnsupportedCall(address target, bytes4 selector);
     error TxApprovalForAllDenied(address token, address operator);
+    error TxNftApprovalDenied(address token, address spender);
     error TxAllowanceUnreadable(address token);
 
     /// @param account the wallet making the call (for allowance reads)
@@ -81,8 +83,11 @@ library TxFacts {
                 address who = address(uint160(a));
                 if (sel == TRANSFER) return Facts(Kind.Transfer, who, 0, target, b, sel);
                 if (sel == APPROVE) {
-                    uint256 amt = _isErc721(target) ? type(uint256).max : b;
-                    return Facts(Kind.Approval, who, 0, target, amt, sel);
+                    if (!_isErc721(target)) return Facts(Kind.Approval, who, 0, target, b, sel);
+                    // ERC-721 approve(to, tokenId): denied unless (token, approve) is allowlisted,
+                    // whatever the schema says; then it reaches the circuit as one token.
+                    if (!allowlisted) revert TxNftApprovalDenied(target, who);
+                    return Facts(Kind.Approval, who, 0, target, 1, sel);
                 }
                 if (sel == INCREASE_ALLOWANCE) {
                     uint256 cur = _allowance(target, account, who);

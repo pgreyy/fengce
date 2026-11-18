@@ -1,0 +1,53 @@
+{
+  "certificate": {
+    "block": "76219208",
+    "chainId": 196,
+    "circuit": {
+      "gateCount": 1204,
+      "nIn": 16,
+      "nOut": 16,
+      "nState": 0,
+      "netlistHash": "0xa56911dce058c0d738be77228fa60611f568482a28fea1c8d7dd7cfaefef65da"
+    },
+    "circuitId": "3",
+    "dependencyTree": {
+      "circuitId": "3",
+      "gateCount": 1204,
+      "nIn": 16,
+      "nOut": 16,
+      "nState": 0,
+      "netlistHash": "0xa56911dce058c0d738be77228fa60611f568482a28fea1c8d7dd7cfaefef65da",
+      "processor": "0x2046aa63bFB03f393AD85a518011fdf8aF3DDB53",
+      "refs": []
+    },
+    "format": "fengce-quote/1",
+    "gas": {
+      "evalCall": "2808102",
+      "fullPath": "2903207",
+      "method": "eth_estimateGas",
+      "path": "FengceGuard.evaluate (PinRegistry.isPinned -> eval); the full Safe path reverts because the circuit denies the all-zero probe",
+      "probeAllowed": false,
+      "probeInput": "0x0000",
+      "safeBaseline": "72770"
+    },
+    "processor": "0x2046aa63bFB03f393AD85a518011fdf8aF3DDB53",
+    "processors": [
+      "0x2046aa63bFB03f393AD85a518011fdf8aF3DDB53"
+    ],
+    "refClosureHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+    "tier": "Amber",
+    "tierReason": "measured 2903207 gas on the path above",
+    "tierThresholds": {
+      "amberMaxGas": "3500000",
+      "greenMaxGas": "1000000"
+    }
+  },
+  "certificateHash": "0x195156bd9e62dc30fc9a5c4f7ea5e0ed47c05163446aedf01423d5bbca04a473",
+  "forkCheck": {
+    "allMatch": true,
+    "certificateHashStored": "0x195156bd9e62dc30fc9a5c4f7ea5e0ed47c05163446aedf01423d5bbca04a473",
+    "netlistHashStored": "0xa56911dce058c0d738be77228fa60611f568482a28fea1c8d7dd7cfaefef65da",
+    "pinIdOnFork": "0x56cd6f6989dff3476f5fb107b44d7053246807c079f08951caf6f0c025477fc8",
+    "refClosureHashStored": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+  }
+}
