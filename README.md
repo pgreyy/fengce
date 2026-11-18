@@ -1,5 +1,13 @@
 # Fengce
 
+Fengce lets the wallet you already have obey any TapeOut circuit. No new wallet, no moving funds.
+
+- **FengceGuard** plugs into a Safe v1.5.0 as its transaction guard and checks every owner transaction.
+- **Module guard** (the same FengceGuard, set with `setModuleGuard`) plugs into the Safe's module path and checks every module transaction.
+- **FengceHook** plugs into ERC-7579 accounts (tested on Safe7579) as a hook and checks every execution.
+- **AgentExecutor** plugs into a Safe as a module and lets an agent key act only through the policy.
+- **Signature verifier** (FengceSignatureVerifier) plugs into the Safe's fallback handler and checks off-chain Permit2 and EIP-2612 approvals.
+
 Fengce lets a [Safe](https://github.com/safe-global/safe-smart-account) v1.5.0 enforce a spending policy that is
 defined by a [TapeOut](https://github.com/TapeOutProtocol/TAPs) circuit on X Layer. The circuit is pinned: its
 wiring, every circuit it references and the code that evaluates it are recorded on-chain, and the guard refuses
