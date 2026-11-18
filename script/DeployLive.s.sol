@@ -41,7 +41,9 @@ interface IERC20Live {
 /// at their address are skipped); then 5 seed policies are pinned and listed in the Catalog with test vectors
 /// that the Catalog runs on-chain; then, if the deployer holds at least 2 USDT0, a demo Safe is created and
 /// protected (FengceGuard as both guards, USDT0 cap 1), a demo agent is registered, and the Safe gets 2 USDT0.
-/// Addresses are written to deployments/xlayer-196.json. Run once: pins and listings are not idempotent.
+/// Each seed pin carries the certificateHash of its stored Quote certificate (sdk/quotes/*.json); the NAND
+/// floor circuit (0xB04E #3) is pinned without one. Addresses are written to deployments/xlayer-196.json.
+/// Run once: pins and listings are not idempotent.
 /// Env: DEMO_AGENT (agent address, optional).
 contract DeployLive is Script {
     address constant CREATE2 = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
@@ -138,6 +140,11 @@ contract DeployLive is Script {
         catalog.list(Catalog.Manifest(pinId, description, Schema.hash(l), v, deployer, 0, ""));
     }
 
+    /// @dev certificateHash of a stored Quote certificate (sdk/quotes/<name>.json).
+    function _cert(string memory name) internal view returns (bytes32) {
+        return vm.parseJsonBytes32(vm.readFile(string.concat("sdk/quotes/", name, ".json")), ".certificateHash");
+    }
+
     function _v(bytes memory input, bytes memory out) internal pure returns (Catalog.Vector memory) {
         return Catalog.Vector(input, out, "");
     }
@@ -156,15 +163,14 @@ contract DeployLive is Script {
         nandLayout.nIn = l.nIn;
         nandLayout.fields.push(boolA);
         nandLayout.fields.push(flagB);
-        bytes32 cert = vm.parseJsonBytes32(vm.readFile("sdk/quotes/nand-839bdd-2.json"), ".certificateHash");
-        nandPin = reg.pin(NAND_CPU, 2, Schema.hash(l), cert);
+        nandPin = reg.pin(NAND_CPU, 2, Schema.hash(l), _cert("nand-839bdd-2"));
         Catalog.Vector[] memory v = new Catalog.Vector[](2);
         (v[0], v[1]) = (_v(hex"02", hex"01"), _v(hex"03", hex"00"));
         _list(nandPin, l, "Transfer cap: allows a transaction when its amount is at most the cap. Input a = amount above the cap, input b = 1; NAND(a, 1).", v);
 
         // 2. 16-bit comparator cap
         l = _layout(CMP_CPU, 7, _two(_f(Schema.Kind.Uint, 0, 16, 0), _f(Schema.Kind.Uint, 16, 16, 0)));
-        bytes32 p = reg.pin(CMP_CPU, 7, Schema.hash(l), bytes32(0));
+        bytes32 p = reg.pin(CMP_CPU, 7, Schema.hash(l), _cert("comparator-f9bbdc-7"));
         v = new Catalog.Vector[](3);
         (v[0], v[1], v[2]) = (_v(hex"ae019001", hex"01"), _v(hex"9001ae01", hex"00"), _v(hex"90019001", hex"01"));
         _list(p, l, "16-bit comparator cap: 1 when a >= b (a = inputs 0-15, b = inputs 16-31). Bind a to a limit and b to the amount.", v);
@@ -173,7 +179,7 @@ contract DeployLive is Script {
         Schema.Layout memory floorL = _layout(B04E, 3, _two(boolA, flagB));
         reg.pin(B04E, 3, Schema.hash(floorL), bytes32(0));
         l = _layout(B04E, 5, _two(boolA, flagB));
-        p = reg.pin(B04E, 5, Schema.hash(l), bytes32(0));
+        p = reg.pin(B04E, 5, Schema.hash(l), _cert("xor-b04eb7-5"));
         v = new Catalog.Vector[](2);
         (v[0], v[1]) = (_v(hex"02", hex"01"), _v(hex"03", hex"00"));
         _list(p, l, "Team cap with a floor: XOR built by REF from AND, OR and NAND circuits; use with FengceFloors and the NAND circuit 0xB04E #3 as the floor (floor AND policy).", v);
@@ -182,7 +188,7 @@ contract DeployLive is Script {
         Schema.Field[] memory one = new Schema.Field[](1);
         one[0] = _f(Schema.Kind.Flag, 0, 1, 1);
         l = _layout(TOGGLE_CPU, 18, one);
-        p = reg.pin(TOGGLE_CPU, 18, Schema.hash(l), bytes32(0));
+        p = reg.pin(TOGGLE_CPU, 18, Schema.hash(l), _cert("toggle-e2a6c6-18"));
         v = new Catalog.Vector[](2);
         v[0] = Catalog.Vector(hex"01", hex"01", hex"00"); // first spend in a period: allowed
         v[1] = Catalog.Vector(hex"01", hex"00", hex"01"); // second spend: denied
@@ -190,7 +196,7 @@ contract DeployLive is Script {
 
         // 5. NOR swap rule
         l = _layout(NOR_CPU, 52, _two(boolA, _f(Schema.Kind.Bool, 1, 1, 0)));
-        p = reg.pin(NOR_CPU, 52, Schema.hash(l), bytes32(0));
+        p = reg.pin(NOR_CPU, 52, Schema.hash(l), _cert("nor-87bfca-52"));
         v = new Catalog.Vector[](4);
         (v[0], v[1], v[2], v[3]) = (_v(hex"00", hex"01"), _v(hex"01", hex"00"), _v(hex"02", hex"00"), _v(hex"03", hex"00"));
         _list(p, l, "Swap rule: NOR(amount above cap, proceeds go elsewhere). Allows only capped swaps whose output returns to the account.", v);

@@ -1,0 +1,65 @@
+{
+  "certificate": {
+    "block": "76234120",
+    "chainId": 196,
+    "circuit": {
+      "gateCount": 4,
+      "nIn": 2,
+      "nOut": 1,
+      "nState": 0,
+      "netlistHash": "0x0799925a541b77e7aa23697f5cd7823e247904a042e4fb30ec998dbf29957ea4"
+    },
+    "circuitId": "52",
+    "dependencyTree": {
+      "circuitId": "52",
+      "gateCount": 4,
+      "nIn": 2,
+      "nOut": 1,
+      "nState": 0,
+      "netlistHash": "0x0799925a541b77e7aa23697f5cd7823e247904a042e4fb30ec998dbf29957ea4",
+      "processor": "0x87BFCa3494Aa228fF589ab9B642143A5e8c8F9a6",
+      "refs": []
+    },
+    "format": "fengce-quote/1",
+    "gas": {
+      "evalCall": "55322",
+      "fullPath": "289801",
+      "intentEval": "107995",
+      "method": "eth_estimateGas",
+      "outcomeEval": "140704",
+      "path": "Safe v1.5.0 execTransaction (native transfer carrying the probe input) -> FengceGuard intent pass (PinRegistry.isPinned -> eval) -> execution -> FengceInspector outcome pass (snapshot, verify, eval)",
+      "probeAllowed": true,
+      "probeInput": "0x00",
+      "probeSchemaHash": null,
+      "probeSource": "zero",
+      "safeBaseline": "72770",
+      "tierBasis": "fullPath (Safe transaction with both evaluations)"
+    },
+    "processor": "0x87BFCa3494Aa228fF589ab9B642143A5e8c8F9a6",
+    "processors": [
+      "0x87BFCa3494Aa228fF589ab9B642143A5e8c8F9a6"
+    ],
+    "refClosureHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+    "tier": "Green",
+    "tierReason": "measured 289801 gas on the full path, including the intent pass and the outcome pass",
+    "tierThresholds": {
+      "amberMaxGas": "3500000",
+      "greenMaxGas": "1000000"
+    }
+  },
+  "certificateHash": "0x31bda97de76ab349e62d2970471294282f99c5255e5d9753588553588ea1faef",
+  "forkCheck": {
+    "allMatch": true,
+    "catalog": {
+      "certificateHash": "0x31bda97de76ab349e62d2970471294282f99c5255e5d9753588553588ea1faef",
+      "certificateHashMatches": true,
+      "measuredEvalGas": "36506",
+      "tier": "Green",
+      "tierMatchesQuote": true
+    },
+    "certificateHashStored": "0x31bda97de76ab349e62d2970471294282f99c5255e5d9753588553588ea1faef",
+    "netlistHashStored": "0x0799925a541b77e7aa23697f5cd7823e247904a042e4fb30ec998dbf29957ea4",
+    "pinIdOnFork": "0x5f113fdbf10cae9196512b1e8f6ed47daaa9a0df17b964353b2a1057194cabb8",
+    "refClosureHashStored": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+  }
+}

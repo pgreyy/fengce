@@ -254,7 +254,7 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
 
   if (root.nState > 0) {
     tier = "Unsupported";
-    tierReason = "circuit has state (LATCH); eval reverts with 'has latch: use step', so it cannot be a per-transaction policy";
+    tierReason = "circuit has state (LATCH): eval reverts with 'has latch: use step'; it runs as a stateful policy through Tick (step()), so it gets no eval-path gas tier";
   } else {
     gas.evalCall = (await fork.estimateContractGas({ address: processor, abi: processorAbi, functionName: "eval", args: [circuitId, probeInput], account })).toString();
 

@@ -1,6 +1,6 @@
 {
   "certificate": {
-    "block": "76222657",
+    "block": "76234226",
     "chainId": 196,
     "circuit": {
       "gateCount": 114,
@@ -22,15 +22,18 @@
     },
     "format": "fengce-quote/1",
     "gas": {
-      "evalCall": "316768",
-      "fullPath": "485062",
+      "evalCall": "315388",
+      "fullPath": "859029",
+      "intentEval": "371228",
       "method": "eth_estimateGas",
-      "path": "Safe v1.5.0 execTransaction (native transfer carrying the probe input) -> FengceGuard.checkTransaction -> PinRegistry.isPinned -> eval",
+      "outcomeEval": "416078",
+      "path": "Safe v1.5.0 execTransaction (native transfer carrying the probe input) -> FengceGuard intent pass (PinRegistry.isPinned -> eval) -> execution -> FengceInspector outcome pass (snapshot, verify, eval)",
       "probeAllowed": true,
-      "probeInput": "0xae019001",
-      "probeSchemaHash": "0xd1ec4ca98568e37369c92200b6f954cb7c31ff75496a2b2f1acd48acc5b1d5db",
-      "probeSource": "schema",
-      "safeBaseline": "72770"
+      "probeInput": "0x00000000",
+      "probeSchemaHash": null,
+      "probeSource": "zero",
+      "safeBaseline": "72770",
+      "tierBasis": "fullPath (Safe transaction with both evaluations)"
     },
     "processor": "0xF9bBdc7f678eb3A49D338ffAcDaaD9339de50a0F",
     "processors": [
@@ -38,18 +41,25 @@
     ],
     "refClosureHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
     "tier": "Green",
-    "tierReason": "measured 485062 gas on the path above",
+    "tierReason": "measured 859029 gas on the full path, including the intent pass and the outcome pass",
     "tierThresholds": {
       "amberMaxGas": "3500000",
       "greenMaxGas": "1000000"
     }
   },
-  "certificateHash": "0xf9eefcb59d471cbee9d18e9d67ae26f12c201e5d01ba48e5592fff8823791a95",
+  "certificateHash": "0xdd231ddcb8c901826b2ff9bc57bffeaed195c20f673294d1a1aa37fc7e19aed7",
   "forkCheck": {
     "allMatch": true,
-    "certificateHashStored": "0xf9eefcb59d471cbee9d18e9d67ae26f12c201e5d01ba48e5592fff8823791a95",
+    "catalog": {
+      "certificateHash": "0xdd231ddcb8c901826b2ff9bc57bffeaed195c20f673294d1a1aa37fc7e19aed7",
+      "certificateHashMatches": true,
+      "measuredEvalGas": "292269",
+      "tier": "Green",
+      "tierMatchesQuote": true
+    },
+    "certificateHashStored": "0xdd231ddcb8c901826b2ff9bc57bffeaed195c20f673294d1a1aa37fc7e19aed7",
     "netlistHashStored": "0x3f79ea6c551d8b2206c10b8a38e6c27ad3f7da332028c32e3c1a25dfe6f31c9f",
-    "pinIdOnFork": "0x0c02076c1c3da8ed29a709fe06f02e355bf72ec316d0b4e7376ffadb245113f5",
+    "pinIdOnFork": "0xc068ce5ccdf24c5ca5958730daf83a411f640c8b79a90aad000b747512987d7a",
     "refClosureHashStored": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
   }
 }

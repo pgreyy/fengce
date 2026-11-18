@@ -1,0 +1,96 @@
+{
+  "certificate": {
+    "block": "76233963",
+    "chainId": 196,
+    "circuit": {
+      "gateCount": 6,
+      "nIn": 2,
+      "nOut": 1,
+      "nState": 0,
+      "netlistHash": "0xaf654440443a6fbd0d5d22226905e7468312fe2d7163ecc82edf8501f591dbc3"
+    },
+    "circuitId": "5",
+    "dependencyTree": {
+      "circuitId": "5",
+      "gateCount": 6,
+      "nIn": 2,
+      "nOut": 1,
+      "nState": 0,
+      "netlistHash": "0xaf654440443a6fbd0d5d22226905e7468312fe2d7163ecc82edf8501f591dbc3",
+      "processor": "0xB04EB79D1A5EECaabAAfF7B77d7c27578EE693FF",
+      "refs": [
+        {
+          "circuitId": "2",
+          "gateCount": 3,
+          "nIn": 2,
+          "nOut": 1,
+          "nState": 0,
+          "netlistHash": "0x8dda771dbb33a42f429f036e96cc5709964079be4ac3112a9bee273dd6efbfd4",
+          "processor": "0xB04EB79D1A5EECaabAAfF7B77d7c27578EE693FF",
+          "refs": []
+        },
+        {
+          "circuitId": "3",
+          "gateCount": 1,
+          "nIn": 2,
+          "nOut": 1,
+          "nState": 0,
+          "netlistHash": "0x2264f951c081419cda26506f341a82729d2ad2298e55c2d8371ce1a805730479",
+          "processor": "0xB04EB79D1A5EECaabAAfF7B77d7c27578EE693FF",
+          "refs": []
+        },
+        {
+          "circuitId": "1",
+          "gateCount": 2,
+          "nIn": 2,
+          "nOut": 1,
+          "nState": 0,
+          "netlistHash": "0x04669453a8027de5f595aa0edb7ecde0ceeeeb53fa00d00d726ee64082e46be3",
+          "processor": "0xB04EB79D1A5EECaabAAfF7B77d7c27578EE693FF",
+          "refs": []
+        }
+      ]
+    },
+    "format": "fengce-quote/1",
+    "gas": {
+      "evalCall": "178668",
+      "fullPath": "232625",
+      "intentEval": "232625",
+      "method": "eth_estimateGas",
+      "outcomeEval": "232625",
+      "path": "FengceGuard.evaluate (PinRegistry.isPinned -> eval); the full Safe path reverts because the circuit denies the probe input",
+      "probeAllowed": false,
+      "probeInput": "0x00",
+      "probeSchemaHash": null,
+      "probeSource": "zero",
+      "safeBaseline": "72770",
+      "tierBasis": "intentEval + outcomeEval"
+    },
+    "processor": "0xB04EB79D1A5EECaabAAfF7B77d7c27578EE693FF",
+    "processors": [
+      "0xB04EB79D1A5EECaabAAfF7B77d7c27578EE693FF"
+    ],
+    "refClosureHash": "0xa1a24f305aef66c01b4abee1bcc0621b180861cba6bb3f00233b4a607973bd99",
+    "tier": "Green",
+    "tierReason": "intent 232625 + outcome 232625 = 465250 gas (the full Safe path could not be estimated with this probe)",
+    "tierThresholds": {
+      "amberMaxGas": "3500000",
+      "greenMaxGas": "1000000"
+    }
+  },
+  "certificateHash": "0x1b8f7e8f347239c1d96561b3600e223c7116cde875896b2440112cb4874d82cd",
+  "forkCheck": {
+    "allMatch": true,
+    "catalog": {
+      "certificateHash": "0x1b8f7e8f347239c1d96561b3600e223c7116cde875896b2440112cb4874d82cd",
+      "certificateHashMatches": true,
+      "measuredEvalGas": "157925",
+      "tier": "Green",
+      "tierMatchesQuote": true
+    },
+    "certificateHashStored": "0x1b8f7e8f347239c1d96561b3600e223c7116cde875896b2440112cb4874d82cd",
+    "netlistHashStored": "0xaf654440443a6fbd0d5d22226905e7468312fe2d7163ecc82edf8501f591dbc3",
+    "pinIdOnFork": "0xfbe60d06a2bd447b3d5c44da92d2c93edafa6caaaac22fac2c15586147e1c89b",
+    "refClosureHashStored": "0xa1a24f305aef66c01b4abee1bcc0621b180861cba6bb3f00233b4a607973bd99"
+  }
+}

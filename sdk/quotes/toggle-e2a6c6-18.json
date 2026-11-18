@@ -1,0 +1,61 @@
+{
+  "certificate": {
+    "block": "76234069",
+    "chainId": 196,
+    "circuit": {
+      "gateCount": 5,
+      "nIn": 1,
+      "nOut": 1,
+      "nState": 1,
+      "netlistHash": "0x926c1373fd1f260261c0346a53cab5cf909aa53d3ba447ddb6c76e049399b4ee"
+    },
+    "circuitId": "18",
+    "dependencyTree": {
+      "circuitId": "18",
+      "gateCount": 5,
+      "nIn": 1,
+      "nOut": 1,
+      "nState": 1,
+      "netlistHash": "0x926c1373fd1f260261c0346a53cab5cf909aa53d3ba447ddb6c76e049399b4ee",
+      "processor": "0xE2a6c6393b5A8B99cb481035eB8e244C66641cd7",
+      "refs": []
+    },
+    "format": "fengce-quote/1",
+    "gas": {
+      "evalCall": null,
+      "fullPath": null,
+      "intentEval": null,
+      "method": "eth_estimateGas",
+      "outcomeEval": null,
+      "path": "Safe v1.5.0 execTransaction (native transfer carrying the probe input) -> FengceGuard intent pass (PinRegistry.isPinned -> eval) -> execution -> FengceInspector outcome pass (snapshot, verify, eval)",
+      "probeAllowed": null,
+      "probeInput": "0x00",
+      "probeSchemaHash": null,
+      "probeSource": "zero",
+      "safeBaseline": null,
+      "tierBasis": null
+    },
+    "processor": "0xE2a6c6393b5A8B99cb481035eB8e244C66641cd7",
+    "processors": [
+      "0xE2a6c6393b5A8B99cb481035eB8e244C66641cd7"
+    ],
+    "refClosureHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+    "tier": "Unsupported",
+    "tierReason": "circuit has state (LATCH): eval reverts with 'has latch: use step'; it runs as a stateful policy through Tick (step()), so it gets no eval-path gas tier",
+    "tierThresholds": {
+      "amberMaxGas": "3500000",
+      "greenMaxGas": "1000000"
+    }
+  },
+  "certificateHash": "0xc336594f3eacf20c6dc14819c37a4bdf254ae6002a14da1f029ae156c554c133",
+  "forkCheck": {
+    "allMatch": true,
+    "catalog": {
+      "skipped": "circuit has state; eval-based listing does not apply"
+    },
+    "certificateHashStored": "0xc336594f3eacf20c6dc14819c37a4bdf254ae6002a14da1f029ae156c554c133",
+    "netlistHashStored": "0x926c1373fd1f260261c0346a53cab5cf909aa53d3ba447ddb6c76e049399b4ee",
+    "pinIdOnFork": "0x710bab39465999dc598594440ced51b482d281d964a7d758be8e960e3eadd3fd",
+    "refClosureHashStored": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+  }
+}
