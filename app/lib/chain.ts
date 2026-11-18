@@ -15,7 +15,7 @@ export const ADDR = {
   uniV2Router: "0x182a927119d56008d921126764bf884221b10f59" as Address,
   aavePool: "0xE3F3Caefdd7180F884c01E57f65Df979Af84f116" as Address,
   /** Predicted CREATE2 address (deployments/README.md). Not deployed. */
-  predictedGuard: "0x89c4716dAf60b6213c33D181b534b49eB57e2e67" as Address,
+  predictedGuard: "0xD632655A4f2d838b9Fd8F767BCCdB033b32059c0" as Address,
 };
 
 /** AgentExecutor contract whose Denied events are shown on Safe pages, if one is deployed (AGENT_EXECUTOR). */

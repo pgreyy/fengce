@@ -20,11 +20,11 @@ The creation bytecode includes the compiler metadata hash, so any source change 
 setting or dependency version changes the addresses. Record `sourceCommit` and `initCodeHash` with every
 deployment, and re-run the simulation from that exact commit before deploying.
 
-A simulation on 2026-11-18, with the sources after Batch C (minimum delays, module check, signature path), predicted:
+A simulation on 2026-11-18, with the sources after Batch D2 (FengceGuard compiled with via_ir), predicted:
 
 | Contract | Predicted address | initCodeHash |
 |---|---|---|
-| PinRegistry | `0xEEBaF2476126e09dB6915872d9501de7FABCE8Aa` | `0xca7ad51e1ff6c3a72c08dc05ad246f1bb1f0fcfa59243f002d74d931fa9de71c` |
-| FengceGuard | `0x89c4716dAf60b6213c33D181b534b49eB57e2e67` | `0x64a1e5529ef2bd6fb026dee30ca5da3af29c20b1a9ed388b131852f7f5bbda7c` |
+| PinRegistry | `0x76Bc4eA2b5A224C2C079089c359bD7FE4388581a` | `0xa204b6930d689cbbb2104e006fb1feec15f43b135c7c15c84249016437590f96` |
+| FengceGuard | `0xD632655A4f2d838b9Fd8F767BCCdB033b32059c0` | `0x11c285e5ac2c7792477840166c8fc0ed27c22164eb416292335e43a411dac905` |
 
 These hold only for the bytecode built from that commit. Nothing is deployed at these addresses.
