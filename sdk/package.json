@@ -7,7 +7,17 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p ."
+    "build": "tsc -p .",
+    "typecheck": "tsc -p . --noEmit",
+    "quote": "tsx src/cli/quote.ts"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "viem": "^2.58.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3"
+  }
 }

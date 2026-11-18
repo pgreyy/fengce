@@ -11,19 +11,22 @@ import {IFallbackManager} from "@safe/interfaces/IFallbackManager.sol";
 /// Safe itself (msg.sender is the Safe), through a Safe transaction that FengceGuard has checked.
 /// State is keyed by msg.sender, so a non-Safe caller only ever changes its own entries.
 ///
-/// Recovery: `scheduleRecovery` needs signatures from all owners (checked by the guard). After the
-/// Safe's recovery delay, `setGuard(0)` and `setModuleGuard(0)` pass. The guard checks recovery
-/// before calling any circuit or pin dependency, so a broken circuit cannot lock the Safe.
+/// Recovery: `scheduleRecovery` needs signatures from all owners (checked by the guard). Between
+/// the end of the Safe's recovery delay and the end of its recovery window, `setGuard(x)` and
+/// `setModuleGuard(x)` pass for any x other than this guard. After the window it must be scheduled
+/// again. The guard checks recovery before calling any circuit or pin dependency, so a broken
+/// circuit cannot lock the Safe.
 ///
-/// Timelock: other admin calls to the Safe (and reconfiguring the guard) must be scheduled here,
+/// Timelock: the other admin calls to the Safe, and guard reconfiguration, must be scheduled here,
 /// wait the Safe's admin delay, and are then let through once by the guard.
 abstract contract SafeAdmin {
     mapping(address safe => uint256) public recoveryReadyAt;
+    mapping(address safe => uint256) public recoveryExpiresAt;
     mapping(bytes32 id => uint256) public adminReadyAt;
 
-    event RecoveryScheduled(address indexed safe, uint256 readyAt);
+    event RecoveryScheduled(address indexed safe, uint256 readyAt, uint256 expiresAt);
     event RecoveryCancelled(address indexed safe);
-    event RecoveryExecuted(address indexed safe, bytes4 indexed selector);
+    event RecoveryExecuted(address indexed safe, bytes4 indexed selector, address newGuard);
     event AdminScheduled(address indexed safe, bytes32 indexed id, address target, bytes data, uint256 readyAt);
     event AdminCancelled(address indexed safe, bytes32 indexed id);
     event AdminExecuted(address indexed safe, bytes32 indexed id);
@@ -32,8 +35,10 @@ abstract contract SafeAdmin {
     error AdminAlreadyScheduled(bytes32 id);
     error AdminNotReady(bytes32 id);
     error RecoveryNotReady(address safe);
+    error RecoveryExpired(address safe);
 
     function _recoveryDelay(address safe) internal view virtual returns (uint256);
+    function _recoveryWindow(address safe) internal view virtual returns (uint256);
     function _adminDelay(address safe) internal view virtual returns (uint256);
     function _isGuardConfigCall(bytes memory data) internal view virtual returns (bool);
 
@@ -41,21 +46,28 @@ abstract contract SafeAdmin {
 
     function scheduleRecovery() external {
         uint256 readyAt = block.timestamp + _recoveryDelay(msg.sender);
+        uint256 expiresAt = readyAt + _recoveryWindow(msg.sender);
         recoveryReadyAt[msg.sender] = readyAt;
-        emit RecoveryScheduled(msg.sender, readyAt);
+        recoveryExpiresAt[msg.sender] = expiresAt;
+        emit RecoveryScheduled(msg.sender, readyAt, expiresAt);
     }
 
     function cancelRecovery() external {
         delete recoveryReadyAt[msg.sender];
+        delete recoveryExpiresAt[msg.sender];
         emit RecoveryCancelled(msg.sender);
     }
 
-    function _requireRecovery(address safe, bytes4 selector) internal {
+    function _requireRecovery(address safe, bytes4 selector, address newGuard) internal {
         uint256 r = recoveryReadyAt[safe];
         if (r == 0 || block.timestamp < r) revert RecoveryNotReady(safe);
-        // Removing the transaction guard ends recovery; the module guard may be removed first.
-        if (selector == IGuardManager.setGuard.selector) delete recoveryReadyAt[safe];
-        emit RecoveryExecuted(safe, selector);
+        if (block.timestamp >= recoveryExpiresAt[safe]) revert RecoveryExpired(safe);
+        // Replacing the transaction guard ends recovery; the module guard may be replaced first.
+        if (selector == IGuardManager.setGuard.selector) {
+            delete recoveryReadyAt[safe];
+            delete recoveryExpiresAt[safe];
+        }
+        emit RecoveryExecuted(safe, selector, newGuard);
     }
 
     // ------------------------------------------------------------------ timelock
@@ -66,7 +78,9 @@ abstract contract SafeAdmin {
 
     /// @notice Schedules one admin call. `target` is the Safe itself or this guard (reconfigure).
     function scheduleAdmin(address target, bytes calldata data) external {
-        if (!_isTimelockable(msg.sender, target, data)) revert AdminNotAllowed(target, bytes4(data[:4]));
+        if (!_isTimelockable(msg.sender, target, data)) {
+            revert AdminNotAllowed(target, data.length >= 4 ? bytes4(data[:4]) : bytes4(0));
+        }
         bytes32 id = adminId(msg.sender, target, data);
         if (adminReadyAt[id] != 0) revert AdminAlreadyScheduled(id);
         uint256 readyAt = block.timestamp + _adminDelay(msg.sender);
@@ -88,21 +102,13 @@ abstract contract SafeAdmin {
         emit AdminExecuted(safe, id);
     }
 
-    /// @dev What may go through the timelock. setGuard(0)/setModuleGuard(0) only go through recovery,
-    /// and installing this guard needs no timelock.
+    /// @dev What may go through the timelock. Guard changes (setGuard / setModuleGuard to anything
+    /// but this guard) only go through recovery, and installing this guard needs neither.
     function _isTimelockable(address safe, address target, bytes memory data) internal view returns (bool) {
         if (data.length < 4) return false;
         if (target == address(this)) return _isGuardConfigCall(data);
         if (target != safe) return false;
         bytes4 sel = bytes4(data[0]) | (bytes4(data[1]) >> 8) | (bytes4(data[2]) >> 16) | (bytes4(data[3]) >> 24);
-        if (sel == IGuardManager.setGuard.selector || sel == IModuleManager.setModuleGuard.selector) {
-            if (data.length != 36) return false;
-            uint256 a;
-            assembly {
-                a := mload(add(data, 36))
-            }
-            return a != 0 && a != uint160(address(this)) && a >> 160 == 0;
-        }
         return _isAdminSelector(sel);
     }
 

@@ -1,0 +1,53 @@
+{
+  "certificate": {
+    "block": "76218440",
+    "chainId": 196,
+    "circuit": {
+      "gateCount": 3,
+      "nIn": 2,
+      "nOut": 1,
+      "nState": 0,
+      "netlistHash": "0xc738359c3dde133a010e00bbc3dc1bd8685e3028a04e5df6e0f00cffa2ce2524"
+    },
+    "circuitId": "2",
+    "dependencyTree": {
+      "circuitId": "2",
+      "gateCount": 3,
+      "nIn": 2,
+      "nOut": 1,
+      "nState": 0,
+      "netlistHash": "0xc738359c3dde133a010e00bbc3dc1bd8685e3028a04e5df6e0f00cffa2ce2524",
+      "processor": "0x839bdD6fa7A66416A609A735e11DE5411B98574e",
+      "refs": []
+    },
+    "format": "fengce-quote/1",
+    "gas": {
+      "evalCall": "53045",
+      "fullPath": "175257",
+      "method": "eth_estimateGas",
+      "path": "Safe v1.5.0 execTransaction (native transfer of 0) -> FengceGuard.checkTransaction -> PinRegistry.isPinned -> eval",
+      "probeAllowed": true,
+      "probeInput": "0x00",
+      "safeBaseline": "72770"
+    },
+    "processor": "0x839bdD6fa7A66416A609A735e11DE5411B98574e",
+    "processors": [
+      "0x839bdD6fa7A66416A609A735e11DE5411B98574e"
+    ],
+    "refClosureHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+    "tier": "Green",
+    "tierReason": "measured 175257 gas on the path above",
+    "tierThresholds": {
+      "amberMaxGas": "3500000",
+      "greenMaxGas": "1000000"
+    }
+  },
+  "certificateHash": "0xff387be7e768b311734e3a40f4023040a4d565fe146ba7ddf995142d4b3a167c",
+  "forkCheck": {
+    "allMatch": true,
+    "certificateHashStored": "0xff387be7e768b311734e3a40f4023040a4d565fe146ba7ddf995142d4b3a167c",
+    "netlistHashStored": "0xc738359c3dde133a010e00bbc3dc1bd8685e3028a04e5df6e0f00cffa2ce2524",
+    "pinIdOnFork": "0x7c116e53ada28a309affc5393e98c8f32d06a7f700621b5efe130615c28a2347",
+    "refClosureHashStored": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+  }
+}

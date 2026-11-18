@@ -13,6 +13,7 @@ import {PinRegistry} from "../core/PinRegistry.sol";
 import {PolicyEngine} from "../core/PolicyEngine.sol";
 import {Schema} from "../core/Schema.sol";
 import {TxFacts} from "../core/TxFacts.sol";
+import {ApprovalScan} from "../core/ApprovalScan.sol";
 import {SafeAdmin} from "./SafeAdmin.sol";
 import {MultiSendDecoder} from "./MultiSendDecoder.sol";
 
@@ -22,21 +23,28 @@ import {MultiSendDecoder} from "./MultiSendDecoder.sol";
 /// circuit's output bit 0 is 1; every error denies.
 ///
 /// Order of checks for a Safe transaction:
-/// 1. Delegatecall: only to MultiSendCallOnly 1.5.0; every inner call is checked as below.
-/// 2. Call to this guard: recovery (all owners), timelock scheduling, first configuration.
-/// 3. Call to the Safe itself: installing this guard passes; removing it needs recovery; the other
-///    admin calls need the timelock; anything else is denied.
-/// 4. Anything else: decode facts from the call, encode them with the Safe's schema, evaluate.
-/// Steps 1 to 3 make no call to the circuit, its processors or the pin registry.
+/// 1. Delegatecall: only to MultiSendCallOnly 1.5.0; every inner call is checked as in step 4.
+/// 2. Call to this guard: recovery (all owners), timelock scheduling, configuration and allowlist
+///    (free until the Safe is first configured, then timelocked).
+/// 3. Call to the Safe itself: installing this guard passes; any other guard or module guard needs
+///    recovery; the other admin calls need the timelock; anything else is denied.
+/// 4. Anything else: decode facts (TxFacts), encode them with the Safe's schema, evaluate.
+/// Steps 2 and 3 make no call to the circuit, its processors or the pin registry.
 contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard {
     address public constant MULTI_SEND_CALL_ONLY = 0xA83c336B20401Af773B6219BA5027174338D1836;
+    /// @notice Recovery window used while a Safe has no configuration.
+    uint256 public constant DEFAULT_RECOVERY_WINDOW = 7 days;
 
     struct ConfigInput {
         bytes32 pinId;
         Schema.Layout layout;
         TxFacts.Binding[] bindings; // one per non-Flag field, in field order
         uint64 recoveryDelay;
+        uint64 recoveryWindow; // > 0
         uint64 adminDelay;
+        address[] preflightTokens; // checked for existing approvals on first configuration
+        address[] preflightSpenders; // Permit2 is always added
+        bool acceptExistingApprovals; // override: configure anyway and emit warnings
     }
 
     struct Config {
@@ -45,14 +53,20 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         bytes32 netlistHash;
         uint32 nIn;
         uint64 recoveryDelay;
+        uint64 recoveryWindow;
         uint64 adminDelay;
         Schema.Field[] fields;
         TxFacts.Binding[] bindings;
     }
 
     mapping(address safe => Config) internal _configs;
+    mapping(address safe => mapping(address target => mapping(bytes4 selector => bool))) public allowlisted;
 
-    event Configured(address indexed safe, bytes32 indexed pinId, uint64 recoveryDelay, uint64 adminDelay);
+    event Configured(address indexed safe, bytes32 indexed pinId);
+    event AllowlistSet(address indexed safe, address indexed target, bytes4 indexed selector, bool allowed);
+    event ExistingApprovalAccepted(
+        address indexed safe, ApprovalScan.FindingKind kind, address token, address spender, uint256 amount
+    );
 
     error FengceDenied(address safe, address to);
     error FengceNotConfigured(address safe);
@@ -63,15 +77,18 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
     error FengceInnerAdminDenied(address to);
     error FengceModuleAdminDenied(address to);
     error FengceNotAllOwners();
+    error FengceExistingApprovals(uint256 count);
 
     constructor(PinRegistry registry_, uint256 evalGasCap_) PolicyEngine(registry_, evalGasCap_) {}
 
     // ------------------------------------------------------------------ configuration
 
     /// @notice Called by the Safe. Free while the Safe has no configuration (before or right after
-    /// install); afterwards only through the admin timelock.
+    /// install); afterwards only through the admin timelock. The first configuration reverts if the
+    /// Safe already granted approvals (see `preflight`), unless `acceptExistingApprovals` is set.
     function configure(ConfigInput calldata input) external {
         Schema.Layout memory l = input.layout;
+        if (input.recoveryWindow == 0) revert FengceBadConfig();
         if (!registry.isPinned(input.pinId)) revert EngineNotPinned(input.pinId);
         (,, uint32 nIn,, bytes32 netlistHash, bytes32 schemaHash) = registry.evalInfo(input.pinId);
         if (Schema.hash(l) != schemaHash || l.nIn != nIn || l.netlistHash != netlistHash) revert FengceBadConfig();
@@ -83,11 +100,13 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         if (input.bindings.length != needed) revert FengceBadConfig();
 
         Config storage c = _configs[msg.sender];
+        if (!c.set) _firstConfigPreflight(input);
         c.set = true;
         c.pinId = input.pinId;
         c.netlistHash = netlistHash;
         c.nIn = nIn;
         c.recoveryDelay = input.recoveryDelay;
+        c.recoveryWindow = input.recoveryWindow;
         c.adminDelay = input.adminDelay;
         delete c.fields;
         delete c.bindings;
@@ -97,7 +116,36 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         for (uint256 i; i < input.bindings.length; i++) {
             c.bindings.push(input.bindings[i]);
         }
-        emit Configured(msg.sender, input.pinId, input.recoveryDelay, input.adminDelay);
+        emit Configured(msg.sender, input.pinId);
+    }
+
+    function _firstConfigPreflight(ConfigInput calldata input) private {
+        ApprovalScan.Finding[] memory f = preflight(msg.sender, input.preflightTokens, input.preflightSpenders);
+        if (f.length == 0) return;
+        if (!input.acceptExistingApprovals) revert FengceExistingApprovals(f.length);
+        for (uint256 i; i < f.length; i++) {
+            emit ExistingApprovalAccepted(msg.sender, f[i].kind, f[i].token, f[i].spender, f[i].amount);
+        }
+    }
+
+    /// @notice Called by the Safe. Lets calls to (target, selector) reach the circuit as Call facts,
+    /// and lets setApprovalForAll(true) on `target` reach it as an approval. Same rule as configure:
+    /// free until first configured, then timelocked.
+    function setAllowlisted(address target, bytes4 selector, bool allowed) external {
+        if (target == msg.sender || target == address(this)) revert FengceBadConfig();
+        allowlisted[msg.sender][target][selector] = allowed;
+        emit AllowlistSet(msg.sender, target, selector, allowed);
+    }
+
+    /// @notice Install preflight: existing ERC-20 allowances, Permit2 allowances and
+    /// isApprovedForAll that `safe` granted for the given tokens and spenders (Permit2 is always
+    /// included as a spender). Any finding means funds can leave without a guarded transaction.
+    function preflight(address safe, address[] calldata tokens, address[] calldata spenders)
+        public
+        view
+        returns (ApprovalScan.Finding[] memory)
+    {
+        return ApprovalScan.scan(safe, tokens, spenders);
     }
 
     function configOf(address safe) external view returns (Config memory) {
@@ -132,6 +180,7 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
 
     function checkModuleTransaction(address to, uint256 value, bytes memory data, Enum.Operation operation, address module)
         external
+        view
         override
         returns (bytes32)
     {
@@ -168,7 +217,7 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
             sel == this.cancelRecovery.selector || sel == this.scheduleAdmin.selector
                 || sel == this.cancelAdmin.selector
         ) return;
-        if (sel == this.configure.selector) {
+        if (_isGuardConfigCall(data)) {
             if (_configs[safe].set) _consumeAdmin(safe, address(this), data);
             return;
         }
@@ -184,9 +233,9 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
             assembly {
                 target := mload(add(data, 36))
             }
+            if (target >> 160 != 0) revert FengceSafeCallDenied(sel);
             if (target == uint160(address(this))) return; // installing Fengce itself always passes
-            if (target == 0) _requireRecovery(safe, sel);
-            else _consumeAdmin(safe, safe, data);
+            _requireRecovery(safe, sel, address(uint160(target)));
             return;
         }
         if (!_isAdminSelector(sel)) revert FengceSafeCallDenied(sel);
@@ -207,7 +256,8 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
     function _checkCall(address safe, address to, uint256 value, bytes memory data) private view {
         Config storage c = _configs[safe];
         if (!c.set) revert FengceNotConfigured(safe);
-        TxFacts.Facts memory f = TxFacts.decode(to, value, data);
+        bool listed = allowlisted[safe][to][TxFacts.selectorOf(data)];
+        TxFacts.Facts memory f = TxFacts.decode(safe, to, value, data, listed);
         Schema.Layout memory l = Schema.Layout(c.netlistHash, c.nIn, c.fields);
         bytes memory out = _evaluate(c.pinId, Schema.encode(l, TxFacts.values(f, c.bindings)));
         if (uint8(out[0]) & 1 != 1) revert FengceDenied(safe, to);
@@ -246,11 +296,17 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         return _configs[safe].recoveryDelay;
     }
 
+    function _recoveryWindow(address safe) internal view override returns (uint256) {
+        Config storage c = _configs[safe];
+        return c.set ? c.recoveryWindow : DEFAULT_RECOVERY_WINDOW;
+    }
+
     function _adminDelay(address safe) internal view override returns (uint256) {
         return _configs[safe].adminDelay;
     }
 
     function _isGuardConfigCall(bytes memory data) internal pure override returns (bool) {
-        return TxFacts.selectorOf(data) == FengceGuard.configure.selector;
+        bytes4 sel = TxFacts.selectorOf(data);
+        return sel == FengceGuard.configure.selector || sel == FengceGuard.setAllowlisted.selector;
     }
 }

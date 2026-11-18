@@ -18,7 +18,6 @@ contract PolicyEngine {
     error EngineInputLength(uint256 given, uint256 expected);
     error EngineInputPadding();
     error EngineSchemaMismatch(bytes32 pinId);
-    error EngineNotEnoughGas(uint256 available, uint256 needed);
     error EngineEvalFailed(bytes32 pinId);
     error EngineOutputLength(uint256 given, uint256 expected);
     error EngineOutputPadding();
@@ -56,14 +55,10 @@ contract PolicyEngine {
         if (input.length != inLen) revert EngineInputLength(input.length, inLen);
         if (nIn % 8 != 0 && uint8(input[inLen - 1]) >> (nIn % 8) != 0) revert EngineInputPadding();
 
-        // Make sure the callee really gets the cap (EIP-150 keeps 1/64 back), so an out-of-gas
-        // result is the circuit's cost and not the caller starving the call.
-        uint256 cap = evalGasCap;
-        uint256 needed = cap + cap / 63 + 10_000;
-        if (gasleft() < needed) revert EngineNotEnoughGas(gasleft(), needed);
-
+        // At most `evalGasCap` is forwarded. Running out of gas, for any reason, is a failure and
+        // denies; it can never allow.
         (bool ok, bytes memory ret) =
-            processor.staticcall{gas: cap}(abi.encodeCall(ITapeOutProcessor.eval, (circuitId, input)));
+            processor.staticcall{gas: evalGasCap}(abi.encodeCall(ITapeOutProcessor.eval, (circuitId, input)));
         // ABI bytes: offset word + length word at least.
         if (!ok || ret.length < 64) revert EngineEvalFailed(pinId);
         out = abi.decode(ret, (bytes));
