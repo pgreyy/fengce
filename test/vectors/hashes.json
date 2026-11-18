@@ -1,0 +1,26 @@
+{
+  "generatedBy": "sdk/scripts/gen-vectors.ts",
+  "block": "76223219",
+  "schemas": {
+    "nand-limit": "0xf98ca2032a8ac8374dc5feca2d1b75af530bd435fcb0f5987d858e61d89b4827",
+    "comparator16": "0xd1ec4ca98568e37369c92200b6f954cb7c31ff75496a2b2f1acd48acc5b1d5db"
+  },
+  "closures": {
+    "nested": {
+      "processor": "0x99081e1D0CE916Cd5b2c53e769DFC3B000BFE9A4",
+      "id": 18,
+      "refClosureHash": "0x26746518e875feae211f38f6dacb026fec731c1ad543f085db762f3c08677434",
+      "processors": [
+        "0x99081e1D0CE916Cd5b2c53e769DFC3B000BFE9A4"
+      ]
+    },
+    "repeated": {
+      "processor": "0xB04EB79D1A5EECaabAAfF7B77d7c27578EE693FF",
+      "id": 12,
+      "refClosureHash": "0xfea9f862f9d5e8b097dab0756e31877104866cc8928bf0a5f8072ddedef14e6c",
+      "processors": [
+        "0xB04EB79D1A5EECaabAAfF7B77d7c27578EE693FF"
+      ]
+    }
+  }
+}

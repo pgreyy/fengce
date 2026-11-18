@@ -108,6 +108,15 @@ async function closure(client: PublicClient, block: bigint, root: Address, id: b
   return { refClosureHash: keccak256(parts.length ? concat(parts) : "0x"), processors };
 }
 
+/**
+ * The dependency closure of a circuit, computed exactly as PinRegistry.pin does: breadth-first over
+ * REF records, distinct (processor, id) pairs, root excluded from the hash.
+ */
+export async function refClosure(client: PublicClient, processor: Address, circuitId: bigint, blockNumber?: bigint) {
+  const block = blockNumber ?? (await client.getBlockNumber());
+  return closure(client, block, processor, circuitId, new Map());
+}
+
 /** Canonical JSON: keys sorted at every level, no whitespace. certificateHash = keccak256 of it. */
 export function canonicalJson(v: unknown): string {
   if (Array.isArray(v)) return `[${v.map(canonicalJson).join(",")}]`;
