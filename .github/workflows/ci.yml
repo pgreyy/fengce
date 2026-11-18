@@ -50,6 +50,9 @@ jobs:
       - name: Fork tests (REF closure)
         if: env.XLAYER_RPC_URL != ''
         run: forge test --match-path 'test/fork/*.t.sol' -vv
+      - name: Fork tests (wallets; reads code from the public Base RPC)
+        if: env.XLAYER_RPC_URL != ''
+        run: forge test --match-path 'test/wallets/*.t.sol' -vv
       - name: Deploy simulation (never broadcasts)
         if: env.XLAYER_RPC_URL != ''
         run: forge script script/Deploy.s.sol --rpc-url xlayer

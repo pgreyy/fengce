@@ -21,6 +21,8 @@ import {FengceSignatureVerifier} from "../src/safe/FengceSignatureVerifier.sol";
 import {FengceStrictHandler} from "../src/safe/FengceStrictHandler.sol";
 import {AgentExecutor} from "../src/safe/AgentExecutor.sol";
 import {FengceHook} from "../src/erc7579/FengceHook.sol";
+import {FengceHook6900} from "../src/erc6900/FengceHook6900.sol";
+import {FengceAgentOwner} from "../src/agent/FengceAgentOwner.sol";
 import {FengceBinding} from "../src/binding/FengceBinding.sol";
 import {BoundVault} from "../src/binding/BoundVault.sol";
 import {UniswapV3RouterDecoder} from "../src/decoders/UniswapV3RouterDecoder.sol";
@@ -37,7 +39,10 @@ interface IERC20Live {
     function transfer(address, uint256) external returns (bool);
 }
 
-/// @notice Live deployment of Fengce on X Layer mainnet (chain 196), in one broadcast run:
+/// @notice Live deployment of Fengce on X Layer mainnet (chain 196), in one broadcast run. Release v2 (salts
+/// "fengce.<Name>.v2.0.0"): the complete set again, plus FengceHook6900 (ERC-6900 accounts) and FengceAgentOwner
+/// (agent path for owner-only wallets), all four adapters registered in the FengceInspector. v1 (salts
+/// "fengce.<Name>.v0.2.0") stays in deployments/xlayer-196.json; v2 writes deployments/xlayer-196-v2.json.
 ///   GIT_COMMIT=$(git rev-parse HEAD) DEMO_AGENT=<agent> forge script script/DeployLive.s.sol --rpc-url xlayer \
 ///     --account fengce-deployer --sender <deployer> --broadcast --slow
 /// Without --broadcast it only simulates. Resumable: every step first checks whether it is already done (code at
@@ -48,8 +53,8 @@ interface IERC20Live {
 /// Quote certificate, sdk/quotes/*.json) and list them in the Catalog, which runs their test vectors on-chain;
 /// (3) if the deployer holds at least 2 USDT0 (or the demo Safe already exists): create a demo Safe 1.5.0 owned by
 /// the deployer, install FengceGuard as both guards with a USDT0 cap of 1, register DEMO_AGENT in AgentExecutor and
-/// fund the Safe with 2 USDT0. Writes deployments/xlayer-196.json (addresses) and
-/// deployments/manifest-xlayer-196.json (everything needed to reproduce and verify the deployment).
+/// fund the Safe with 2 USDT0. Writes deployments/xlayer-196-v2.json (addresses) and
+/// deployments/manifest-xlayer-196-v2.json (everything needed to reproduce and verify the deployment).
 contract DeployLive is Script {
     address constant CREATE2 = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
     address constant TAPEOUT = 0x1f09DAeFA827f02CBb40967cc91b259763760761;
@@ -62,7 +67,7 @@ contract DeployLive is Script {
     uint256 constant CAP = 2_000_000; // eval gas cap for engines
     uint256 constant DEMO_CAP = 1_000_000; // 1 USDT0 (6 decimals)
     uint256 constant DEMO_FUNDING = 2_000_000; // 2 USDT0
-    string constant VERSION = "v0.2.0";
+    string constant VERSION = "v2.0.0";
 
     struct Rec {
         string name;
@@ -76,6 +81,8 @@ contract DeployLive is Script {
     PinRegistry reg;
     FengceGuard guard;
     FengceHook hook;
+    FengceHook6900 hook6900;
+    FengceAgentOwner agentOwner;
     FengceInspector inspector;
     Catalog catalog;
     AgentExecutor agentExec;
@@ -126,8 +133,10 @@ contract DeployLive is Script {
         _d("PolicyEngine", type(PolicyEngine).creationCode, abi.encode(reg, CAP));
         guard = FengceGuard(_d("FengceGuard", type(FengceGuard).creationCode, abi.encode(reg, CAP)));
         hook = FengceHook(_d("FengceHook", type(FengceHook).creationCode, abi.encode(reg, CAP)));
-        address[] memory adapters = new address[](2);
-        (adapters[0], adapters[1]) = (address(guard), address(hook));
+        hook6900 = FengceHook6900(_d("FengceHook6900", type(FengceHook6900).creationCode, abi.encode(reg, CAP)));
+        agentOwner = FengceAgentOwner(_d("FengceAgentOwner", type(FengceAgentOwner).creationCode, abi.encode(reg, CAP)));
+        address[] memory adapters = new address[](4);
+        (adapters[0], adapters[1], adapters[2], adapters[3]) = (address(guard), address(hook), address(hook6900), address(agentOwner));
         inspector = FengceInspector(_d("FengceInspector", type(FengceInspector).creationCode, abi.encode(adapters)));
         _d("FengceFloors", type(FengceFloors).creationCode, abi.encode(reg, CAP));
         binding = FengceBinding(_d("FengceBinding", type(FengceBinding).creationCode, abi.encode(guard)));
@@ -398,7 +407,7 @@ contract DeployLive is Script {
         vm.serializeAddress(root, "treasurySafe", treasury);
         vm.serializeString(root, "pins", pinsJson);
         string memory out = vm.serializeString(root, "contracts", contractsJson);
-        vm.writeJson(out, "deployments/xlayer-196.json");
+        vm.writeJson(out, "deployments/xlayer-196-v2.json");
     }
 
     function _status() internal view returns (string memory) {
@@ -481,14 +490,18 @@ contract DeployLive is Script {
         vm.serializeUint(k, "BoundVault.minNotice", vault.minNotice());
         vm.serializeString(k, "FengceFloors", "per account: floor owner and delay set by the account (minimum 1 day); none set at deployment");
         vm.serializeString(k, "Tick", "per group: group admin; no groups at deployment");
-        vm.serializeString(k, "FengceHook", "per account; uninstall delay 2 days (not enforced by Safe7579 on its own uninstall)");
+        vm.serializeString(k, "FengceHook", "per account; uninstall delay 2 days (enforced only where the account runs the hook on its own uninstall: Kernel v3.3, Nexus 1.2.0; not Safe7579, Etherspot)");
+        vm.serializeString(k, "FengceHook6900", "per account; uninstall and upgrade delay 2 days");
+        vm.serializeString(k, "FengceAgentOwner", "per wallet: policy and agents set by the wallet; wallet owners are not checked");
         return vm.serializeString(k, "others", "PolicyEngine, FengceStrictHandler, FengceSignatureVerifier, decoders: no roles");
     }
 
     function _adapters() internal view returns (address[] memory a) {
-        a = new address[](2);
-        (a[0], a[1]) = (address(guard), address(hook));
-        require(inspector.isAdapter(a[0]) && inspector.isAdapter(a[1]), "inspector adapters");
+        a = new address[](4);
+        (a[0], a[1], a[2], a[3]) = (address(guard), address(hook), address(hook6900), address(agentOwner));
+        for (uint256 i; i < a.length; i++) {
+            require(inspector.isAdapter(a[i]), "inspector adapters");
+        }
     }
 
     function _demoEntry() internal returns (string memory) {
@@ -551,6 +564,6 @@ contract DeployLive is Script {
         vm.serializeString(root, "circuits", cJson);
         vm.serializeString(root, "roles", _rolesEntry());
         string memory out = vm.serializeString(root, "demo", _demoEntry());
-        vm.writeJson(out, "deployments/manifest-xlayer-196.json");
+        vm.writeJson(out, "deployments/manifest-xlayer-196-v2.json");
     }
 }

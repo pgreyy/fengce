@@ -149,7 +149,12 @@ contract FengceInspector {
         return keccak256(abi.encode("fengce.inspector", account));
     }
 
+    /// @dev Safe accounts (Safe, Safe7579): owners, threshold, modules, guards, fallback handler. Other accounts
+    /// (no `getThreshold`): only the account's code hash, so a configuration change inside a non-Safe account is
+    /// not detected here; its outcome (outflow, allowance increase) is still checked.
     function _fingerprint(address account) private view returns (bytes32) {
+        (bool isSafe, bytes memory ret) = account.staticcall(abi.encodeWithSignature("getThreshold()"));
+        if (!isSafe || ret.length != 32) return keccak256(abi.encode(account.codehash));
         ISafe s = ISafe(payable(account));
         (address[] memory modules,) = s.getModulesPaginated(address(1), 64);
         return keccak256(

@@ -124,6 +124,8 @@ Safe with modules). After install, enabling a module needs the admin timelock.
   Safe7579 v1.0.0 does not run a hook when that same hook is being uninstalled, so on Safe7579 the hook's
   uninstall delay never applies and whoever can authorise `uninstallModule` (validators, or the Safe itself)
   can remove it at once. Installing or removing other modules is not checked by the hook.
+  Per-wallet uninstall behaviour (Kernel, Nexus, Etherspot) and the ERC-6900 and EIP-7702 limits are listed in
+  `docs/WALLETS.md`.
 - **Tick**: state lives in the Tick contract per policy group (several Safes or agents can share one budget),
   resets to zero at each period boundary (period index = floor(timestamp / period), Unix-epoch aligned), and
   advances only when the circuit allows (`test/FengceTick.t.sol`). FengceGuard advances the Safe's group on
