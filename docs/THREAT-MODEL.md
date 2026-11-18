@@ -141,9 +141,9 @@ Safe with modules). After install, enabling a module needs the admin timelock.
 ### App
 
 The app in `app/` only reads chain data and builds calldata; it never signs or sends. Blocked transactions are
-not visible on its status page: a transaction the guard blocks reverts and leaves no event. `npm audit` reports
-PostCSS advisories through Next 15 (build-time CSS processing of the app's own stylesheet); the fix is Next 16,
-a breaking upgrade not done yet.
+not visible on its status page: a transaction the guard blocks reverts and leaves no event (agent calls through
+AgentExecutor are the exception: they are recorded as `Denied` events and shown). The app runs on Next 16
+(built with webpack, `npm run build`); `npm audit` reports no vulnerabilities.
 
 ### Outcome facts (FengceInspector)
 
