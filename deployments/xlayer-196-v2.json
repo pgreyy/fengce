@@ -1,0 +1,37 @@
+{
+  "chainId": 196,
+  "contracts": {
+    "AaveV3PoolDecoder": "0x8007856430d5A6a22D3de3a4d9b70582A7097f89",
+    "AgentExecutor": "0xc01b590227149169260e030235b78d6e034E590c",
+    "BoundVault": "0xbf76fC88e16fD18f87992f1927Aa31a713263e41",
+    "Catalog": "0x26C5437428cdD7e4854614DC5DDEFE2776B51dFe",
+    "FengceAgentOwner": "0xd857d1850684aC80E7DDa4ab52ea6E1B1CB0aD21",
+    "FengceBinding": "0x20157A63Df8ab6728698630E38f6d7683Ca6b6F8",
+    "FengceFloors": "0xD842C5B9EdDdd218d2Dbe91c3911934DdA7Ff7D4",
+    "FengceGuard": "0x9D2A482fFA86fa3193F85c451A44576E2f1C8E6e",
+    "FengceHook": "0xE538979145E67935B85D1912904ce8d5bF19669b",
+    "FengceHook6900": "0xAf481abCb80A73C9c300f16aAF1b61BcAaC3BEA5",
+    "FengceInspector": "0xdeA3e3C305460247686c3EEeAe6552F33D98EE1A",
+    "FengceSignatureVerifier": "0x81f073BF271230B832aC375ed786373Af75b5B19",
+    "FengceStrictHandler": "0x846bBD554F31865C9A1301D325D73973A1F884cb",
+    "PinRegistry": "0xD905dde3A09a9777B98013AD196E3b3F988e3715",
+    "PolicyEngine": "0x2264B97828454374a56D7407f859fEA6eE7dFAA9",
+    "Tick": "0xFEb6FD15F8724bfC69a119C0448f480a7D7e5370",
+    "UniswapV2RouterDecoder": "0x34140a552Aa2c23256B4a3C760257A8CD8f88124",
+    "UniswapV3RouterDecoder": "0x47FDb3C6E91661562243f97Df2f4b0B8EfFAA479"
+  },
+  "demoAgent": "0x81DeB61C444f5505F4d3343B366E71D31a4BF91E",
+  "demoSafe": "0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707",
+  "deployer": "0x6eAC9821430aCa193a717a7C17D68f8033D46087",
+  "pins": {
+    "numericTransactionLimit": "0xc9ccba1f2e025335a938f0c0c200c562662d9a75221a1e8ca45fa20b05fe6c91",
+    "organizationWidePolicyFloor": "0xf3808a28038c0de5cf3e20b36755ed028c14e69ffe48142f966f4d21c9acba55",
+    "periodicSpendingBudget": "0x770ab5055cb42f22a0eece1848d7302e185439ac0292ccdba66d5c5a5bd7ec75",
+    "policyFloorCircuit": "0x5e9e98448adba0db3b8328bf5c47b5382d8bb1b1dcf73c2d5fc2931e54b3b182",
+    "protectedSwapPolicy": "0x54d27c7d8de303c0c572a7466a8511c5c755b2a632af5e48ab16dfb6894b25b8",
+    "stablecoinTransferLimit": "0x6661c56a76bc6769c7153d9a44a9b546b860543d42fce4cd34a4bf9d4d89ce44"
+  },
+  "status": "broadcast",
+  "treasurySafe": "0x5c53CDaED1cd64fc25AcC071b0Ca7ef891bB5661",
+  "version": "v2.0.0"
+}

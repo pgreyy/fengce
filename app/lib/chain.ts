@@ -1,6 +1,6 @@
 import "server-only";
 import { createPublicClient, http, type Address } from "viem";
-import deployment from "../../deployments/xlayer-196.json";
+import deployment from "../../deployments/xlayer-196-v2.json";
 
 /** Read-only X Layer client. XLAYER_RPC overrides the endpoint (both OKX endpoints are official). */
 export const RPC = process.env.XLAYER_RPC ?? "https://xlayerrpc.okx.com";
@@ -15,7 +15,7 @@ export const ADDR = {
   uniV3Router: "0x4f0C28f5926AFDA16bf2506D5D9e57Ea190f9bcA" as Address,
   uniV2Router: "0x182a927119d56008d921126764bf884221b10f59" as Address,
   aavePool: "0xE3F3Caefdd7180F884c01E57f65Df979Af84f116" as Address,
-  /** FengceGuard deployed on X Layer (deployments/xlayer-196.json). */
+  /** FengceGuard deployed on X Layer (deployments/xlayer-196-v2.json). */
   guard: deployment.contracts.FengceGuard as Address,
 };
 
@@ -25,5 +25,5 @@ export const AGENT_EXECUTOR = (process.env.AGENT_EXECUTOR as Address | undefined
 /** Catalog contract, if one is deployed (CATALOG_ADDRESS). */
 export const CATALOG = (process.env.CATALOG_ADDRESS as Address | undefined) ?? (deployment.contracts.Catalog as Address);
 
-/** The live X Layer deployment (addresses, demo Safe), from deployments/xlayer-196.json. */
+/** The live X Layer deployment (addresses, demo Safe), from deployments/xlayer-196-v2.json. */
 export const DEPLOYMENT = deployment;

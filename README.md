@@ -28,7 +28,8 @@ It has three parts:
 | `src/safe` (agents) | `AgentExecutor`: a Safe module that lets an agent key act only through the Fengce module guard |
 | `sdk/` | TypeScript: schema file format and encoder, Quote certificates (dependency tree, full Safe path gas and tier), install calldata builder, Catalog reader |
 
-Status: version 0.1.0, deployed on X Layer mainnet (addresses: [deployments/xlayer-196.json](deployments/xlayer-196.json)).
+Status: release v2 deployed on X Layer mainnet (addresses: [deployments/xlayer-196-v2.json](deployments/xlayer-196-v2.json);
+v1: [deployments/xlayer-196.json](deployments/xlayer-196.json)).
 Not independently reviewed. The on-chain behaviour below is tested against X Layer mainnet state on local forks.
 
 App: [getfengce.vercel.app](https://getfengce.vercel.app) (read-only, live X Layer data).
@@ -204,7 +205,7 @@ cd sdk && npm ci && cd ../app && npm ci && npm run build && npm start
 ```
 
 `XLAYER_RPC` sets the RPC endpoint (default `https://xlayerrpc.okx.com`). Contract addresses come from
-`deployments/xlayer-196.json`; `CATALOG_ADDRESS` and `AGENT_EXECUTOR` override them.
+`deployments/xlayer-196-v2.json`; `CATALOG_ADDRESS` and `AGENT_EXECUTOR` override them.
 
 ## Documentation
 

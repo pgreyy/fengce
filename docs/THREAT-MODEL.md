@@ -142,9 +142,9 @@ Safe with modules). After install, enabling a module needs the admin timelock.
   Catalog tier is measured on the circuit evaluation; Quote's tier is measured on the full Safe path, so the two
   can differ near a threshold. The description and URI are the lister's text. Install fees are split 80% to the
   designer and 20% to the treasury and withdrawn by each (pull payments). On X Layer the Catalog's treasury (fixed at deployment) is
-  a Safe 1.5.0 created by the deployment script (salt `fengce.treasury.v0.2.0`), owned by the deployer key with
+  a Safe 1.5.0 created by the deployment script (salt `fengce.treasury.v2.0.0` in v2, `fengce.treasury.v0.2.0` in v1), owned by the deployer key with
   threshold 1; adding owners or raising the threshold is done on that Safe and needs no redeployment. Its address
-  is in `deployments/manifest-xlayer-196.json`.
+  is in `deployments/manifest-xlayer-196-v2.json` (v1: `deployments/manifest-xlayer-196.json`).
 
 ### App
 

@@ -7,28 +7,34 @@ Safe addresses are the canonical v1.5.0 deployments from `safe-global/safe-deplo
 
 ## Fengce on X Layer
 
-Deployed at block 76243766. Source of truth: [deployments/xlayer-196.json](../deployments/xlayer-196.json)
-(compiler settings per contract: [deployments/manifest-xlayer-196.json](../deployments/manifest-xlayer-196.json)).
-Read-only app over these contracts: [getfengce.vercel.app](https://getfengce.vercel.app).
+Current release v2 (salts `fengce.<Name>.v2.0.0`), deployed at block 76250360 from commit `e260a37`.
+Source of truth: [deployments/xlayer-196-v2.json](../deployments/xlayer-196-v2.json) (compiler settings per contract:
+[deployments/manifest-xlayer-196-v2.json](../deployments/manifest-xlayer-196-v2.json)). Demo Safe: `0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707`;
+treasury Safe: `0x5c53CDaED1cd64fc25AcC071b0Ca7ef891bB5661`. Read-only app over these contracts: [getfengce.vercel.app](https://getfengce.vercel.app).
 
 | Contract | Address |
 |---|---|
-| AaveV3PoolDecoder | `0xd8FbEA5246546b1aDb73134b4CFF7301D69c4dF9` |
-| AgentExecutor | `0x28251f9364F86FD7F218cd5d591dF65f04510214` |
-| BoundVault | `0x2282233a4Edd5e0540d97d89540a7e561119648B` |
-| Catalog | `0x17Df6cc2882e3b4F5C4f5d6a788A8711d2D1Fde7` |
-| FengceBinding | `0xEB8F721b188De251bE83346f857d122f44B496eb` |
-| FengceFloors | `0xc9d258ceFA3270083F2D0142492080c52212f8cD` |
-| FengceGuard | `0xB0562fc0B5dcd7E4a97DeCD344e55A682836c1Ac` |
-| FengceHook | `0xD0F8271217da4F611c432875D9998878Fd98e097` |
-| FengceInspector | `0x533E583D0D61dFf06A9289aa7798B3071B98bc67` |
-| FengceSignatureVerifier | `0x7AA60e55D1562b6EAC83472079F524D4661F06c4` |
-| FengceStrictHandler | `0xFFeFb5a00fBde84C61eC86BC701A28253F7839c1` |
-| PinRegistry | `0xE606dfe83780359852Db7F8D531fD33681fAbC67` |
-| PolicyEngine | `0xD282fc956957640ba14151EC265C0a5837Dfbd31` |
-| Tick | `0x94C4d576f1306b6E2d6E48Cdd1e7ad7060d44bCf` |
-| UniswapV2RouterDecoder | `0x40699111263c1708525070EB6671fA593FEAf9B0` |
-| UniswapV3RouterDecoder | `0xE5c57db07ef2CeCC3802080D4419b8e0964B0E8f` |
+| AaveV3PoolDecoder | `0x8007856430d5A6a22D3de3a4d9b70582A7097f89` |
+| AgentExecutor | `0xc01b590227149169260e030235b78d6e034E590c` |
+| BoundVault | `0xbf76fC88e16fD18f87992f1927Aa31a713263e41` |
+| Catalog | `0x26C5437428cdD7e4854614DC5DDEFE2776B51dFe` |
+| FengceAgentOwner | `0xd857d1850684aC80E7DDa4ab52ea6E1B1CB0aD21` |
+| FengceBinding | `0x20157A63Df8ab6728698630E38f6d7683Ca6b6F8` |
+| FengceFloors | `0xD842C5B9EdDdd218d2Dbe91c3911934DdA7Ff7D4` |
+| FengceGuard | `0x9D2A482fFA86fa3193F85c451A44576E2f1C8E6e` |
+| FengceHook | `0xE538979145E67935B85D1912904ce8d5bF19669b` |
+| FengceHook6900 | `0xAf481abCb80A73C9c300f16aAF1b61BcAaC3BEA5` |
+| FengceInspector | `0xdeA3e3C305460247686c3EEeAe6552F33D98EE1A` |
+| FengceSignatureVerifier | `0x81f073BF271230B832aC375ed786373Af75b5B19` |
+| FengceStrictHandler | `0x846bBD554F31865C9A1301D325D73973A1F884cb` |
+| PinRegistry | `0xD905dde3A09a9777B98013AD196E3b3F988e3715` |
+| PolicyEngine | `0x2264B97828454374a56D7407f859fEA6eE7dFAA9` |
+| Tick | `0xFEb6FD15F8724bfC69a119C0448f480a7D7e5370` |
+| UniswapV2RouterDecoder | `0x34140a552Aa2c23256B4a3C760257A8CD8f88124` |
+| UniswapV3RouterDecoder | `0x47FDb3C6E91661562243f97Df2f4b0B8EfFAA479` |
+
+The previous release v1 (salts `fengce.<Name>.v0.2.0`, block 76,243,766) stays on chain and is recorded in
+[deployments/xlayer-196.json](../deployments/xlayer-196.json).
 
 ## Safe v1.5.0
 
