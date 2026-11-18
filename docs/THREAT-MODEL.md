@@ -153,3 +153,19 @@ a breaking upgrade not done yet.
 - Allowlisted calls run arbitrary code at the target; the circuit only sees target, value and selector.
 - A native transfer to a contract runs that contract's receive logic.
 - Recovery stays open until the transaction guard is changed, it is cancelled, or its window ends.
+
+## Static analysis
+
+Slither 0.11.3 runs on `src/` in CI on every push (`.github/workflows/slither.yml`) and fails the build on any
+High finding. First run (commit `6b4cf8a`): **0 High**, 115 findings in total, reviewed as follows.
+
+| Impact | Check | Count | Assessment |
+|---|---|---|---|
+| Medium | uninitialized-local | 28 | Counters, flags and accumulators that rely on Solidity's zero default (for example `needed`, `sum`, `seen`). Intended. |
+| Medium | unused-return | 7 | Tuple reads where only some fields are needed (`registry.evalInfo`), and calls whose result is not needed because they revert on denial (`Tick.advanceFacts`, `guard.checkContext`). Intended. |
+| Medium | incorrect-equality | 4 | Strict comparisons on stored values used as "not set" markers (`readyAt == 0`) and on period indices. Intended. |
+| Low | calls-loop | 18 | External calls in loops over bounded lists (closure of at most 64 circuits, module pages, MultiSend calls, approval scan). Each call is gas-capped or bounded by the caller. |
+| Low | timestamp | 16 | Delays, windows and periods are timestamp-based by design; minimum delays are days, far above any validator influence. |
+| Low | return-bomb | 3 | `PolicyEngine._evaluate`, `Tick._advance` (pinned TapeOut processors, return data length-checked) and `Market.readSource`. The callees are pinned contracts; `isPinned` itself copies at most one word. |
+| Low | missing-zero-check | 2 | Constructor arguments of `AgentExecutor` and `Catalog` (deployment-time configuration). |
+| Informational | assembly, low-level-calls, naming-convention, cyclomatic-complexity | 37 | Deliberate (bit packing, bounded return-data copies, Safe calldata reconstruction). |
