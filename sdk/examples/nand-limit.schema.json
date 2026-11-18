@@ -1,0 +1,10 @@
+{
+  "format": "fengce-schema/1",
+  "netlistHash": "0xc738359c3dde133a010e00bbc3dc1bd8685e3028a04e5df6e0f00cffa2ce2524",
+  "nIn": 2,
+  "fields": [
+    { "name": "overLimit", "kind": "bool", "offset": 0, "width": 1 },
+    { "name": "one", "kind": "flag", "offset": 1, "width": 1, "value": 1 }
+  ],
+  "bindings": [{ "field": "overLimit", "source": "AmountGt", "param": "100" }]
+}

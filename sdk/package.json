@@ -1,17 +1,49 @@
 {
   "name": "@fengce/sdk",
-  "version": "0.0.0",
-  "private": true,
-  "description": "Schema encoder and Quote script for Fengce",
+  "version": "0.1.0",
+  "description": "TypeScript SDK for Fengce: TapeOut circuit schemas, Quote certificates and Safe guard install calldata",
+  "license": "MIT",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "fengce-quote": "dist/cli/quote.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pgreyy/fengce.git",
+    "directory": "sdk"
+  },
+  "keywords": [
+    "tapeout",
+    "x-layer",
+    "safe",
+    "guard",
+    "policy",
+    "circuit"
+  ],
   "scripts": {
     "build": "tsc -p .",
     "typecheck": "tsc -p . --noEmit",
-    "quote": "tsx src/cli/quote.ts"
+    "test": "node --import tsx --test test/*.test.ts",
+    "quote": "tsx src/cli/quote.ts",
+    "sync-artifacts": "tsx scripts/sync-artifacts.ts",
+    "prepack": "npm run build && cp ../LICENSE ./LICENSE"
   },
-  "license": "MIT",
   "dependencies": {
     "viem": "^2.58.0"
   },

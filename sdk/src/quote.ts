@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { resolve } from "node:path";
 import {
   type Abi,
   type Address,
@@ -17,6 +15,8 @@ import {
   zeroAddress,
 } from "viem";
 import { XLAYER, processorAbi, proxyFactoryAbi, safeAbi } from "./abi.js";
+import { FengceGuardArtifact, PinRegistryArtifact } from "./artifacts.js";
+import { type SchemaFile, encodeInputs, parseSchema, schemaHash } from "./schema.js";
 import { parseRefs } from "./netlist.js";
 import { TIERS, type Tier, tierFor } from "./tiers.js";
 
@@ -45,6 +45,8 @@ export interface Certificate {
     method: string;
     path: string;
     probeInput: Hex;
+    probeSource: "zero" | "input" | "schema";
+    probeSchemaHash: Hex | null;
     probeAllowed: boolean | null;
     fullPath: string | null;
     safeBaseline: string | null;
@@ -120,11 +122,6 @@ export function certificateHash(cert: Certificate): Hex {
   return keccak256(toHex(canonicalJson(cert)));
 }
 
-function artifact(outDir: string, name: string): { abi: Abi; bytecode: Hex } {
-  const j = JSON.parse(readFileSync(resolve(outDir, `${name}.sol`, `${name}.json`), "utf8"));
-  return { abi: j.abi, bytecode: j.bytecode.object };
-}
-
 const fieldsType = [
   {
     type: "tuple[]",
@@ -138,21 +135,35 @@ const fieldsType = [
 ] as const;
 
 /** A probe layout covering every input bit with uint fields of up to 256 bits, all fed from the
- * native value. A native transfer of 0 therefore evaluates the circuit on all-zero input. */
+ * native value of the probe transfer. For nIn <= 256 the transfer value is the input itself; for
+ * wider circuits only the all-zero probe can use the full path. */
 function probeLayout(netlistHash: Hex, nIn: number) {
   const fields: { kind: number; offset: number; width: number; fixedValue: bigint }[] = [];
   for (let off = 0; off < nIn; off += 256) fields.push({ kind: 0, offset: off, width: Math.min(256, nIn - off), fixedValue: 0n });
-  const schemaHash = keccak256(
-    encodeAbiParameters([{ type: "bytes32" }, { type: "uint32" }, ...fieldsType], [netlistHash, nIn, fields]),
-  );
-  return { layout: { netlistHash, nIn, fields }, schemaHash, bindings: fields.map(() => ({ source: 1, param: 0n })) };
+  const hash = schemaHash({ netlistHash, nIn, fields });
+  return { layout: { netlistHash, nIn, fields }, schemaHash: hash, bindings: fields.map(() => ({ source: 1, param: 0n })) };
+}
+
+/** Reads packed input bytes (LSB first) as an integer. */
+function inputToInt(input: Hex): bigint {
+  const bytes = Buffer.from(input.slice(2), "hex");
+  let v = 0n;
+  for (let i = bytes.length - 1; i >= 0; i--) v = (v << 8n) | BigInt(bytes[i]);
+  return v;
+}
+
+export interface QuoteOptions {
+  /** Probe input bytes (exactly ceil(nIn/8), zero padding). Used when the circuit denies all-zero input. */
+  input?: Hex;
+  /** Or: a schema for this circuit plus field values; the encoded bytes become the probe input. */
+  schema?: SchemaFile;
+  values?: Record<string, bigint | number | boolean | string>;
 }
 
 export interface QuoteEnv {
   fork: PublicClient; // anvil fork of X Layer
   wallet: WalletClient; // unlocked anvil account
   account: Address;
-  outDir: string; // forge build output
 }
 
 /**
@@ -160,13 +171,30 @@ export interface QuoteEnv {
  * Safe v1.5.0 -> FengceGuard -> circuit path, then pins the circuit on the fork with the resulting
  * certificateHash and reads it back from PinRegistry.
  */
-export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint) {
+export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint, opts: QuoteOptions = {}) {
   const { fork, wallet, account } = env;
   const block = await fork.getBlockNumber();
   const cache = new Map<Key, any>();
   const root = await tree(fork, block, processor, circuitId, cache);
   const { refClosureHash, processors } = await closure(fork, block, processor, circuitId, cache);
-  const probeInput = toHex(new Uint8Array(Math.ceil(root.nIn / 8)));
+  const inLen = Math.ceil(root.nIn / 8);
+  let probeInput: Hex = toHex(new Uint8Array(inLen));
+  let probeSource: Certificate["gas"]["probeSource"] = "zero";
+  let probeSchemaHash: Hex | null = null;
+  if (opts.schema) {
+    const sch = parseSchema(opts.schema);
+    if (sch.netlistHash !== root.netlistHash || sch.nIn !== root.nIn) throw new Error("schema is bound to a different circuit (netlistHash or nIn differs)");
+    probeInput = encodeInputs(sch, opts.values ?? {});
+    probeSource = "schema";
+    probeSchemaHash = schemaHash(sch);
+  } else if (opts.input) {
+    const b = Buffer.from(opts.input.slice(2), "hex");
+    if (b.length !== inLen) throw new Error(`input must be exactly ${inLen} byte(s) for nIn ${root.nIn}`);
+    if (root.nIn % 8 !== 0 && b[inLen - 1] >> root.nIn % 8 !== 0) throw new Error("input has non-zero padding bits");
+    probeInput = opts.input;
+    probeSource = "input";
+  }
+  const probeValue = inputToInt(probeInput);
 
   const send = async (req: any) => {
     const hash = await wallet.writeContract({ account, chain: null, ...req });
@@ -174,12 +202,12 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
     if (r.status !== "success") throw new Error(`tx failed: ${req.functionName}`);
     return r;
   };
-  const deploy = async (name: string, args: unknown[]) => {
-    const a = artifact(env.outDir, name);
-    const hash = await wallet.deployContract({ abi: a.abi, bytecode: a.bytecode, args, account, chain: null });
+  const deploy = async (name: "PinRegistry" | "FengceGuard", args: unknown[]) => {
+    const a = name === "PinRegistry" ? PinRegistryArtifact : FengceGuardArtifact;
+    const hash = await wallet.deployContract({ abi: a.abi as Abi, bytecode: a.bytecode, args: args as any, account, chain: null });
     const r = await fork.waitForTransactionReceipt({ hash });
     if (!r.contractAddress) throw new Error(`deploy failed: ${name}`);
-    return { address: r.contractAddress, abi: a.abi };
+    return { address: r.contractAddress, abi: a.abi as Abi };
   };
 
   const registry = await deploy("PinRegistry", [XLAYER.tapeoutFactory]);
@@ -187,8 +215,10 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
 
   let gas: Certificate["gas"] = {
     method: "eth_estimateGas",
-    path: "Safe v1.5.0 execTransaction (native transfer of 0) -> FengceGuard.checkTransaction -> PinRegistry.isPinned -> eval",
+    path: "Safe v1.5.0 execTransaction (native transfer carrying the probe input) -> FengceGuard.checkTransaction -> PinRegistry.isPinned -> eval",
     probeInput,
+    probeSource,
+    probeSchemaHash,
     probeAllowed: null,
     fullPath: null,
     safeBaseline: null,
@@ -214,7 +244,7 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
     await send({ address: XLAYER.safeProxyFactory, abi: proxyFactoryAbi, functionName: "createProxyWithNonce", args: [XLAYER.safeL2, init, salt] });
     const safe = sim.result as Address;
     const sig = concat([pad(account, { size: 32 }), pad("0x", { size: 32 }), "0x01"]);
-    const execArgs = (to: Address, data: Hex) => [to, 0n, data, 0, 0n, 0n, 0n, zeroAddress, zeroAddress, sig] as const;
+    const execArgs = (to: Address, data: Hex, value = 0n) => [to, value, data, 0, 0n, 0n, 0n, zeroAddress, zeroAddress, sig] as const;
     const recipient = getAddress("0x00000000000000000000000000000000000f3c3e");
 
     gas.safeBaseline = (await fork.estimateContractGas({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(recipient, "0x"), account })).toString();
@@ -226,15 +256,21 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
     await send({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(guard.address, encodeFunctionData({ abi: guard.abi, functionName: "configure", args: [cfg] })) });
     await send({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(safe, encodeFunctionData({ abi: [{ type: "function", name: "setGuard", inputs: [{ name: "g", type: "address" }], outputs: [], stateMutability: "nonpayable" }], functionName: "setGuard", args: [guard.address] })) });
 
+    const fullPathPossible = root.nIn <= 256 || probeValue === 0n;
     try {
-      gas.fullPath = (await fork.estimateContractGas({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(recipient, "0x"), account })).toString();
+      if (!fullPathPossible) throw new Error("wide input");
+      // The probe transfer's value is the input (the probe layout binds every field to the value).
+      await fork.request({ method: "anvil_setBalance", params: [safe, toHex(probeValue + 10n ** 18n)] } as any);
+      gas.fullPath = (await fork.estimateContractGas({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(recipient, "0x", probeValue), account })).toString();
       gas.probeAllowed = true;
     } catch {
-      // The circuit denies the all-zero probe, so the Safe transaction reverts and cannot be
-      // estimated. Fall back to the guard's own evaluation path (pin check + eval), which returns
-      // the output instead of reverting.
-      gas.probeAllowed = false;
-      gas.path = "FengceGuard.evaluate (PinRegistry.isPinned -> eval); the full Safe path reverts because the circuit denies the all-zero probe";
+      // Either the circuit denies the probe (the Safe transaction reverts and cannot be estimated) or
+      // a non-zero input is wider than 256 bits. Fall back to the guard's own evaluation path (pin
+      // check + eval), which returns the output instead of reverting.
+      gas.probeAllowed = fullPathPossible ? false : null;
+      gas.path = fullPathPossible
+        ? "FengceGuard.evaluate (PinRegistry.isPinned -> eval); the full Safe path reverts because the circuit denies the probe input"
+        : "FengceGuard.evaluate (PinRegistry.isPinned -> eval); a non-zero probe wider than 256 inputs cannot be carried by the probe transfer";
       gas.fullPath = (await fork.estimateContractGas({ address: guard.address, abi: guard.abi, functionName: "evaluate", args: [pinId, probeInput], account })).toString();
     }
     tier = tierFor(BigInt(gas.fullPath));

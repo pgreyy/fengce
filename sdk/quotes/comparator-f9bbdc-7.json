@@ -1,0 +1,55 @@
+{
+  "certificate": {
+    "block": "76222657",
+    "chainId": 196,
+    "circuit": {
+      "gateCount": 114,
+      "nIn": 32,
+      "nOut": 1,
+      "nState": 0,
+      "netlistHash": "0x3f79ea6c551d8b2206c10b8a38e6c27ad3f7da332028c32e3c1a25dfe6f31c9f"
+    },
+    "circuitId": "7",
+    "dependencyTree": {
+      "circuitId": "7",
+      "gateCount": 114,
+      "nIn": 32,
+      "nOut": 1,
+      "nState": 0,
+      "netlistHash": "0x3f79ea6c551d8b2206c10b8a38e6c27ad3f7da332028c32e3c1a25dfe6f31c9f",
+      "processor": "0xF9bBdc7f678eb3A49D338ffAcDaaD9339de50a0F",
+      "refs": []
+    },
+    "format": "fengce-quote/1",
+    "gas": {
+      "evalCall": "316768",
+      "fullPath": "485062",
+      "method": "eth_estimateGas",
+      "path": "Safe v1.5.0 execTransaction (native transfer carrying the probe input) -> FengceGuard.checkTransaction -> PinRegistry.isPinned -> eval",
+      "probeAllowed": true,
+      "probeInput": "0xae019001",
+      "probeSchemaHash": "0xd1ec4ca98568e37369c92200b6f954cb7c31ff75496a2b2f1acd48acc5b1d5db",
+      "probeSource": "schema",
+      "safeBaseline": "72770"
+    },
+    "processor": "0xF9bBdc7f678eb3A49D338ffAcDaaD9339de50a0F",
+    "processors": [
+      "0xF9bBdc7f678eb3A49D338ffAcDaaD9339de50a0F"
+    ],
+    "refClosureHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
+    "tier": "Green",
+    "tierReason": "measured 485062 gas on the path above",
+    "tierThresholds": {
+      "amberMaxGas": "3500000",
+      "greenMaxGas": "1000000"
+    }
+  },
+  "certificateHash": "0xf9eefcb59d471cbee9d18e9d67ae26f12c201e5d01ba48e5592fff8823791a95",
+  "forkCheck": {
+    "allMatch": true,
+    "certificateHashStored": "0xf9eefcb59d471cbee9d18e9d67ae26f12c201e5d01ba48e5592fff8823791a95",
+    "netlistHashStored": "0x3f79ea6c551d8b2206c10b8a38e6c27ad3f7da332028c32e3c1a25dfe6f31c9f",
+    "pinIdOnFork": "0x0c02076c1c3da8ed29a709fe06f02e355bf72ec316d0b4e7376ffadb245113f5",
+    "refClosureHashStored": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+  }
+}
