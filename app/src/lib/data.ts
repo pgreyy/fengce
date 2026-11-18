@@ -192,6 +192,70 @@ export async function simulate(req: { preset: string; cap?: string; account?: Ad
   });
 }
 
+// ------------------------------------------------------------------ preflight (the Safe's own policy)
+
+const KINDS = ["Native", "Transfer", "Approval", "Call", "Swap", "Lending"];
+
+/**
+ * Checks a transaction against the policy actually installed on a Safe, before anyone signs it: the transaction is
+ * decoded into facts (one eth_call, as in simulate) and the Safe's FengceGuard evaluates its own pinned circuit with its
+ * own bindings on them (`checkContext`, view only). Tick budgets, floors and the outcome check run only at execution and
+ * are not part of this answer. Nothing is signed or sent.
+ */
+export async function preflight(req: { safe: Address; to: Address; value?: string; data?: Hex }) {
+  const safe = getAddress(req.safe);
+  let guard: Address, moduleGuard: Address;
+  try {
+    [guard, moduleGuard] = await Promise.all([slot(safe, SLOTS.guard), slot(safe, SLOTS.moduleGuard)]);
+  } catch {
+    return plain({ safe, to: getAddress(req.to), enforced: false, decision: "not enforced", reason: "This address is not a Safe (no getStorageAt): Fengce's guard cannot be installed on it.", facts: null, config: null });
+  }
+  const base = { safe, to: getAddress(req.to), value: req.value ?? "0", data: req.data ?? "0x", guard, moduleGuard };
+  const fengceGuard = guard.toLowerCase() === ADDR.guard.toLowerCase();
+  const fengceModuleGuard = moduleGuard.toLowerCase() === ADDR.guard.toLowerCase();
+  if (!fengceGuard && !fengceModuleGuard) {
+    return plain({ ...base, enforced: false, decision: "not enforced", reason: "This Safe does not use the Fengce v2 guard: nothing checks this transaction.", facts: null, config: null });
+  }
+  const cfg = (await client.readContract({ address: ADDR.guard, abi: FengceGuardArtifact.abi as any, functionName: "configOf", args: [safe] })) as any[];
+  const [set, pinId, recoveryDelay, recoveryWindow, adminDelay] = cfg;
+  const config = { set, pinId, recoveryDelay, recoveryWindow, adminDelay, transactionGuard: fengceGuard, moduleGuard: fengceModuleGuard };
+  if (!set) return plain({ ...base, enforced: true, decision: "deny", reason: "The Safe has the guard but no policy is configured; the guard denies.", facts: null, config });
+  // Decode the transaction into facts (the policy itself does not matter for decoding).
+  const sim: any = await simulate({ preset: PRESETS[0].key, cap: "0", account: safe, to: req.to, value: req.value, data: req.data });
+  if (!sim.facts) {
+    return plain({ ...base, enforced: true, decision: "deny", reason: `Fails closed: ${sim.stage}${sim.error ? ` (${sim.error})` : ""}.`, facts: null, config });
+  }
+  const factsType = (FengceGuardArtifact.abi as unknown as any[]).find((x) => x.name === "checkContext").inputs[1];
+  const facts: Record<string, unknown> = {};
+  for (const c of factsType.components as { name: string; type: string }[]) {
+    const v = sim.facts[c.name];
+    facts[c.name] = c.name === "kind" ? KINDS.indexOf(String(v)) : c.type.startsWith("uint") ? BigInt(v) : v;
+  }
+  facts.account = safe;
+  try {
+    const [input, output] = (await client.readContract({ address: ADDR.guard, abi: FengceGuardArtifact.abi as any, functionName: "checkContext", args: [safe, facts] })) as [Hex, Hex];
+    return plain({ ...base, enforced: true, decision: "allow", reason: "The Safe's pinned circuit allows these facts (output bit 0 = 1).", facts: sim.facts, input, output, config });
+  } catch (e: any) {
+    // The revert data (for example FengceDenied(safe, target)) is nested somewhere in viem's error chain.
+    let reason: string = e?.shortMessage ?? String(e);
+    let raw: Hex | null = null;
+    for (let x = e, depth = 0; x && depth < 8 && !raw; x = x.cause, depth++) {
+      const d = typeof x.data === "string" ? x.data : typeof x.data?.data === "string" ? x.data.data : null;
+      if (d && /^0x[0-9a-fA-F]{8,}$/.test(d)) raw = d as Hex;
+      else if (x.data?.errorName) reason = `${x.data.errorName}(${(x.data.args ?? []).map(String).join(", ")})`;
+    }
+    if (raw) {
+      try {
+        const d = decodeErrorResult({ abi: FengceGuardArtifact.abi as any, data: raw });
+        reason = `${d.errorName}(${(d.args ?? []).map(String).join(", ")})`;
+      } catch {
+        reason = raw;
+      }
+    }
+    return plain({ ...base, enforced: true, decision: "deny", reason, facts: sim.facts, config });
+  }
+}
+
 // ------------------------------------------------------------------ safes
 
 async function slot(safe: Address, s: bigint): Promise<Address> {

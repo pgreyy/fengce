@@ -33,6 +33,9 @@ property of the code or setup). Test links point at the test function in this re
 | [fail-closed](#fail-closed) | fork-tested | X Layer mainnet fork | v2 |
 | [trace-equals-eval](#trace-equals-eval) | mainnet | X Layer mainnet (196), read-only | n/a |
 | [app-client-side](#app-client-side) | documented | X Layer mainnet (196), read-only | v2 |
+| [mcp-read-only](#mcp-read-only) | documented | X Layer mainnet (196), read-only | v2 |
+| [agent-demo-fork](#agent-demo-fork) | fork-tested | X Layer mainnet fork | v2 |
+| [preflight-own-policy](#preflight-own-policy) | mainnet | X Layer mainnet (196), read-only | v2 |
 | [wallet-kernel](#wallet-kernel) | fork-tested | X Layer mainnet fork (live Kernel v3.3 code) | v2 |
 | [wallet-nexus](#wallet-nexus) | fork-tested | X Layer mainnet fork with Nexus code from Base | v2 |
 | [wallet-etherspot](#wallet-etherspot) | fork-tested | X Layer mainnet fork with Etherspot code from Base | v2 |
@@ -279,6 +282,37 @@ Status: **documented** · Network: X Layer mainnet (196), read-only · Release: 
 
 - [live app](https://getfengce.vercel.app)
 - [chain client](../app/src/lib/chain.ts)
+
+## mcp-read-only
+
+The Fengce MCP server's six tools (list_policies, get_policy, quote_policy, simulate_transaction, preflight_transaction, build_install_payload) answer from live X Layer mainnet; none signs or sends, and build_install_payload returns an unsigned payload.
+
+Status: **documented** · Network: X Layer mainnet (196), read-only · Release: v2
+
+- [server source](../mcp/src/server.ts)
+- [live check of every tool](../mcp/scripts/call-tools.mts)
+- [setup](../mcp/README.md)
+
+## agent-demo-fork
+
+Agent demo: Fengce answers DENIED for 1.5 USDT0 and ALLOWED for 0.5 USDT0 from the v2 demo Safe; submitted through AgentExecutor, the wallet refuses the first (Denied) and executes the second.
+
+Status: **fork-tested** · Network: X Layer mainnet fork · Release: v2
+
+- [demo script](../mcp/demo/agent-demo.mts)
+- [transcript](../docs/demo/agent-demo-transcript.md)
+- [the same two transfers on mainnet: denied](https://www.oklink.com/x-layer/tx/0x9b70d386a2782e269ab1d3b1df6de767534a5b5b7904998abd92a651d2584a1b)
+- [allowed](https://www.oklink.com/x-layer/tx/0x7a70f5c9713fd9236ecdd81287bcf775253d2cbea19c857524bb1047acfcccab)
+
+## preflight-own-policy
+
+Preflight checks a transaction against the policy actually installed on a Safe (its FengceGuard's checkContext, view only): 1.5 USDT0 from the v2 demo Safe returns deny with FengceDenied, 0.5 returns allow.
+
+Status: **mainnet** · Network: X Layer mainnet (196), read-only · Release: v2
+
+- [implementation](../app/src/lib/data.ts)
+- [API function](../app/api-src/preflight.ts)
+- [OpenAPI](../docs/openapi.yaml)
 
 ## wallet-kernel
 

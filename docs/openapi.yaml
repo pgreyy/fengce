@@ -95,6 +95,29 @@ paths:
               schema: { $ref: "#/components/schemas/Simulation" }
         "400": { $ref: "#/components/responses/Error" }
         "405": { $ref: "#/components/responses/Error" }
+  /api/preflight:
+    post:
+      tags: [simulation]
+      operationId: preflight
+      summary: A transaction against the policy installed on a Safe (check, not enforcement)
+      description: |
+        Reads the Safe's guards and Fengce configuration, decodes the transaction into facts (one eth_call) and asks the
+        Safe's FengceGuard to evaluate its own pinned circuit with its own bindings (`checkContext`, view only). `deny`
+        means the wallet will refuse the transaction. Budgets per period (Tick), floors and the outcome check also apply at
+        execution and are not part of this answer. Nothing is signed or sent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PreflightRequest" }
+      responses:
+        "200":
+          description: The Safe's own policy decision
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Preflight" }
+        "400": { $ref: "#/components/responses/Error" }
+        "405": { $ref: "#/components/responses/Error" }
   /api/install:
     post:
       tags: [install]
@@ -289,6 +312,35 @@ components:
         output: { type: [object, "null"] }
         decision: { type: string, enum: [allow, deny, "deny (fails closed)"] }
         error: { type: [string, "null"] }
+    PreflightRequest:
+      type: object
+      required: [safe, to]
+      properties:
+        safe: { $ref: "#/components/schemas/Address" }
+        to: { $ref: "#/components/schemas/Address" }
+        value: { $ref: "#/components/schemas/Uint" }
+        data: { $ref: "#/components/schemas/Hex" }
+    Preflight:
+      type: object
+      properties:
+        safe: { $ref: "#/components/schemas/Address" }
+        to: { $ref: "#/components/schemas/Address" }
+        enforced: { type: boolean, description: "false when the Safe has no Fengce v2 guard (or the address is not a Safe)" }
+        decision: { type: string, enum: [allow, deny, not enforced] }
+        reason: { type: string, examples: ["FengceDenied(0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707, 0x6eAC9821430aCa193a717a7C17D68f8033D46087)"] }
+        facts: { type: [object, "null"] }
+        input: { $ref: "#/components/schemas/Hex" }
+        output: { $ref: "#/components/schemas/Hex" }
+        config:
+          type: [object, "null"]
+          properties:
+            set: { type: boolean }
+            pinId: { $ref: "#/components/schemas/Bytes32" }
+            recoveryDelay: { $ref: "#/components/schemas/Uint" }
+            recoveryWindow: { $ref: "#/components/schemas/Uint" }
+            adminDelay: { $ref: "#/components/schemas/Uint" }
+            transactionGuard: { type: boolean }
+            moduleGuard: { type: boolean }
     InstallRequest:
       type: object
       required: [safe, pinId, preset, tokens, spenders]

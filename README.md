@@ -10,7 +10,7 @@ rule takes days, and everyone can see it.
 
 **X Layer Mainnet · Chain ID 196 · v2 live**
 
-[Live app](https://getfengce.vercel.app) · [Demo video](#demo-video) · [Docs](docs/INTEGRATION.md) · [SDK](sdk/README.md) · [Sourcify](https://repo.sourcify.dev/196/0x9D2A482fFA86fa3193F85c451A44576E2f1C8E6e)
+[Live app](https://getfengce.vercel.app) · [Try it](docs/TRY-IT.md) · [Demo video](#demo-video) · [Docs](docs/INTEGRATION.md) · [SDK](sdk/README.md) · [Sourcify](https://repo.sourcify.dev/196/0x9D2A482fFA86fa3193F85c451A44576E2f1C8E6e)
 <!-- demo-video: replace the #demo-video link above with the video URL -->
 
 </div>
@@ -132,6 +132,21 @@ contract Vault is BoundOnlyBase {
 }
 ```
 
+## For AI agents
+
+- **MCP server** ([mcp/](mcp/README.md)): `list_policies`, `get_policy`, `quote_policy`, `simulate_transaction`,
+  `preflight_transaction`, `build_install_payload`. Read-only and unsigned; set up in one line for Claude Code, Claude
+  Desktop or any MCP client ([proof](docs/CLAIMS.md#mcp-read-only)).
+- **Preflight API**: `POST https://getfengce.vercel.app/api/preflight` checks a transaction against the policy installed on a Safe
+  ([proof](docs/CLAIMS.md#preflight-own-policy), [API](docs/API.md)).
+- **OnchainOS skill** ([skills/fengce](skills/fengce/SKILL.md)), in the okx/plugin-store format: check with Fengce before
+  acting and treat Denied as final.
+- **Demo**: an agent asks Fengce, gets DENIED for 1.5 USDT0 and ALLOWED for 0.5, then the wallet enforces both
+  ([transcript](docs/demo/agent-demo-transcript.md), [proof](docs/CLAIMS.md#agent-demo-fork)).
+
+The rule for agents: before acting for a Safe, preflight the transaction; if the answer is deny, stop and tell the user. Do
+not split, reroute or retry it.
+
 ## Wallet compatibility
 
 **Mainnet**: adapter on X Layer mainnet and used there in real transactions. **Fork-tested**: adapter on mainnet, behaviour
@@ -247,12 +262,15 @@ test            unit, fork and wallet tests (test/unit, test/fork, test/wallets)
 script          DeployLive (release), DeployDeWeb (static app on TapeOut DeWeb)
 sdk             TypeScript SDK and the Quote CLI; sdk/quotes holds the Quote certificates
 app             static app (Vite, React, viem) and the Vercel API functions
+mcp             MCP server for agents (read-only)
+skills          OnchainOS skill (okx/plugin-store format)
 deployments     addresses and manifests per release
 docs            documentation (below)
 ```
 
 ## Docs
 
+- [docs/TRY-IT.md](docs/TRY-IT.md): try it with a fresh Safe (for outside testers)
 - [docs/INTEGRATION.md](docs/INTEGRATION.md): pin a circuit, write a schema, install, operate and recover
 - [docs/WALLETS.md](docs/WALLETS.md) and [docs/wallets.json](docs/wallets.json): wallet compatibility
 - [docs/CLAIMS.md](docs/CLAIMS.md) and [docs/claims.json](docs/claims.json): every claim with its evidence
@@ -263,6 +281,7 @@ docs            documentation (below)
 - [docs/ADDRESSES.md](docs/ADDRESSES.md): X Layer addresses Fengce depends on
 - [docs/VERDICT.md](docs/VERDICT.md): the verdict checks
 - [sdk/README.md](sdk/README.md): SDK and CLI
+- [mcp/README.md](mcp/README.md): MCP server; [skills/fengce](skills/fengce/SKILL.md): OnchainOS skill
 - [AGENTS.md](AGENTS.md): canonical data and checks, for tools and newcomers
 
 ## Licence

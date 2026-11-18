@@ -45,6 +45,7 @@ Demo Safe `0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707`, demo agent `0x81DeB61C44
   [src/binding](src/binding) (FengceBinding, BoundOnly). Policy context: [docs/POLICY-INTERFACE.md](docs/POLICY-INTERFACE.md).
 - SDK: [sdk/README.md](sdk/README.md) (schemas, Quote, install calldata, local evaluation and `evaluateTrace`).
 - HTTP API: [docs/API.md](docs/API.md), [docs/openapi.yaml](docs/openapi.yaml).
+- MCP server for agents: [mcp/README.md](mcp/README.md); OnchainOS skill: [skills/fengce/SKILL.md](skills/fengce/SKILL.md).
 - App: [app/](app) (static pages reading X Layer from the browser).
 
 ## Running the checks

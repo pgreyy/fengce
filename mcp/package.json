@@ -1,0 +1,35 @@
+{
+  "name": "@fengce/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Read-only MCP server for Fengce on X Layer: list and quote policies, simulate and preflight transactions, build unsigned Safe install payloads",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "fengce-mcp": "dist/server.mjs"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc --noEmit -p . && node build.mjs",
+    "start": "node dist/server.mjs",
+    "check:live": "tsx scripts/call-tools.mts",
+    "demo": "tsx demo/agent-demo.mts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "viem": "^2.58.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.5",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.8"
+  }
+}

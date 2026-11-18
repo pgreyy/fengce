@@ -1,0 +1,68 @@
+name: Tester feedback
+description: Report what happened when you tried Fengce (install, Allowed or Denied, the app, the API)
+title: "[feedback] "
+labels: [feedback]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing Fengce. Please use a fresh Safe with a few dollars, never a real treasury.
+        **Never post a private key, seed phrase or signature here.** Addresses and transaction hashes are public and fine.
+  - type: dropdown
+    id: area
+    attributes:
+      label: What did you try?
+      options:
+        - Install on a Safe
+        - A transaction that should be allowed
+        - A transaction that should be denied
+        - Simulator
+        - Safe status page
+        - Catalog or policy page
+        - Public API or MCP server
+        - Removing Fengce (recovery)
+        - Something else
+    validations:
+      required: true
+  - type: dropdown
+    id: wallet
+    attributes:
+      label: Wallet type
+      options:
+        - Safe v1.5.0
+        - Safe with Safe7579
+        - Kernel
+        - Modular Account v2
+        - EIP-7702 account
+        - Coinbase Smart Wallet
+        - Other or not applicable
+    validations:
+      required: true
+  - type: input
+    id: account
+    attributes:
+      label: Safe or account address (optional)
+      placeholder: 0x...
+  - type: textarea
+    id: txs
+    attributes:
+      label: Transaction hashes (optional)
+      description: One per line, on X Layer mainnet (chain 196).
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead?
+      description: Error messages, what the app or Safe interface showed, screenshots.
+    validations:
+      required: true
+  - type: input
+    id: policy
+    attributes:
+      label: Policy and cap (optional)
+      placeholder: Stablecoin Transfer Limit, cap 1000000

@@ -1,0 +1,10 @@
+{
+  "name": "fengce",
+  "description": "Check a transaction against a wallet's Fengce spending policy on X Layer before acting, and treat Denied as final.",
+  "version": "0.1.0",
+  "author": { "name": "Fengce" },
+  "homepage": "https://getfengce.vercel.app",
+  "repository": "https://github.com/pgreyy/fengce",
+  "license": "MIT",
+  "keywords": ["x-layer", "safe", "policy", "spending-limit", "ai-agent"]
+}

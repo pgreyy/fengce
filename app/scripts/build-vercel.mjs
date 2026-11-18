@@ -7,7 +7,7 @@ import { build } from "vite";
 
 const app = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const out = resolve(process.env.VERCEL_OUTPUT ?? resolve(app, "../.vercel/output"));
-const FUNCTIONS = ["catalog", "circuit", "safe", "simulate", "install"];
+const FUNCTIONS = ["catalog", "circuit", "safe", "simulate", "install", "preflight"];
 
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
