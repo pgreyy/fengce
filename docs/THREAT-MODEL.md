@@ -130,9 +130,13 @@ Safe with modules). After install, enabling a module needs the admin timelock.
   execution failed, the guard rolls the advance back (`test/FengceTickGuard.t.sol`). Off-chain signed approvals
   (the signature verifier path) do not advance Tick. A group's admin controls membership: removing a Safe makes
   its guarded transactions fail closed until the Safe reconfigures (timelocked).
-- **Catalog**: entries carry the certificate hash from the pin; the tier and gas figures are the lister's
-  statement and are not verified on-chain. Readers should fetch the certificate and check its hash. Designer
-  revenue share is not implemented.
+- **Catalog**: a listing runs every test vector in its manifest through the pinned circuit on-chain and reverts
+  on any mismatch; the entry records how many allow and deny vectors passed, the maximum evaluation gas measured
+  on-chain, and the tier from that gas (thresholds in `sdk/src/tiers.json`, shared with the SDK)
+  (`test/FengceCatalog.t.sol`). Vectors prove behaviour only on the inputs listed, not on all inputs. The
+  Catalog tier is measured on the circuit evaluation; Quote's tier is measured on the full Safe path, so the two
+  can differ near a threshold. The description and URI are the lister's text. Install fees are split 80% to the
+  designer and 20% to the treasury and withdrawn by each (pull payments).
 
 ### Other limits
 

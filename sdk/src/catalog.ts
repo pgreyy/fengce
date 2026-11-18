@@ -1,19 +1,41 @@
 import { type Address, type Hex, type PublicClient } from "viem";
 import { CatalogArtifact } from "./artifacts.js";
-import type { Tier } from "./tiers.js";
 
 /** Tier names in Catalog.Tier order. */
-export const CATALOG_TIERS = ["Green", "Amber", "Red", "Unsupported"] as const;
+export const CATALOG_TIERS = ["Green", "Amber", "Red"] as const;
 export type CatalogTier = (typeof CATALOG_TIERS)[number];
+
+export interface CatalogVector {
+  input: Hex;
+  expectedOutput: Hex;
+}
+
+/** Catalog.Manifest: what a lister submits. Every vector is run on-chain at listing. */
+export interface CatalogManifest {
+  pinId: Hex;
+  description: string;
+  schemaHash: Hex;
+  vectors: CatalogVector[];
+  designer: Address;
+  installFee: bigint;
+  uri: string;
+}
 
 export interface CatalogEntry {
   pinId: Hex;
   certificateHash: Hex;
+  schemaHash: Hex;
+  vectorsHash: Hex;
+  allowVectors: number;
+  denyVectors: number;
+  measuredGas: bigint;
   tier: CatalogTier;
-  gasFullPath: bigint;
   lister: Address;
+  designer: Address;
+  installFee: bigint;
   listedAt: bigint;
   active: boolean;
+  description: string;
   uri: string;
 }
 
@@ -34,9 +56,4 @@ export async function readCatalog(client: PublicClient, catalog: Address): Promi
 /** Reads one entry by pin id (lister is the zero address if it is not listed). */
 export async function catalogEntry(client: PublicClient, catalog: Address, pinId: Hex): Promise<CatalogEntry> {
   return toEntry(await client.readContract({ address: catalog, abi: CatalogArtifact.abi, functionName: "entryOf", args: [pinId] }));
-}
-
-/** Arguments for Catalog.list from a Quote certificate. */
-export function catalogListArgs(pinId: Hex, cert: { tier: Tier | "Unsupported"; gas: { fullPath: string | null } }, uri = "") {
-  return [pinId, CATALOG_TIERS.indexOf(cert.tier), BigInt(cert.gas.fullPath ?? 0), uri] as const;
 }

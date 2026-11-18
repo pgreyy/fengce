@@ -143,7 +143,11 @@ Behaviour with a test behind it:
 | Agent calls go through the circuit; owners can revoke | `test/AgentExecutor.t.sol` |
 | ERC-7579 account (Safe7579) blocked over the limit, including batches | `test/FengceHook7579.t.sol` |
 | Stateful cap: second spend in a period denied, allowed after reset | `test/FengceTick.t.sol` |
-| Catalog entry matches the Quote certificate | Quote run (`forkCheck.catalogMatches`) |
+| Catalog listing runs its test vectors on-chain (a wrong vector reverts); tier measured on-chain; fee split | `test/FengceCatalog.t.sol` |
+| Catalog entry matches the Quote certificate (hash and tier) | Quote run (`forkCheck.catalog`) |
+| Swaps decoded (Uniswap V3): foreign recipient and over-cap amount denied, valid swap passes | `test/FengceDecoders.t.sol` |
+| ERC-7579 module changes timelocked on all four routes | `test/FengceSafe7579Admin.t.sol` |
+| Tick wired into the guard: agents capped, groups share one budget, failed executions roll back | `test/FengceTickGuard.t.sol` |
 
 ## Documentation
 

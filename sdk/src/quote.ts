@@ -16,7 +16,7 @@ import {
 } from "viem";
 import { XLAYER, processorAbi, proxyFactoryAbi, safeAbi } from "./abi.js";
 import { CatalogArtifact, FengceGuardArtifact, PinRegistryArtifact } from "./artifacts.js";
-import { catalogEntry, catalogListArgs } from "./catalog.js";
+import { catalogEntry } from "./catalog.js";
 import { type SchemaFile, encodeInputs, parseSchema, schemaHash } from "./schema.js";
 import { MIN_DELAYS } from "./install.js";
 import { parseRefs } from "./netlist.js";
@@ -307,16 +307,28 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
 
   // Cross-check: pin with this certificateHash on the fork and read back what PinRegistry stored.
   const r = await send({ address: registry.address, abi: registry.abi, functionName: "pin", args: [processor, circuitId, pad("0x", { size: 32 }), certHash] });
-  const pinId = r.logs.find((l) => l.address.toLowerCase() === registry.address.toLowerCase())!.topics[1] as Hex;
-  const stored: any = await fork.readContract({ address: registry.address, abi: registry.abi, functionName: "circuitPin", args: [pinId] });
-  // Catalog: list the pin with this certificate's tier and gas, read it back through the SDK reader.
-  const catalog = await deploy("Catalog", [registry.address]);
-  await send({ address: catalog.address, abi: catalog.abi, functionName: "list", args: catalogListArgs(pinId, cert) });
-  const entry = await catalogEntry(fork, catalog.address, pinId);
+  const pinIdCheck = r.logs.find((l) => l.address.toLowerCase() === registry.address.toLowerCase())!.topics[1] as Hex;
+  const stored: any = await fork.readContract({ address: registry.address, abi: registry.abi, functionName: "circuitPin", args: [pinIdCheck] });
+  // Catalog: list the pin with the probe as a test vector (run on-chain at listing), read it back through
+  // the SDK reader, and compare its certificate hash and tier with this certificate.
+  let catalogCheck: Record<string, unknown> = { skipped: "circuit has state; eval-based listing does not apply" };
+  if (root.nState === 0) {
+    const catalog = await deploy("Catalog", [registry.address, 30_000_000n, account]);
+    const out = (await fork.readContract({ address: guard.address, abi: guard.abi, functionName: "evaluate", args: [pinIdCheck, probeInput] })) as Hex;
+    const manifest = {
+      pinId: pinIdCheck, description: "", schemaHash: pad("0x", { size: 32 }), vectors: [{ input: probeInput, expectedOutput: out }],
+      designer: account, installFee: 0n, uri: "",
+    };
+    await send({ address: catalog.address, abi: catalog.abi, functionName: "list", args: [manifest] });
+    const entry = await catalogEntry(fork, catalog.address, pinIdCheck);
+    catalogCheck = {
+      certificateHash: entry.certificateHash, tier: entry.tier, measuredEvalGas: entry.measuredGas.toString(),
+      certificateHashMatches: entry.certificateHash === certHash, tierMatchesQuote: entry.tier === cert.tier,
+    };
+  }
   const check = {
-    catalogEntry: { certificateHash: entry.certificateHash, tier: entry.tier, gasFullPath: entry.gasFullPath.toString() },
-    catalogMatches: entry.certificateHash === certHash && entry.tier === cert.tier && entry.gasFullPath === BigInt(cert.gas.fullPath ?? 0),
-    pinIdOnFork: pinId,
+    catalog: catalogCheck,
+    pinIdOnFork: pinIdCheck,
     certificateHashStored: stored.certificateHash as Hex,
     refClosureHashStored: stored.refClosureHash as Hex,
     netlistHashStored: stored.netlistHash as Hex,

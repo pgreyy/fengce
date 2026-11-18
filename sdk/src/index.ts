@@ -37,5 +37,5 @@ export {
   FengceStrictHandlerArtifact,
   CatalogArtifact,
 } from "./artifacts.js";
-export { readCatalog, catalogEntry, catalogListArgs, CATALOG_TIERS, type CatalogEntry, type CatalogTier } from "./catalog.js";
+export { readCatalog, catalogEntry, CATALOG_TIERS, type CatalogEntry, type CatalogTier, type CatalogManifest, type CatalogVector } from "./catalog.js";
 export { XLAYER, processorAbi } from "./abi.js";
