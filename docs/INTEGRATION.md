@@ -201,6 +201,28 @@ group and is denied when the circuit denies; state resets to zero at each period
 `catalog.list(pinId, tier, gasFullPath, uri)` lists a pinned circuit with the certificate hash stored in its pin;
 `readCatalog` in the SDK returns all entries.
 
+## Accepting only bound accounts (FengceBinding)
+
+A protocol can require that a depositor is bound to a policy: a Safe whose transaction guard and module guard
+are the trusted FengceGuard, configured with a given pinned policy, with no change possible for a notice period.
+
+```solidity
+FengceBinding binding = new FengceBinding(guard);          // trusts exactly this guard deployment
+bytes32 policy = binding.policyHashOf(pinId);              // keccak256(netlistHash, refClosureHash, schemaHash)
+
+contract MyVault is BoundOnlyBase {
+    constructor(FengceBinding b, bytes32 policy) BoundOnlyBase(b, policy, 2 days) {}
+    function deposit() external payable onlyBound { /* ... */ }
+}
+```
+
+`binding.policyOf(account)` returns the pin, policy hash, closure and schema hashes, whether both guards are
+installed, whether the pin still holds, pending admin calls, recovery state, and `earliestChange`: the soonest
+time any guard, policy or admin change could execute (the shorter of the admin and recovery delays from now,
+or earlier if something is already scheduled). `isBound(account, policyHash, minNotice)` is true only if all of
+it holds and `earliestChange >= now + minNotice`. A Safe whose delays are shorter than `minNotice` is never bound.
+`src/binding/BoundVault.sol` is a complete example (minimum notice 1 day).
+
 ## Using the core without a Safe
 
 `src/core` has no Safe dependency. To evaluate a pinned circuit from your own contract, inherit `PolicyEngine`

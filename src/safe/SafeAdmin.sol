@@ -26,6 +26,11 @@ abstract contract SafeAdmin {
     mapping(address safe => uint256) public recoveryReadyAt;
     mapping(address safe => uint256) public recoveryExpiresAt;
     mapping(bytes32 id => uint256) public adminReadyAt;
+    /// @notice Number of scheduled, not yet executed or cancelled admin calls per Safe.
+    mapping(address safe => uint256) public pendingAdmins;
+    /// @notice Earliest ready time among admin calls scheduled since the Safe last had none pending.
+    /// A lower bound: it can be earlier than the earliest call still pending, never later.
+    mapping(address safe => uint256) public earliestPendingAdmin;
 
     /// @notice A Safe scheduled recovery (signed by all owners).
     /// @param safe The Safe
@@ -145,11 +150,15 @@ abstract contract SafeAdmin {
         if (adminReadyAt[id] != 0) revert AdminAlreadyScheduled(id);
         uint256 readyAt = block.timestamp + _adminDelay(msg.sender);
         adminReadyAt[id] = readyAt;
+        if (pendingAdmins[msg.sender]++ == 0 || readyAt < earliestPendingAdmin[msg.sender]) {
+            earliestPendingAdmin[msg.sender] = readyAt;
+        }
         emit AdminScheduled(msg.sender, id, target, data, readyAt);
     }
 
     function cancelAdmin(address target, bytes calldata data) external {
         bytes32 id = adminId(msg.sender, target, data);
+        if (adminReadyAt[id] != 0) _unpend(msg.sender);
         delete adminReadyAt[id];
         emit AdminCancelled(msg.sender, id);
     }
@@ -162,7 +171,12 @@ abstract contract SafeAdmin {
         uint256 r = adminReadyAt[id];
         if (r == 0 || block.timestamp < r) revert AdminNotReady(id);
         delete adminReadyAt[id];
+        _unpend(safe);
         emit AdminExecuted(safe, id);
+    }
+
+    function _unpend(address safe) private {
+        if (--pendingAdmins[safe] == 0) delete earliestPendingAdmin[safe];
     }
 
     /// @dev What may go through the timelock. Guard changes (setGuard / setModuleGuard to anything
