@@ -62,8 +62,22 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
     mapping(address safe => Config) internal _configs;
     mapping(address safe => mapping(address target => mapping(bytes4 selector => bool))) public allowlisted;
 
+    /// @notice A Safe set or changed its policy configuration.
+    /// @param safe The Safe
+    /// @param pinId Pinned circuit the policy evaluates
     event Configured(address indexed safe, bytes32 indexed pinId);
+    /// @notice A Safe changed an allowlist entry.
+    /// @param safe The Safe
+    /// @param target Contract called
+    /// @param selector Function selector
+    /// @param allowed New value
     event AllowlistSet(address indexed safe, address indexed target, bytes4 indexed selector, bool allowed);
+    /// @notice First configuration went ahead despite an existing approval (override flag set).
+    /// @param safe The Safe
+    /// @param kind ERC-20 allowance, Permit2 allowance or approval-for-all
+    /// @param token Token contract
+    /// @param spender Approved spender or operator
+    /// @param amount Approved amount (max for approval-for-all)
     event ExistingApprovalAccepted(
         address indexed safe, ApprovalScan.FindingKind kind, address token, address spender, uint256 amount
     );

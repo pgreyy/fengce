@@ -61,6 +61,15 @@ contract PinRegistry {
     mapping(bytes32 => CircuitPin) internal _circuits;
     mapping(bytes32 => ContractPin) internal _contracts;
 
+    /// @notice A circuit was pinned.
+    /// @param pinId Content-addressed pin id (chain, circuit, hashes, implementation)
+    /// @param processor Processor contract of the root circuit
+    /// @param circuitId Circuit id within the processor
+    /// @param netlistHash keccak256 of the root netlist
+    /// @param refClosureHash Hash of every circuit reached through REF, recursively
+    /// @param schemaHash Commitment to the input layout (Schema.hash)
+    /// @param certificateHash Commitment to the Quote certificate
+    /// @param pinner Address that called `pin`
     event CircuitPinned(
         bytes32 indexed pinId,
         address indexed processor,
@@ -71,6 +80,11 @@ contract PinRegistry {
         bytes32 certificateHash,
         address pinner
     );
+    /// @notice A plain contract was pinned.
+    /// @param pinId Content-addressed pin id
+    /// @param target Pinned contract
+    /// @param implementation Implementation read through the getter, or zero for a code-hash-only pin
+    /// @param pinner Address that called `pinContract`
     event ContractPinned(bytes32 indexed pinId, address indexed target, address implementation, address pinner);
 
     error PinExists(bytes32 pinId);

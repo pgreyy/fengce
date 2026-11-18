@@ -24,11 +24,33 @@ abstract contract SafeAdmin {
     mapping(address safe => uint256) public recoveryExpiresAt;
     mapping(bytes32 id => uint256) public adminReadyAt;
 
+    /// @notice A Safe scheduled recovery (signed by all owners).
+    /// @param safe The Safe
+    /// @param readyAt First timestamp at which a guard change is allowed
+    /// @param expiresAt Timestamp from which recovery has expired
     event RecoveryScheduled(address indexed safe, uint256 readyAt, uint256 expiresAt);
+    /// @notice A Safe cancelled its scheduled recovery.
+    /// @param safe The Safe
     event RecoveryCancelled(address indexed safe);
+    /// @notice A guard change went through under recovery.
+    /// @param safe The Safe
+    /// @param selector setGuard or setModuleGuard
+    /// @param newGuard The guard being installed (zero to remove)
     event RecoveryExecuted(address indexed safe, bytes4 indexed selector, address newGuard);
+    /// @notice A Safe scheduled a timelocked admin call.
+    /// @param safe The Safe
+    /// @param id Timelock entry id (adminId(safe, target, data))
+    /// @param target The Safe itself or this guard
+    /// @param data Full calldata of the scheduled call
+    /// @param readyAt First timestamp at which it can execute
     event AdminScheduled(address indexed safe, bytes32 indexed id, address target, bytes data, uint256 readyAt);
+    /// @notice A Safe cancelled a timelocked admin call.
+    /// @param safe The Safe
+    /// @param id Timelock entry id
     event AdminCancelled(address indexed safe, bytes32 indexed id);
+    /// @notice A timelocked admin call was let through (and consumed).
+    /// @param safe The Safe
+    /// @param id Timelock entry id
     event AdminExecuted(address indexed safe, bytes32 indexed id);
 
     error AdminNotAllowed(address target, bytes4 selector);
