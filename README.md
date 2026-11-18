@@ -11,7 +11,10 @@ It has three parts:
 |---|---|
 | `src/core` | Wallet-agnostic contracts and libraries: `PinRegistry` (approved circuits), `Schema` (strict typed input encoding), `PolicyEngine` (fail-closed evaluation), `TxFacts` (call decoding), `ApprovalScan`, `Netlist` |
 | `src/safe` | `FengceGuard`: a Safe v1.5.0 transaction guard and module guard sharing one policy path, with recovery, an admin timelock and a MultiSend decoder. `FengceSignatureVerifier` and `FengceStrictHandler`: the same policy for off-chain signed approvals |
-| `sdk/` | TypeScript: schema file format and encoder, Quote certificates (dependency tree, measured gas, budget tier), install calldata builder |
+| `src/erc7579` | `FengceHook`: the same policy as an ERC-7579 hook (tested on Safe7579) |
+| `src/core` (state and listing) | `Tick`: state host for stateful (LATCH) policies with per-period reset. `Catalog`: public list of pinned circuits with their certificate hash and tier |
+| `src/safe` (agents) | `AgentExecutor`: a Safe module that lets an agent key act only through the Fengce module guard |
+| `sdk/` | TypeScript: schema file format and encoder, Quote certificates (dependency tree, measured gas, budget tier), install calldata builder, Catalog reader |
 
 Status: version 0.1.0. Not deployed, not independently reviewed. All on-chain behaviour below is tested against
 X Layer mainnet state on local forks; no transaction has been sent.
@@ -135,6 +138,12 @@ Behaviour with a test behind it:
 | Recovery works while the circuit is broken; guard swaps need recovery; recovery expires; one of two owners cannot schedule it | `test/FengceGuard.t.sol`, `test/FengceBatchB.t.sol` |
 | Admin calls wait for the timelock | `test/FengceBatchB.t.sol` |
 | Approvals go through the policy; NFT approvals need the allowlist; preflight finds existing allowances | `test/FengceApprovals.t.sol`, `test/FengceBatchB.t.sol`, `test/unit/ApprovalScan.t.sol` |
+| Minimum delays enforced; configure refuses Safes with modules unless overridden | `test/FengceLimits.t.sol` |
+| Signed Permit2 / EIP-2612 approvals go through the policy; Strict mode refuses unknown domains | `test/FengceSignatures.t.sol` |
+| Agent calls go through the circuit; owners can revoke | `test/AgentExecutor.t.sol` |
+| ERC-7579 account (Safe7579) blocked over the limit, including batches | `test/FengceHook7579.t.sol` |
+| Stateful cap: second spend in a period denied, allowed after reset | `test/FengceTick.t.sol` |
+| Catalog entry matches the Quote certificate | Quote run (`forkCheck.catalogMatches`) |
 
 ## Documentation
 

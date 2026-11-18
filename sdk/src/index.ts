@@ -30,5 +30,12 @@ export {
   type InstallOptions,
   type SafeCall,
 } from "./install.js";
-export { PinRegistryArtifact, FengceGuardArtifact, FengceSignatureVerifierArtifact, FengceStrictHandlerArtifact } from "./artifacts.js";
+export {
+  PinRegistryArtifact,
+  FengceGuardArtifact,
+  FengceSignatureVerifierArtifact,
+  FengceStrictHandlerArtifact,
+  CatalogArtifact,
+} from "./artifacts.js";
+export { readCatalog, catalogEntry, catalogListArgs, CATALOG_TIERS, type CatalogEntry, type CatalogTier } from "./catalog.js";
 export { XLAYER, processorAbi } from "./abi.js";

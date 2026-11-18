@@ -102,6 +102,25 @@ unless the override flag is set. Approvals for tokens or spenders not listed are
 `setGuard` / `setModuleGuard` is not caught, so install in one batch (the SDK's `buildInstall` also refuses a
 Safe with modules). After install, enabling a module needs the admin timelock.
 
+### Agents, ERC-7579, Tick and Catalog
+
+- **AgentExecutor**: an agent key acts only through `execTransactionFromModule`, so the Safe's module guard
+  (Fengce) checks every call; the executor refuses to act if FengceGuard is not the module guard. Any single
+  owner can revoke an agent at once. Adding an agent needs an allowlisted Safe transaction
+  (`test/AgentExecutor.t.sol`).
+- **ERC-7579 (`FengceHook`)**: executions (`execute`, `executeFromExecutor`, single and batch) go through the
+  same policy; delegatecall and unknown modes are denied (`test/FengceHook7579.t.sol`, on Safe7579). Limits:
+  Safe7579 v1.0.0 does not run a hook when that same hook is being uninstalled, so on Safe7579 the hook's
+  uninstall delay never applies and whoever can authorise `uninstallModule` (validators, or the Safe itself)
+  can remove it at once. Installing or removing other modules is not checked by the hook.
+- **Tick**: state lives in the Tick contract per (account, pinId), resets to zero at each period boundary
+  (period index = floor(timestamp / period), Unix-epoch aligned), and advances only when the circuit allows,
+  with a nonce check (`test/FengceTick.t.sol`). Tick is a separate contract: an account (or a module acting for
+  it) must call it before acting; FengceGuard does not call Tick yet.
+- **Catalog**: entries carry the certificate hash from the pin; the tier and gas figures are the lister's
+  statement and are not verified on-chain. Readers should fetch the certificate and check its hash. Designer
+  revenue share is not implemented.
+
 ### Other limits
 
 - A dependency closure can contain at most 64 circuits (`PinRegistry.MAX_CLOSURE`).

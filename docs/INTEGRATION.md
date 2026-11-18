@@ -175,6 +175,30 @@ Also poll `PinRegistry.isPinned(pinId)`: once it is false, every guarded transac
 configuration points at a valid pin. Off-chain, watch the TapeOut factory's ERC-1967 implementation slot (see
 THREAT-MODEL.md).
 
+## Agents
+
+Deploy `AgentExecutor(guard)`, allowlist `(executor, addAgent)` before the first configuration, enable the
+executor as a module during install (before `setGuard`), then add agents with a Safe transaction
+`executor.addAgent(agent, expiresAt)`. Agents call `executor.execute(safe, to, value, data)`; each call is
+checked by the Safe's Fengce module guard. Any owner can call `executor.revokeAgent(safe, agent)`.
+
+## ERC-7579 accounts
+
+Install `FengceHook(registry, evalGasCap)` as a hook (module type 4) with init data
+`abi.encode(pinId, layout, bindings)` (on Safe7579, wrapped as `abi.encode(HookType.GLOBAL, bytes4(0), data)`).
+See THREAT-MODEL.md for the Safe7579 uninstall limit.
+
+## Stateful policies (Tick)
+
+For a circuit with LATCH state, the account calls `tick.configure(pinId, periodSeconds)` once and
+`tick.advance(pinId, input, expectedNonce)` before each action it wants to limit; `advance` reverts if the circuit
+denies. State is reset to zero at each period boundary.
+
+## Catalog
+
+`catalog.list(pinId, tier, gasFullPath, uri)` lists a pinned circuit with the certificate hash stored in its pin;
+`readCatalog` in the SDK returns all entries.
+
 ## Using the core without a Safe
 
 `src/core` has no Safe dependency. To evaluate a pinned circuit from your own contract, inherit `PolicyEngine`

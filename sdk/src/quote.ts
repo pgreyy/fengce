@@ -15,7 +15,8 @@ import {
   zeroAddress,
 } from "viem";
 import { XLAYER, processorAbi, proxyFactoryAbi, safeAbi } from "./abi.js";
-import { FengceGuardArtifact, PinRegistryArtifact } from "./artifacts.js";
+import { CatalogArtifact, FengceGuardArtifact, PinRegistryArtifact } from "./artifacts.js";
+import { catalogEntry, catalogListArgs } from "./catalog.js";
 import { type SchemaFile, encodeInputs, parseSchema, schemaHash } from "./schema.js";
 import { MIN_DELAYS } from "./install.js";
 import { parseRefs } from "./netlist.js";
@@ -212,8 +213,8 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
     if (r.status !== "success") throw new Error(`tx failed: ${req.functionName}`);
     return r;
   };
-  const deploy = async (name: "PinRegistry" | "FengceGuard", args: unknown[]) => {
-    const a = name === "PinRegistry" ? PinRegistryArtifact : FengceGuardArtifact;
+  const deploy = async (name: "PinRegistry" | "FengceGuard" | "Catalog", args: unknown[]) => {
+    const a = name === "PinRegistry" ? PinRegistryArtifact : name === "Catalog" ? CatalogArtifact : FengceGuardArtifact;
     const hash = await wallet.deployContract({ abi: a.abi as Abi, bytecode: a.bytecode, args: args as any, account, chain: null });
     const r = await fork.waitForTransactionReceipt({ hash });
     if (!r.contractAddress) throw new Error(`deploy failed: ${name}`);
@@ -308,7 +309,13 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
   const r = await send({ address: registry.address, abi: registry.abi, functionName: "pin", args: [processor, circuitId, pad("0x", { size: 32 }), certHash] });
   const pinId = r.logs.find((l) => l.address.toLowerCase() === registry.address.toLowerCase())!.topics[1] as Hex;
   const stored: any = await fork.readContract({ address: registry.address, abi: registry.abi, functionName: "circuitPin", args: [pinId] });
+  // Catalog: list the pin with this certificate's tier and gas, read it back through the SDK reader.
+  const catalog = await deploy("Catalog", [registry.address]);
+  await send({ address: catalog.address, abi: catalog.abi, functionName: "list", args: catalogListArgs(pinId, cert) });
+  const entry = await catalogEntry(fork, catalog.address, pinId);
   const check = {
+    catalogEntry: { certificateHash: entry.certificateHash, tier: entry.tier, gasFullPath: entry.gasFullPath.toString() },
+    catalogMatches: entry.certificateHash === certHash && entry.tier === cert.tier && entry.gasFullPath === BigInt(cert.gas.fullPath ?? 0),
     pinIdOnFork: pinId,
     certificateHashStored: stored.certificateHash as Hex,
     refClosureHashStored: stored.refClosureHash as Hex,
