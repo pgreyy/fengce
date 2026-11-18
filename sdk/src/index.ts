@@ -41,3 +41,4 @@ export {
 } from "./artifacts.js";
 export { readCatalog, catalogEntry, CATALOG_TIERS, type CatalogEntry, type CatalogTier, type CatalogManifest, type CatalogVector } from "./catalog.js";
 export { XLAYER, processorAbi } from "./abi.js";
+export { parseNetlist, loadCircuit, evaluateLocally, preSign, localFacts, type NetRecord, type LoadedCircuit } from "./evaluate.js";

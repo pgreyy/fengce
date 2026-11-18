@@ -73,8 +73,12 @@ contract FengceTickGuardForkTest is ForkBase {
         exec.execute(address(s), RECIP, 50, "");
         assertEq(RECIP.balance, 50);
         // Within the circuit's amount limit, but the group's one spend this period is used.
+        vm.expectEmit(address(exec));
+        emit AgentExecutor.Denied(
+            address(s), agent, RECIP, keccak256(abi.encode(RECIP, uint256(50), keccak256(""))),
+            abi.encodeWithSelector(Tick.TickDenied.selector, group, address(s))
+        );
         vm.prank(agent);
-        vm.expectRevert(abi.encodeWithSelector(Tick.TickDenied.selector, group, address(s)));
         exec.execute(address(s), RECIP, 50, "");
         // The owner path is capped by the same state.
         vm.expectRevert(abi.encodeWithSelector(Tick.TickDenied.selector, group, address(s)));

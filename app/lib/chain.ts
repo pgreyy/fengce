@@ -18,5 +18,8 @@ export const ADDR = {
   predictedGuard: "0x89c4716dAf60b6213c33D181b534b49eB57e2e67" as Address,
 };
 
+/** AgentExecutor contract whose Denied events are shown on Safe pages, if one is deployed (AGENT_EXECUTOR). */
+export const AGENT_EXECUTOR = (process.env.AGENT_EXECUTOR as Address | undefined) ?? null;
+
 /** Catalog contract, if one is deployed (CATALOG_ADDRESS). */
 export const CATALOG = (process.env.CATALOG_ADDRESS as Address | undefined) ?? null;

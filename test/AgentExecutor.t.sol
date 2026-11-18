@@ -32,10 +32,14 @@ contract AgentExecutorForkTest is ForkBase {
         exec.execute(address(safe), RECIP, 50, "");
         assertEq(RECIP.balance, 50);
 
+        // Over the limit: no revert, a Denied event with the guard's reason, and no funds move.
+        bytes memory reason = abi.encodeWithSelector(FengceGuard.FengceDenied.selector, address(safe), RECIP);
+        vm.expectEmit(address(exec));
+        emit AgentExecutor.Denied(address(safe), agent, RECIP, keccak256(abi.encode(RECIP, uint256(150), keccak256(""))), reason);
         vm.prank(agent);
-        vm.expectRevert(abi.encodeWithSelector(FengceGuard.FengceDenied.selector, address(safe), RECIP));
         exec.execute(address(safe), RECIP, 150, "");
         assertEq(RECIP.balance, 50);
+        assertEq(address(safe).balance, 1000 - 50);
     }
 
     function test_ownerRevokesAgent() public {

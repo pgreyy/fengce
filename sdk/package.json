@@ -42,7 +42,8 @@
     "test": "node --import tsx --test test/*.test.ts",
     "quote": "tsx src/cli/quote.ts",
     "sync-artifacts": "tsx scripts/sync-artifacts.ts",
-    "prepack": "npm run build && cp ../LICENSE ./LICENSE"
+    "prepack": "npm run build && cp ../LICENSE ./LICENSE",
+    "test:live": "tsx scripts/differential.ts"
   },
   "dependencies": {
     "viem": "^2.58.0"

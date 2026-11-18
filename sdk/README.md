@@ -57,6 +57,19 @@ whitespace). Certificates are not signed.
 Other exports: `parseRefs` (netlist REF records), `refClosure` (dependency closure hash, as PinRegistry computes
 it), `tierFor`, `PinRegistryArtifact` and `FengceGuardArtifact` (ABI and bytecode).
 
+## Local evaluation
+
+```ts
+import { evaluateLocally, preSign } from "@fengce/sdk";
+
+await evaluateLocally(client, processor, circuitId, "0x02");               // { output, newState }, from the on-chain netlist
+await preSign(client, { processor, circuitId, schema }, safe, { to, value, data }); // facts -> input -> "allow" | "deny"
+```
+
+The interpreter follows TAP-02 (NAND, LATCH with state, REF sub-circuits) on the netlist bytes read from chain.
+`scripts/differential.ts` compares it with on-chain `eval` on random inputs (`npm run test:live`).
+`preSign` covers native transfers, ERC-20 transfer and approve offline; use the app's simulator for other calls.
+
 ## Development
 
 | Command | What |

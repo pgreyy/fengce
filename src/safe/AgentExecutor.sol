@@ -5,8 +5,9 @@ import {ISafe} from "@safe/interfaces/ISafe.sol";
 import {Enum} from "@safe/libraries/Enum.sol";
 
 /// @title AgentExecutor
-/// @notice Safe module that lets an agent key (never an owner) act for a Safe, only through Fengce:
-/// every agent call goes through `execTransactionFromModule`, where the Safe's module guard (the
+/// @notice Safe module that lets an agent key (never an owner) act for a Safe, only through Fengce.
+/// A refused call does not revert: it emits `Denied` and executes nothing, so blocked attempts are visible.
+/// Every agent call goes through `execTransactionFromModule`, where the Safe's module guard (the
 /// FengceGuard this executor is bound to) runs the circuit. The executor refuses to act if that guard
 /// is not the Safe's module guard. Agents can only make plain calls (no delegatecall).
 ///
@@ -42,6 +43,14 @@ contract AgentExecutor {
     /// @param value Native value
     /// @param dataHash keccak256 of the calldata
     event AgentExecuted(address indexed safe, address indexed agent, address to, uint256 value, bytes32 dataHash);
+    /// @notice An agent call was refused by the Safe's guard (policy, Tick, floor or outcome check). Nothing
+    /// was executed; the agent's transaction succeeds so the attempt is on record.
+    /// @param safe The Safe
+    /// @param agent Agent key
+    /// @param target Call target
+    /// @param factsHash keccak256(abi.encode(target, value, keccak256(data))): the action the agent asked for
+    /// @param reason The guard's revert data (for example FengceDenied, TickDenied, FloorDenied)
+    event Denied(address indexed safe, address indexed agent, address target, bytes32 factsHash, bytes reason);
 
     error AgentNotAuthorised(address safe, address agent);
     error AgentExpired(address safe, address agent);
@@ -73,14 +82,24 @@ contract AgentExecutor {
         if (!a.active) revert AgentNotAuthorised(safe, msg.sender);
         if (a.expiresAt != 0 && block.timestamp >= a.expiresAt) revert AgentExpired(safe, msg.sender);
         _requireGuard(safe);
-        emit AgentExecuted(safe, msg.sender, to, value, keccak256(data));
-        (bool ok, bytes memory ret) =
-            ISafe(payable(safe)).execTransactionFromModuleReturnData(to, value, data, Enum.Operation.Call);
+        bool ok;
+        bytes memory ret;
+        try ISafe(payable(safe)).execTransactionFromModuleReturnData(to, value, data, Enum.Operation.Call) returns (
+            bool success, bytes memory returnData
+        ) {
+            (ok, ret) = (success, returnData);
+        } catch (bytes memory reason) {
+            // The module guard reverted: a policy denial. Record it instead of reverting.
+            emit Denied(safe, msg.sender, to, keccak256(abi.encode(to, value, keccak256(data))), reason);
+            return "";
+        }
         if (!ok) {
+            // The call itself failed after the guard allowed it.
             assembly {
                 revert(add(ret, 32), mload(ret))
             }
         }
+        emit AgentExecuted(safe, msg.sender, to, value, keccak256(data));
         return ret;
     }
 

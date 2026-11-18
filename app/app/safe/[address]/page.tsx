@@ -45,6 +45,15 @@ export default async function SafePage({ params }: { params: Promise<{ address: 
       )}
       <h2>Blocked attempts</h2>
       <p className="muted">{s.blockedAttempts}</p>
+      <h2>Denied agent calls (last {s.eventsWindowBlocks} blocks)</h2>
+      {!s.agentExecutor ? <p className="muted">No AgentExecutor configured (set AGENT_EXECUTOR).</p> : s.deniedAgentCalls.length === 0 ? <p className="muted">None in this window.</p> : (
+        <table>
+          <thead><tr><th>Block</th><th>Agent</th><th>Target</th><th>Reason</th><th>Facts hash</th><th>Transaction</th></tr></thead>
+          <tbody>{s.deniedAgentCalls.map((d: any, i: number) => (
+            <tr key={i}><td>{d.block}</td><td className="mono">{d.agent}</td><td className="mono">{d.target}</td><td className="deny mono">{d.reason}</td><td className="mono">{d.factsHash}</td><td className="mono">{d.tx}</td></tr>
+          ))}</tbody>
+        </table>
+      )}
     </>
   );
 }

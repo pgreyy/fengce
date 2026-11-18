@@ -26,7 +26,7 @@ import {
   toLayout,
   type SchemaFile,
 } from "@fengce/sdk";
-import { ADDR, CATALOG, client } from "./chain";
+import { ADDR, AGENT_EXECUTOR, CATALOG, client } from "./chain";
 import { PRESETS, presetFor, type PolicyPreset } from "./policies";
 
 const cpuAbi = parseAbi([
@@ -219,8 +219,30 @@ export async function safeStatus(safe: Address, lookback = 1_000n) {
       fengce = null; // the guard is not a FengceGuard
     }
   }
+  // Blocked agent attempts: AgentExecutor emits Denied instead of reverting.
+  const denied: unknown[] = [];
+  if (AGENT_EXECUTOR) {
+    const ev = parseAbiItem("event Denied(address indexed safe, address indexed agent, address target, bytes32 factsHash, bytes reason)");
+    const head = await client.getBlockNumber();
+    for (let to = head; to > head - lookback && to > 0n; to -= 100n) {
+      const from = to - 99n > 0n ? to - 99n : 0n;
+      const logs = await client.getLogs({ address: AGENT_EXECUTOR, event: ev, args: { safe }, fromBlock: from, toBlock: to });
+      for (const l of logs as any[]) {
+        let reason: string = l.args.reason;
+        try {
+          const d = decodeErrorResult({ abi: FengceGuardArtifact.abi as unknown as any[], data: l.args.reason });
+          reason = `${d.errorName}(${(d.args ?? []).map(String).join(", ")})`;
+        } catch {
+          /* keep raw */
+        }
+        denied.push({ block: l.blockNumber, tx: l.transactionHash, agent: l.args.agent, target: l.args.target, factsHash: l.args.factsHash, reason });
+      }
+    }
+  }
   return plain({
     safe: getAddress(safe),
+    agentExecutor: AGENT_EXECUTOR,
+    deniedAgentCalls: denied,
     version,
     owners,
     threshold,
@@ -233,7 +255,7 @@ export async function safeStatus(safe: Address, lookback = 1_000n) {
     events,
     eventsWindowBlocks: lookback,
     blockedAttempts:
-      "Not observable on chain: a transaction the guard blocks reverts, and a reverted transaction leaves no event. Use the Simulator to see why a transaction would be blocked.",
+      "Owner transactions the guard blocks revert and leave no event; use the Simulator to see why one would be blocked. Agent calls through AgentExecutor are recorded as Denied events (below).",
   });
 }
 
