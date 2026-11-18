@@ -1,0 +1,13 @@
+{
+  "format": "fengce-schema/1",
+  "netlistHash": "0x3f79ea6c551d8b2206c10b8a38e6c27ad3f7da332028c32e3c1a25dfe6f31c9f",
+  "nIn": 32,
+  "fields": [
+    { "name": "a", "kind": "uint", "offset": 0, "width": 16 },
+    { "name": "b", "kind": "uint", "offset": 16, "width": 16 }
+  ],
+  "bindings": [
+    { "field": "a", "source": "Value" },
+    { "field": "b", "source": "Amount" }
+  ]
+}

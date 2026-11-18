@@ -17,7 +17,7 @@ import {
 import { XLAYER, processorAbi, proxyFactoryAbi, safeAbi } from "./abi.js";
 import { CatalogArtifact, FengceGuardArtifact, FengceInspectorArtifact, PinRegistryArtifact } from "./artifacts.js";
 import { catalogEntry } from "./catalog.js";
-import { type SchemaFile, encodeInputs, parseSchema, schemaHash } from "./schema.js";
+import { BINDING_SOURCES, type SchemaFile, encodeInputs, parseSchema, schemaHash, toLayout } from "./schema.js";
 import { MIN_DELAYS } from "./install.js";
 import { parseRefs } from "./netlist.js";
 import { TIERS, type Tier, tierFor } from "./tiers.js";
@@ -210,12 +210,31 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
   let probeInput: Hex = toHex(new Uint8Array(inLen));
   let probeSource: Certificate["gas"]["probeSource"] = "zero";
   let probeSchemaHash: Hex | null = null;
+  // With a schema that has bindings, Quote measures that exact schema: the guard is configured with its layout and
+  // bindings, and the probe is a native transfer whose value produces the given field values. Only the Value and
+  // Amount sources are supported (for a native transfer both equal the value), and all bound values must be equal.
+  let realProbe: { layout: ReturnType<typeof toLayout>; bindings: { source: number; param: bigint }[]; schemaHash: Hex; txValue: bigint } | null = null;
   if (opts.schema) {
     const sch = parseSchema(opts.schema);
     if (sch.netlistHash !== root.netlistHash || sch.nIn !== root.nIn) throw new Error("schema is bound to a different circuit (netlistHash or nIn differs)");
     probeInput = encodeInputs(sch, opts.values ?? {});
     probeSource = "schema";
     probeSchemaHash = schemaHash(sch);
+    if (sch.bindings) {
+      const order = sch.fields.filter((f) => f.kind !== "flag").map((f) => f.name);
+      const bound = order.map((name) => sch.bindings!.find((b) => b.field === name)!);
+      if (bound.some((b) => b.source !== "Value" && b.source !== "Amount")) {
+        throw new Error("a schema measured on the full path may bind fields only to Value or Amount (a native transfer carries them)");
+      }
+      const vals = new Set(order.map((n) => BigInt((opts.values ?? {})[n] as any)));
+      if (vals.size !== 1) throw new Error("all bound field values must be equal (they all come from the transfer value)");
+      realProbe = {
+        layout: toLayout(sch),
+        bindings: bound.map((b) => ({ source: BINDING_SOURCES.indexOf(b.source), param: BigInt(b.param ?? 0) })),
+        schemaHash: probeSchemaHash,
+        txValue: [...vals][0],
+      };
+    }
   } else if (opts.input) {
     const b = Buffer.from(opts.input.slice(2), "hex");
     if (b.length !== inLen) throw new Error(`input must be exactly ${inLen} byte(s) for nIn ${root.nIn}`);
@@ -245,7 +264,7 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
 
   let gas: Certificate["gas"] = {
     method: "eth_estimateGas",
-    path: "full Safe path: Safe v1.5.0 execTransaction (native transfer of 0) -> FengceGuard pre-check (PinRegistry.isPinned -> eval of the probe input) -> execution -> FengceInspector outcome check (snapshot, verify, eval)",
+    path: "full Safe path: Safe v1.5.0 execTransaction (native transfer carrying the probe) -> FengceGuard pre-check (PinRegistry.isPinned -> eval of the probe input) -> execution -> FengceInspector outcome check (snapshot, verify, eval)",
     probeInput,
     probeSource,
     probeSchemaHash,
@@ -269,18 +288,19 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
     gas.evalCall = (await fork.estimateContractGas({ address: processor, abi: processorAbi, functionName: "eval", args: [circuitId, probeInput], account })).toString();
 
     // Probe pin (certificateHash 0); Safes owned by the anvil account.
-    const p = probeLayout(root.netlistHash, root.nIn, probeInput);
+    const p = realProbe ?? { ...probeLayout(root.netlistHash, root.nIn, probeInput), txValue: 0n };
     const pinR = await send({ address: registry.address, abi: registry.abi, functionName: "pin", args: [processor, circuitId, p.schemaHash, pad("0x", { size: 32 })] });
     const pinId = pinR.logs.find((l) => l.address.toLowerCase() === registry.address.toLowerCase())!.topics[1] as Hex;
 
     const sig = concat([pad(account, { size: 32 }), pad("0x", { size: 32 }), "0x01"]);
-    const execArgs = (to: Address, data: Hex) => [to, 0n, data, 0, 0n, 0n, 0n, zeroAddress, zeroAddress, sig] as const;
+    const execArgs = (to: Address, data: Hex, value = 0n) => [to, value, data, 0, 0n, 0n, 0n, zeroAddress, zeroAddress, sig] as const;
     const recipient = getAddress("0x00000000000000000000000000000000000f3c3e");
     const newSafe = async (tag: string) => {
       const init = encodeFunctionData({ abi: safeAbi, functionName: "setup", args: [[account], 1n, zeroAddress, "0x", XLAYER.fallbackHandler, zeroAddress, 0n, zeroAddress] });
       const salt = BigInt(keccak256(toHex(`fengce-quote-${processor}-${circuitId}-${block}-${tag}`)));
       const sim = await fork.simulateContract({ address: XLAYER.safeProxyFactory, abi: proxyFactoryAbi, functionName: "createProxyWithNonce", args: [XLAYER.safeL2, init, salt], account });
       await send({ address: XLAYER.safeProxyFactory, abi: proxyFactoryAbi, functionName: "createProxyWithNonce", args: [XLAYER.safeL2, init, salt] });
+      await fork.request({ method: "anvil_setBalance", params: [sim.result, toHex(p.txValue + 10n ** 18n)] } as any);
       return sim.result as Address;
     };
     const cfg = {
@@ -290,7 +310,7 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
     const setGuardAbi = [{ type: "function", name: "setGuard", inputs: [{ name: "g", type: "address" }], outputs: [], stateMutability: "nonpayable" }] as const;
     const install = async (safe: Address, withInspector: boolean) => {
       if (withInspector) {
-        // The Inspector watches native currency (the probe is a native transfer of 0).
+        // The Inspector watches native currency (the probe is a native transfer).
         const watch = encodeAbiParameters([{ type: "address[]" }, { type: "address[]" }], [[zeroAddress], []]);
         await send({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(guard.address, encodeFunctionData({ abi: guard.abi, functionName: "configureInspector", args: [inspector.address, watch] })) });
       }
@@ -298,13 +318,13 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
       await send({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(safe, encodeFunctionData({ abi: setGuardAbi, functionName: "setGuard", args: [guard.address] })) });
     };
     const estimate = async (safe: Address) =>
-      fork.estimateContractGas({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(recipient, "0x"), account });
+      fork.estimateContractGas({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(recipient, "0x", p.txValue), account });
 
     // Three measurements of the same transfer: no guard; guard pre-check only; pre-check + outcome check.
     const safeA = await newSafe("pre");
     const overhead = await estimate(safeA);
     gas.safeOverhead = overhead.toString();
-    const fullPathPossible = root.nIn <= 256 || inputToInt(probeInput) === 0n;
+    const fullPathPossible = realProbe !== null || root.nIn <= 256 || inputToInt(probeInput) === 0n;
     try {
       if (!fullPathPossible) throw new Error("wide input");
       await install(safeA, false);

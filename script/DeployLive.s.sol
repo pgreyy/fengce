@@ -89,6 +89,7 @@ contract DeployLive is Script {
     Schema.Layout nandLayout;
     address demoSafe;
     address demoAgent;
+    address treasury;
     string[] log;
 
     function run() external {
@@ -134,7 +135,10 @@ contract DeployLive is Script {
         _d("FengceStrictHandler", type(FengceStrictHandler).creationCode, "");
         agentExec = AgentExecutor(_d("AgentExecutor", type(AgentExecutor).creationCode, abi.encode(guard)));
         _d("Tick", type(Tick).creationCode, abi.encode(reg, uint256(1_000_000)));
-        catalog = Catalog(_d("Catalog", type(Catalog).creationCode, abi.encode(reg, CAP, deployer)));
+        // Catalog treasury: a Safe 1.5.0 owned by the deployer (threshold 1), created first so it can be the
+        // Catalog's fixed treasury.
+        treasury = _ensureSafe("treasury");
+        catalog = Catalog(_d("Catalog", type(Catalog).creationCode, abi.encode(reg, CAP, treasury)));
         _d("UniswapV3RouterDecoder", type(UniswapV3RouterDecoder).creationCode, "");
         _d("UniswapV2RouterDecoder", type(UniswapV2RouterDecoder).creationCode, "");
         _d("AaveV3PoolDecoder", type(AaveV3PoolDecoder).creationCode, "");
@@ -295,14 +299,28 @@ contract DeployLive is Script {
 
     // ================================================================== demo Safe
 
-    function _demoInit() internal view returns (bytes memory init, uint256 saltNonce, address predicted) {
+    /// @dev A Safe 1.5.0 owned by the deployer (threshold 1) with salt "fengce.<tag>.<VERSION>".
+    function _safeInit(string memory tag) internal view returns (bytes memory init, uint256 saltNonce, address predicted) {
         address[] memory owners = new address[](1);
         owners[0] = deployer;
         init = abi.encodeCall(ISafe.setup, (owners, 1, address(0), "", FALLBACK, address(0), 0, payable(address(0))));
-        saltNonce = uint256(keccak256(abi.encodePacked("fengce.demo.", VERSION)));
+        saltNonce = uint256(keccak256(abi.encodePacked("fengce.", tag, ".", VERSION)));
         bytes32 salt = keccak256(abi.encodePacked(keccak256(init), saltNonce));
         bytes memory code = abi.encodePacked(IProxyFactoryLive(SAFE_FACTORY).proxyCreationCode(), uint256(uint160(SAFE_L2)));
         predicted = vm.computeCreate2Address(salt, keccak256(code), SAFE_FACTORY);
+    }
+
+    /// @dev Creates the Safe unless it already exists; returns its address.
+    function _ensureSafe(string memory tag) internal returns (address safe) {
+        (bytes memory init, uint256 saltNonce, address predicted) = _safeInit(tag);
+        if (predicted.code.length == 0) {
+            safe = IProxyFactoryLive(SAFE_FACTORY).createProxyWithNonce(SAFE_L2, init, saltNonce);
+            require(safe == predicted, string.concat("Safe address mismatch: ", tag));
+            console2.log("created Safe", tag, safe);
+        } else {
+            console2.log("Safe exists", tag, predicted);
+        }
+        return predicted;
     }
 
     function _exec(address to, bytes memory data) internal {
@@ -315,17 +333,12 @@ contract DeployLive is Script {
     }
 
     function _demo() internal {
-        (bytes memory init, uint256 saltNonce, address predicted) = _demoInit();
-        bool exists = predicted.code.length != 0;
-        if (!exists && IERC20Live(USDT0).balanceOf(deployer) < DEMO_FUNDING) {
+        (,, address predicted) = _safeInit("demo");
+        if (predicted.code.length == 0 && IERC20Live(USDT0).balanceOf(deployer) < DEMO_FUNDING) {
             console2.log("Deployer holds less than 2 USDT0 and no demo Safe exists: demo skipped");
             return;
         }
-        if (!exists) {
-            demoSafe = IProxyFactoryLive(SAFE_FACTORY).createProxyWithNonce(SAFE_L2, init, saltNonce);
-            require(demoSafe == predicted, "demo Safe address mismatch");
-        }
-        demoSafe = predicted;
+        demoSafe = _ensureSafe("demo");
         (bool configured,,,,,,) = guard.configOf(demoSafe);
         bool guarded = _slot(GUARD_SLOT) == address(guard);
 
@@ -382,6 +395,7 @@ contract DeployLive is Script {
         vm.serializeAddress(root, "deployer", deployer);
         vm.serializeAddress(root, "demoSafe", demoSafe);
         vm.serializeAddress(root, "demoAgent", demoAgent);
+        vm.serializeAddress(root, "treasurySafe", treasury);
         vm.serializeString(root, "pins", pinsJson);
         string memory out = vm.serializeString(root, "contracts", contractsJson);
         vm.writeJson(out, "deployments/xlayer-196.json");
@@ -458,6 +472,9 @@ contract DeployLive is Script {
         vm.serializeAddress(k, "FengceBinding.guard", address(binding.guard()));
         vm.serializeAddress(k, "AgentExecutor.guard", agentExec.guard());
         vm.serializeAddress(k, "Catalog.treasury", catalog.treasury());
+        vm.serializeString(k, "Catalog.treasuryIs", "treasury Safe 1.5.0 (salt fengce.treasury.<version>), owner deployer, threshold 1");
+        vm.serializeAddress(k, "treasurySafe.owners", ISafe(payable(treasury)).getOwners());
+        vm.serializeUint(k, "treasurySafe.threshold", ISafe(payable(treasury)).getThreshold());
         vm.serializeUint(k, "Catalog.DESIGNER_BPS", catalog.DESIGNER_BPS());
         vm.serializeAddress(k, "Catalog.seedListerAndDesigner", deployer);
         vm.serializeBytes32(k, "BoundVault.requiredPolicy", vault.requiredPolicy());
