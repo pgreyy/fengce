@@ -29,22 +29,35 @@ inside MultiSend batches.
 | Module path covered | The same policy runs as the Safe's module guard; modules cannot reach admin functions, recovery or the timelock | `test/FengceGuard.t.sol` |
 | Batches covered | Delegatecall only to MultiSendCallOnly v1.5.0, decoded strictly; every inner call is checked; inner calls to the Safe or the guard are denied | `test/FengceGuard.t.sol` |
 | Approvals covered | `approve`, `increaseAllowance` (as the new total), Permit2 `approve` go through the policy; ERC-721 `approve` and `setApprovalForAll(true)` also need the allowlist | `test/FengceApprovals.t.sol`, `test/FengceBatchB.t.sol` |
+| Signed approvals covered | Permit2 `PermitSingle` / `PermitBatch` and EIP-2612 `Permit` signatures go through the policy; Strict mode refuses unknown domains | `test/FengceSignatures.t.sol` |
 | Unknown calls denied | Only recognised calls and allowlisted (contract, function) pairs reach the circuit | `test/FengceApprovals.t.sol` |
 | A broken circuit cannot lock the Safe | Recovery is checked before any circuit or registry call | `test/FengceGuard.t.sol` |
 
 ## Known limits and open issues
 
-### Off-chain signatures (open)
+### Off-chain signatures
 
-Safe owners can sign messages that move assets without any Safe transaction:
+Safe owners can sign messages that move assets without any Safe transaction (EIP-2612 `permit`, Permit2
+`permit`, other EIP-1271 messages). Fengce covers this with two pieces (`test/FengceSignatures.t.sol`):
 
-- EIP-2612 `permit` and Permit2 `permit` signatures, validated through the Safe's EIP-1271 `isValidSignature`
-  (the fallback handler) or by the owners' keys where the token supports it;
-- other EIP-1271 messages accepted by protocols on the Safe's behalf.
+- **FengceSignatureVerifier**, registered on the Safe's fallback handler as the verifier for the Permit2 domain
+  and for EIP-2612 token domains. It decodes Permit2 `PermitSingle` / `PermitBatch` and EIP-2612 `Permit` into
+  approval facts, runs them through the Safe's policy (the same circuit and schema as transactions), and only
+  then checks the owners' signatures. Other message types on those domains are rejected.
+- **Strict Signatures mode**: `FengceStrictHandler` as the fallback handler. It is Safe's ExtensibleFallbackHandler
+  without the default path, so a signature on a domain with no registered verifier, a plain owner signature or
+  an approved hash is refused.
 
-The guard only sees transactions, so these bypass the policy. A verifier on Safe's ExtensibleFallbackHandler
-that applies the policy to Permit/Permit2 typed data, and an opt-in mode that refuses other off-chain signatures,
-are planned but not built. Until then, treat off-chain signing by owners as outside the policy.
+With FengceGuard installed, changing the fallback handler or a domain verifier needs the admin timelock.
+
+Remaining limits:
+
+- With Safe's stock ExtensibleFallbackHandler (not strict), domains without a verifier still fall back to plain
+  owner signatures and bypass the policy. Only Strict mode closes that.
+- Strict mode breaks dApps that rely on plain off-chain Safe signatures (sign-in, off-chain orders).
+- Permit variants other than EIP-2612 `Permit` (for example DAI-style permits) and Permit2 signature-transfer
+  types are rejected, not policed.
+- The legacy `isValidSignature(bytes,bytes)` is not provided by the strict handler.
 
 ### Owner override
 

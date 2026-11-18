@@ -84,8 +84,19 @@ abstract contract ForkBase is Test {
     }
 
     function _newSafe(address[] memory owners, uint256 threshold) internal returns (ISafe s) {
+        return _newSafe(owners, threshold, FALLBACK);
+    }
+
+    /// One owner (this contract) and a chosen fallback handler.
+    function _newSafeWithHandler(address handler) internal returns (ISafe) {
+        address[] memory owners = new address[](1);
+        owners[0] = address(this);
+        return _newSafe(owners, 1, handler);
+    }
+
+    function _newSafe(address[] memory owners, uint256 threshold, address handler) internal returns (ISafe s) {
         bytes memory init = abi.encodeCall(
-            ISafe.setup, (owners, threshold, address(0), "", FALLBACK, address(0), 0, payable(address(0)))
+            ISafe.setup, (owners, threshold, address(0), "", handler, address(0), 0, payable(address(0)))
         );
         s = ISafe(payable(SAFE_FACTORY.createProxyWithNonce(SAFE_L2, init, uint256(keccak256(abi.encode("fengce", salt++))))));
         vm.deal(address(s), 1000);

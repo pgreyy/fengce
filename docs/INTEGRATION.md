@@ -108,6 +108,24 @@ you wait when you need to change something. Minimums are enforced on-chain: admi
 2 days, recovery window 1 day. `configure` also reverts if the Safe has modules enabled, unless
 `acceptExistingModules` is set (it then emits `ExistingModuleAccepted` per module).
 
+### Off-chain signatures (recommended)
+
+Deploy `FengceSignatureVerifier(guard)` (and `FengceStrictHandler` for Strict mode), then let `buildInstall` add
+the handler and domain verifiers before the guard:
+
+```ts
+import { buildInstall, domainSeparatorOf, PERMIT2 } from "@fengce/sdk";
+
+signatures: {
+  handler: strictHandler,          // or EXTENSIBLE_FALLBACK_HANDLER to keep Safe's default path
+  verifier,
+  domains: [await domainSeparatorOf(client, PERMIT2), await domainSeparatorOf(client, usdt0)],
+}
+```
+
+Signers then wrap Permit2 / EIP-2612 permits in the verifier format described in
+`src/safe/FengceSignatureVerifier.sol`; the verifier applies the Safe's policy before checking owner signatures.
+
 ## 6. Operate
 
 Transactions go through the Safe as usual. The guard decodes each call (see the README for the recognised

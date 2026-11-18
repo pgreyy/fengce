@@ -44,3 +44,25 @@ test("buildInstall builds configure, setGuard, setModuleGuard in order, plus a M
   const ms = decodeFunctionData({ abi: parseAbi(["function multiSend(bytes)"]), data: multiSend.data });
   assert.ok((ms.args[0] as string).includes(calls[0].data.slice(2)));
 });
+
+test("buildInstall adds the fallback handler and one domain verifier per domain before the guard", async () => {
+  const handler = "0x4444444444444444444444444444444444444444";
+  const verifier = "0x5555555555555555555555555555555555555555";
+  const d1 = `0x${"01".repeat(32)}` as const;
+  const d2 = `0x${"02".repeat(32)}` as const;
+  const { calls } = await buildInstall(client([]), { ...opts, signatures: { handler, verifier, domains: [d1, d2] } });
+  assert.deepEqual(
+    calls.map((c) => c.data.slice(0, 10)),
+    [
+      toFunctionSelector("configure((bytes32,(bytes32,uint32,(uint8,uint32,uint32,uint256)[]),(uint8,uint256)[],uint64,uint64,uint64,address[],address[],bool,bool))"),
+      toFunctionSelector("setFallbackHandler(address)"),
+      toFunctionSelector("setDomainVerifier(bytes32,address)"),
+      toFunctionSelector("setDomainVerifier(bytes32,address)"),
+      toFunctionSelector("setGuard(address)"),
+      toFunctionSelector("setModuleGuard(address)"),
+    ],
+  );
+  assert.ok(calls[2].data.includes(d1.slice(2)) && calls[3].data.includes(d2.slice(2)));
+  assert.ok(calls[2].data.endsWith(verifier.slice(2)) && calls[1].data.endsWith(handler.slice(2)));
+  await assert.rejects(buildInstall(client([]), { ...opts, signatures: { handler, verifier, domains: [] } }), /domains is empty/);
+});

@@ -5,6 +5,9 @@ import {IGuardManager} from "@safe/interfaces/IGuardManager.sol";
 import {IModuleManager} from "@safe/interfaces/IModuleManager.sol";
 import {IOwnerManager} from "@safe/interfaces/IOwnerManager.sol";
 import {IFallbackManager} from "@safe/interfaces/IFallbackManager.sol";
+import {ISignatureVerifierMuxer} from "@safe/handler/extensible/SignatureVerifierMuxer.sol";
+import {IFallbackHandler} from "@safe/handler/extensible/FallbackHandler.sol";
+import {IERC165Handler} from "@safe/handler/extensible/ERC165Handler.sol";
 
 /// @title SafeAdmin
 /// @notice Recovery and admin timelock state for FengceGuard. Every function here is called by the
@@ -138,6 +141,12 @@ abstract contract SafeAdmin {
         return sel == IModuleManager.enableModule.selector || sel == IModuleManager.disableModule.selector
             || sel == IOwnerManager.addOwnerWithThreshold.selector || sel == IOwnerManager.removeOwner.selector
             || sel == IOwnerManager.swapOwner.selector || sel == IOwnerManager.changeThreshold.selector
-            || sel == IFallbackManager.setFallbackHandler.selector;
+            || sel == IFallbackManager.setFallbackHandler.selector
+            // Settings of an extensible fallback handler (Safe self-calls forwarded to the handler):
+            // which verifier checks which signature domain, custom methods, ERC-165 answers.
+            || sel == ISignatureVerifierMuxer.setDomainVerifier.selector || sel == IFallbackHandler.setSafeMethod.selector
+            || sel == IERC165Handler.setSupportedInterface.selector
+            || sel == IERC165Handler.addSupportedInterfaceBatch.selector
+            || sel == IERC165Handler.removeSupportedInterfaceBatch.selector;
     }
 }

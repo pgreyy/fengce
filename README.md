@@ -10,7 +10,7 @@ It has three parts:
 | Part | What it does |
 |---|---|
 | `src/core` | Wallet-agnostic contracts and libraries: `PinRegistry` (approved circuits), `Schema` (strict typed input encoding), `PolicyEngine` (fail-closed evaluation), `TxFacts` (call decoding), `ApprovalScan`, `Netlist` |
-| `src/safe` | `FengceGuard`: a Safe v1.5.0 transaction guard and module guard sharing one policy path, with recovery, an admin timelock and a MultiSend decoder |
+| `src/safe` | `FengceGuard`: a Safe v1.5.0 transaction guard and module guard sharing one policy path, with recovery, an admin timelock and a MultiSend decoder. `FengceSignatureVerifier` and `FengceStrictHandler`: the same policy for off-chain signed approvals |
 | `sdk/` | TypeScript: schema file format and encoder, Quote certificates (dependency tree, measured gas, budget tier), install calldata builder |
 
 Status: version 0.1.0. Not deployed, not independently reviewed. All on-chain behaviour below is tested against
@@ -26,8 +26,9 @@ delay they chose. Fengce makes overrides slow and visible, not impossible.
 
 **Not covered** (details in [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md)):
 
-- Off-chain signatures. An owner-signed `permit`, Permit2 signature or EIP-1271 message lets tokens move with no
-  Safe transaction, so the guard never sees it.
+- Off-chain signatures, unless the Safe uses the Fengce signature verifier. With it, Permit2 and EIP-2612
+  permits go through the policy; with Strict Signatures mode (`FengceStrictHandler`), signatures on any other
+  domain are refused. Without Strict mode, other domains still accept plain owner signatures.
 - Approvals granted before install, beyond the tokens and spenders the install preflight was asked to check.
 - Upgrades of the TapeOut processor factory's own implementation (a contract cannot read it).
 - Quote certificates are not signed; their hash is only a commitment.

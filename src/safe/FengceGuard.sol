@@ -319,10 +319,21 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         Config storage c = _configs[safe];
         if (!c.set) revert FengceNotConfigured(safe);
         bool listed = allowlisted[safe][to][TxFacts.selectorOf(data)];
-        TxFacts.Facts memory f = TxFacts.decode(safe, to, value, data, listed);
+        _policy(safe, c, TxFacts.decode(safe, to, value, data, listed), to);
+    }
+
+    function _policy(address safe, Config storage c, TxFacts.Facts memory f, address to) private view {
         Schema.Layout memory l = Schema.Layout(c.netlistHash, c.nIn, c.fields);
         bytes memory out = _evaluate(c.pinId, Schema.encode(l, TxFacts.values(f, c.bindings)));
         if (uint8(out[0]) & 1 != 1) revert FengceDenied(safe, to);
+    }
+
+    /// @notice Runs `safe`'s policy on already decoded facts and reverts unless the circuit allows
+    /// them. Used by FengceSignatureVerifier for off-chain approvals (Permit2, EIP-2612). View only.
+    function checkFacts(address safe, TxFacts.Facts calldata f) external view {
+        Config storage c = _configs[safe];
+        if (!c.set) revert FengceNotConfigured(safe);
+        _policy(safe, c, f, f.to);
     }
 
     // ------------------------------------------------------------------ signatures

@@ -16,6 +16,19 @@ export {
   type FieldKind,
   type Layout,
 } from "./schema.js";
-export { buildInstall, configInput, enabledModules, toMultiSend, InstallError, MULTI_SEND_CALL_ONLY, type InstallOptions, type SafeCall } from "./install.js";
-export { PinRegistryArtifact, FengceGuardArtifact } from "./artifacts.js";
+export {
+  buildInstall,
+  configInput,
+  enabledModules,
+  toMultiSend,
+  domainSeparatorOf,
+  InstallError,
+  MIN_DELAYS,
+  MULTI_SEND_CALL_ONLY,
+  EXTENSIBLE_FALLBACK_HANDLER,
+  PERMIT2,
+  type InstallOptions,
+  type SafeCall,
+} from "./install.js";
+export { PinRegistryArtifact, FengceGuardArtifact, FengceSignatureVerifierArtifact, FengceStrictHandlerArtifact } from "./artifacts.js";
 export { XLAYER, processorAbi } from "./abi.js";
