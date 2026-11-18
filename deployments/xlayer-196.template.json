@@ -1,0 +1,28 @@
+{
+  "network": "X Layer mainnet",
+  "chainId": 196,
+  "status": "not deployed",
+  "sourceCommit": null,
+  "compiler": { "solc": "0.8.28", "evmVersion": "cancun", "optimizerRuns": 200 },
+  "create2Deployer": "0x4e59b44847b379578588920cA78FbF26c0B4956C",
+  "contracts": {
+    "PinRegistry": {
+      "address": null,
+      "salt": "0xa2116b4862eed7e05f744241dcec52562b56aac328081a048da5cf76da3f4407",
+      "initCodeHash": null,
+      "constructorArgs": { "factory": "0x1f09DAeFA827f02CBb40967cc91b259763760761" },
+      "deployTx": null,
+      "block": null,
+      "explorerVerified": false
+    },
+    "FengceGuard": {
+      "address": null,
+      "salt": "0x96039320ad2d785fb28b69ce80570adc692ece2672793f67090441f53fda72c0",
+      "initCodeHash": null,
+      "constructorArgs": { "registry": null, "evalGasCap": 2000000 },
+      "deployTx": null,
+      "block": null,
+      "explorerVerified": false
+    }
+  }
+}

@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+env:
+  FOUNDRY_VERSION: v1.9.0 # solc is pinned in foundry.toml (0.8.28)
+
+jobs:
+  contracts-unit:
+    name: Contracts (build, unit and fuzz tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+      - run: forge --version
+      - run: forge build --sizes
+      - run: forge test --match-path 'test/unit/*.t.sol' -vv
+
+  contracts-fork:
+    name: Contracts (fork tests on X Layer)
+    runs-on: ubuntu-latest
+    env:
+      XLAYER_RPC_URL: ${{ secrets.XLAYER_RPC_URL }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: ${{ env.FOUNDRY_VERSION }}
+      - name: Skip notice
+        if: env.XLAYER_RPC_URL == ''
+        run: echo "XLAYER_RPC_URL secret is not set; fork tests skipped."
+      - name: Point the xlayer RPC alias at the secret
+        if: env.XLAYER_RPC_URL != ''
+        run: sed -i "s#^xlayer = .*#xlayer = \"${XLAYER_RPC_URL}\"#" foundry.toml
+      - name: Fork tests (core and Safe guard)
+        if: env.XLAYER_RPC_URL != ''
+        run: forge test --match-path 'test/{PinNand,FengceGuard,FengceBatchB,FengceApprovals}.t.sol' -vv
+      - name: Fork tests (REF closure)
+        if: env.XLAYER_RPC_URL != ''
+        run: forge test --match-path 'test/fork/*.t.sol' -vv
+      - name: Deploy simulation (never broadcasts)
+        if: env.XLAYER_RPC_URL != ''
+        run: forge script script/Deploy.s.sol --rpc-url xlayer
+
+  sdk:
+    name: SDK (typecheck, unit tests, build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sdk
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: sdk/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
