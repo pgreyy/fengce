@@ -1,0 +1,256 @@
+// SPDX-License-Identifier: MIT
+pragma solidity 0.8.28;
+
+import {ITransactionGuard} from "@safe/base/GuardManager.sol";
+import {IModuleGuard} from "@safe/base/ModuleManager.sol";
+import {IGuardManager} from "@safe/interfaces/IGuardManager.sol";
+import {IModuleManager} from "@safe/interfaces/IModuleManager.sol";
+import {IERC165} from "@safe/interfaces/IERC165.sol";
+import {ISafe} from "@safe/interfaces/ISafe.sol";
+import {Enum} from "@safe/libraries/Enum.sol";
+
+import {PinRegistry} from "../core/PinRegistry.sol";
+import {PolicyEngine} from "../core/PolicyEngine.sol";
+import {Schema} from "../core/Schema.sol";
+import {TxFacts} from "../core/TxFacts.sol";
+import {SafeAdmin} from "./SafeAdmin.sol";
+import {MultiSendDecoder} from "./MultiSendDecoder.sol";
+
+/// @title FengceGuard
+/// @notice Safe v1.5.0 transaction guard and module guard that run every outgoing call through a
+/// pinned TapeOut circuit. One policy path serves both guards. A call is allowed only if the
+/// circuit's output bit 0 is 1; every error denies.
+///
+/// Order of checks for a Safe transaction:
+/// 1. Delegatecall: only to MultiSendCallOnly 1.5.0; every inner call is checked as below.
+/// 2. Call to this guard: recovery (all owners), timelock scheduling, first configuration.
+/// 3. Call to the Safe itself: installing this guard passes; removing it needs recovery; the other
+///    admin calls need the timelock; anything else is denied.
+/// 4. Anything else: decode facts from the call, encode them with the Safe's schema, evaluate.
+/// Steps 1 to 3 make no call to the circuit, its processors or the pin registry.
+contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard {
+    address public constant MULTI_SEND_CALL_ONLY = 0xA83c336B20401Af773B6219BA5027174338D1836;
+
+    struct ConfigInput {
+        bytes32 pinId;
+        Schema.Layout layout;
+        TxFacts.Binding[] bindings; // one per non-Flag field, in field order
+        uint64 recoveryDelay;
+        uint64 adminDelay;
+    }
+
+    struct Config {
+        bool set;
+        bytes32 pinId;
+        bytes32 netlistHash;
+        uint32 nIn;
+        uint64 recoveryDelay;
+        uint64 adminDelay;
+        Schema.Field[] fields;
+        TxFacts.Binding[] bindings;
+    }
+
+    mapping(address safe => Config) internal _configs;
+
+    event Configured(address indexed safe, bytes32 indexed pinId, uint64 recoveryDelay, uint64 adminDelay);
+
+    error FengceDenied(address safe, address to);
+    error FengceNotConfigured(address safe);
+    error FengceBadConfig();
+    error FengceDelegateCallDenied(address to);
+    error FengceSafeCallDenied(bytes4 selector);
+    error FengceGuardCallDenied(bytes4 selector);
+    error FengceInnerAdminDenied(address to);
+    error FengceModuleAdminDenied(address to);
+    error FengceNotAllOwners();
+
+    constructor(PinRegistry registry_, uint256 evalGasCap_) PolicyEngine(registry_, evalGasCap_) {}
+
+    // ------------------------------------------------------------------ configuration
+
+    /// @notice Called by the Safe. Free while the Safe has no configuration (before or right after
+    /// install); afterwards only through the admin timelock.
+    function configure(ConfigInput calldata input) external {
+        Schema.Layout memory l = input.layout;
+        if (!registry.isPinned(input.pinId)) revert EngineNotPinned(input.pinId);
+        (,, uint32 nIn,, bytes32 netlistHash, bytes32 schemaHash) = registry.evalInfo(input.pinId);
+        if (Schema.hash(l) != schemaHash || l.nIn != nIn || l.netlistHash != netlistHash) revert FengceBadConfig();
+        Schema.validate(l);
+        uint256 needed;
+        for (uint256 i; i < l.fields.length; i++) {
+            if (l.fields[i].kind != Schema.Kind.Flag) needed++;
+        }
+        if (input.bindings.length != needed) revert FengceBadConfig();
+
+        Config storage c = _configs[msg.sender];
+        c.set = true;
+        c.pinId = input.pinId;
+        c.netlistHash = netlistHash;
+        c.nIn = nIn;
+        c.recoveryDelay = input.recoveryDelay;
+        c.adminDelay = input.adminDelay;
+        delete c.fields;
+        delete c.bindings;
+        for (uint256 i; i < l.fields.length; i++) {
+            c.fields.push(l.fields[i]);
+        }
+        for (uint256 i; i < input.bindings.length; i++) {
+            c.bindings.push(input.bindings[i]);
+        }
+        emit Configured(msg.sender, input.pinId, input.recoveryDelay, input.adminDelay);
+    }
+
+    function configOf(address safe) external view returns (Config memory) {
+        return _configs[safe];
+    }
+
+    // ------------------------------------------------------------------ transaction guard
+
+    function checkTransaction(
+        address to,
+        uint256 value,
+        bytes memory data,
+        Enum.Operation operation,
+        uint256,
+        uint256,
+        uint256,
+        address,
+        address payable,
+        bytes memory signatures,
+        address msgSender
+    ) external override {
+        address safe = msg.sender;
+        if (operation == Enum.Operation.DelegateCall) _checkBatch(safe, to, value, data);
+        else if (to == address(this)) _checkGuardCall(safe, value, data, signatures, msgSender);
+        else if (to == safe) _checkSafeCall(safe, value, data);
+        else _checkCall(safe, to, value, data);
+    }
+
+    function checkAfterExecution(bytes32, bool) external override {}
+
+    // ------------------------------------------------------------------ module guard
+
+    function checkModuleTransaction(address to, uint256 value, bytes memory data, Enum.Operation operation, address module)
+        external
+        override
+        returns (bytes32)
+    {
+        address safe = msg.sender;
+        if (operation == Enum.Operation.DelegateCall) {
+            _checkBatch(safe, to, value, data);
+        } else {
+            // Modules never reach recovery, the timelock or Safe admin functions.
+            if (to == safe || to == address(this)) revert FengceModuleAdminDenied(to);
+            _checkCall(safe, to, value, data);
+        }
+        return keccak256(abi.encode(safe, to, value, keccak256(data), operation, module));
+    }
+
+    function checkAfterModuleExecution(bytes32, bool) external override {}
+
+    function supportsInterface(bytes4 id) external pure override returns (bool) {
+        return id == type(ITransactionGuard).interfaceId || id == type(IModuleGuard).interfaceId
+            || id == type(IERC165).interfaceId;
+    }
+
+    // ------------------------------------------------------------------ branches
+
+    function _checkGuardCall(address safe, uint256 value, bytes memory data, bytes memory signatures, address msgSender)
+        private
+    {
+        bytes4 sel = TxFacts.selectorOf(data);
+        if (value != 0) revert FengceGuardCallDenied(sel);
+        if (sel == this.scheduleRecovery.selector && data.length == 4) {
+            _requireAllOwners(safe, signatures, msgSender);
+            return;
+        }
+        if (
+            sel == this.cancelRecovery.selector || sel == this.scheduleAdmin.selector
+                || sel == this.cancelAdmin.selector
+        ) return;
+        if (sel == this.configure.selector) {
+            if (_configs[safe].set) _consumeAdmin(safe, address(this), data);
+            return;
+        }
+        revert FengceGuardCallDenied(sel);
+    }
+
+    function _checkSafeCall(address safe, uint256 value, bytes memory data) private {
+        bytes4 sel = TxFacts.selectorOf(data);
+        if (value != 0) revert FengceSafeCallDenied(sel);
+        if (sel == IGuardManager.setGuard.selector || sel == IModuleManager.setModuleGuard.selector) {
+            if (data.length != 36) revert FengceSafeCallDenied(sel);
+            uint256 target;
+            assembly {
+                target := mload(add(data, 36))
+            }
+            if (target == uint160(address(this))) return; // installing Fengce itself always passes
+            if (target == 0) _requireRecovery(safe, sel);
+            else _consumeAdmin(safe, safe, data);
+            return;
+        }
+        if (!_isAdminSelector(sel)) revert FengceSafeCallDenied(sel);
+        _consumeAdmin(safe, safe, data);
+    }
+
+    function _checkBatch(address safe, address to, uint256 value, bytes memory data) private view {
+        if (to != MULTI_SEND_CALL_ONLY || value != 0) revert FengceDelegateCallDenied(to);
+        MultiSendDecoder.Call[] memory calls = MultiSendDecoder.decode(data, safe);
+        for (uint256 i; i < calls.length; i++) {
+            address t = calls[i].to;
+            if (t == safe || t == address(this)) revert FengceInnerAdminDenied(t);
+            _checkCall(safe, t, calls[i].value, calls[i].data);
+        }
+    }
+
+    /// @dev The single policy path shared by both guards.
+    function _checkCall(address safe, address to, uint256 value, bytes memory data) private view {
+        Config storage c = _configs[safe];
+        if (!c.set) revert FengceNotConfigured(safe);
+        TxFacts.Facts memory f = TxFacts.decode(to, value, data);
+        Schema.Layout memory l = Schema.Layout(c.netlistHash, c.nIn, c.fields);
+        bytes memory out = _evaluate(c.pinId, Schema.encode(l, TxFacts.values(f, c.bindings)));
+        if (uint8(out[0]) & 1 != 1) revert FengceDenied(safe, to);
+    }
+
+    // ------------------------------------------------------------------ signatures
+
+    /// @dev Requires signatures from every owner on the Safe transaction being checked. The Safe has
+    /// already incremented its nonce, so the transaction used nonce - 1.
+    function _requireAllOwners(address safe, bytes memory signatures, address msgSender) private view {
+        uint256 owners = ISafe(payable(safe)).getOwners().length;
+        bytes32 txHash = _safeTxHash(safe);
+        try ISafe(payable(safe)).checkNSignatures(msgSender, txHash, signatures, owners) {}
+        catch {
+            revert FengceNotAllOwners();
+        }
+    }
+
+    /// @dev Rebuilds the Safe transaction hash from this call's own calldata. checkTransaction and
+    /// getTransactionHash share their first nine arguments; argument ten (the signatures offset
+    /// here) is replaced by the nonce. The `data` offset still points at the same bytes.
+    function _safeTxHash(address safe) private view returns (bytes32) {
+        uint256 txNonce = ISafe(payable(safe)).nonce() - 1;
+        bytes memory cd = abi.encodePacked(ISafe.getTransactionHash.selector, msg.data[4:]);
+        assembly {
+            mstore(add(cd, 324), txNonce) // 32 (length) + 4 (selector) + 9 * 32
+        }
+        (bool ok, bytes memory ret) = safe.staticcall(cd);
+        if (!ok || ret.length != 32) revert FengceNotAllOwners();
+        return abi.decode(ret, (bytes32));
+    }
+
+    // ------------------------------------------------------------------ SafeAdmin hooks
+
+    function _recoveryDelay(address safe) internal view override returns (uint256) {
+        return _configs[safe].recoveryDelay;
+    }
+
+    function _adminDelay(address safe) internal view override returns (uint256) {
+        return _configs[safe].adminDelay;
+    }
+
+    function _isGuardConfigCall(bytes memory data) internal pure override returns (bool) {
+        return TxFacts.selectorOf(data) == FengceGuard.configure.selector;
+    }
+}
