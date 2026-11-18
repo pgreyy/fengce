@@ -1,0 +1,13 @@
+{
+  "name": "@fengce/sdk",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Schema encoder and Quote script for Fengce",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p ."
+  },
+  "license": "MIT"
+}
