@@ -1,6 +1,7 @@
 import { StrictMode, useEffect, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { client, EXPLORER } from "../lib/chain";
+import { client, EXPLORER, friendlyError } from "../lib/chain";
+import type { Snapshot } from "../lib/events";
 import "../styles.css";
 
 /** Pages live at the root (catalog) or one folder deep; links are relative so the build runs from any base path. */
@@ -170,10 +171,22 @@ export function useLoad<T>(fn: () => Promise<T>, deps: unknown[] = []) {
   useEffect(() => {
     let alive = true;
     setState((s) => ({ ...s, loading: true, error: null }));
-    fn().then(
-      (data) => alive && setState({ data, error: null, loading: false }),
-      (e) => alive && setState({ data: null, error: e instanceof Error ? e.message.split("\n")[0] : String(e), loading: false }),
-    );
+    (async () => {
+      // Up to three attempts with backoff: the public RPC nodes rate-limit bursts.
+      for (let attempt = 0; ; attempt++) {
+        try {
+          const data = await fn();
+          if (alive) setState({ data, error: null, loading: false });
+          return;
+        } catch (e) {
+          if (attempt >= 2) {
+            if (alive) setState({ data: null, error: friendlyError(e), loading: false });
+            return;
+          }
+          await new Promise((r) => setTimeout(r, 1500 * 2 ** attempt));
+        }
+      }
+    })();
     return () => {
       alive = false;
     };
@@ -186,8 +199,42 @@ export function Loading({ what }: { what: string }) {
   return <p className="loading">Reading {what} from X Layer…</p>;
 }
 
-export function ErrorLine({ error }: { error: string | null }) {
-  return error ? <p className="err">{error}</p> : null;
+export function ErrorLine({ error, retry }: { error: string | null; retry?: () => void }) {
+  if (!error) return null;
+  return (
+    <div className="row" style={{ margin: "10px 0" }}>
+      <p className="err" style={{ margin: 0 }}>
+        {error}
+      </p>
+      {retry && (
+        <button className="btn ghost" type="button" onClick={retry}>
+          Try again
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Where an event list comes from: the build's snapshot plus a live scan of newer blocks. */
+export function HistoryNote({ h }: { h: any }) {
+  if (!h) return <span className="muted">event history not read</span>;
+  return (
+    <span className="mono">
+      {h.snapshot ? `snapshot ${fmtInt(h.snapshot.from)}–${fmtInt(h.snapshot.to)}` : "no snapshot"}
+      {h.live ? ` + live ${fmtInt(h.live.from)}–${fmtInt(h.live.to)}` : ""}
+      {h.live?.failed ? ` (${h.live.failed} windows not answered)` : ""}
+      {h.gap ? ` · gap ${fmtInt(h.gap.from)}–${fmtInt(h.gap.to)} not scanned` : ""}
+    </span>
+  );
+}
+
+/** The event snapshot shipped with the build (events-snapshot.json at the site root), or null if it cannot be read. */
+let snapshotPromise: Promise<Snapshot | null> | null = null;
+export function loadSnapshot(): Promise<Snapshot | null> {
+  snapshotPromise ??= fetch(`${DEPTH === 0 ? "./" : "../"}events-snapshot.json`)
+    .then((r) => (r.ok ? (r.json() as Promise<Snapshot>) : null))
+    .catch(() => null);
+  return snapshotPromise;
 }
 
 export function param(name: string): string | null {

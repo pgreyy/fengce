@@ -1,6 +1,6 @@
 import { catalog } from "../lib/data";
 import { presetFor } from "../lib/policies";
-import { Addr, ErrorLine, Figure, Loading, Pill, Section, fmtInt, href, mount, tierTone, useLoad } from "../ui/kit";
+import { Addr, ErrorLine, Figure, HistoryNote, Loading, Pill, Section, fmtInt, href, loadSnapshot, mount, tierTone, useLoad } from "../ui/kit";
 
 interface Row {
   pinId: string;
@@ -17,10 +17,10 @@ interface Row {
 }
 
 function CatalogPage() {
-  const { data, error, loading } = useLoad(async () => (await catalog()) as any, []);
+  const { data, error, loading, reload } = useLoad(async () => (await catalog(await loadSnapshot())) as any, []);
   const rows: Row[] = data?.entries ?? [];
   const full = rows.map((r) => (r.fullPathGas ? BigInt(r.fullPathGas) : null)).filter((x): x is bigint => x !== null);
-  const range = data?.installsRange;
+  const hist = data?.history;
   return (
     <>
       <div className="grid">
@@ -35,17 +35,14 @@ function CatalogPage() {
       </div>
       <Section n={1} label="Catalog" aside={data ? <Addr a={data.address} /> : null}>
         {loading && <Loading what="the Catalog" />}
-        <ErrorLine error={error} />
+        <ErrorLine error={error} retry={reload} />
         {data && (
           <>
             <div className="figures" style={{ marginBottom: 28 }}>
               <Figure v={fmtInt(rows.length)} k="Policies listed" />
               <Figure v={fmtInt(rows.filter((r) => r.tier === "Green").length)} k="Green tier" tone="amber" />
               <Figure v={full.length ? fmtInt(full.reduce((a, b) => (a < b ? a : b))) : "–"} k="Lowest full Safe path gas" />
-              <Figure
-                v={range ? fmtInt(rows.reduce((a, r) => a + (r.installs ?? 0), 0)) : "–"}
-                k={range ? `Installs, last ${fmtInt(range.windows * 100)} blocks` : "Installs (not read)"}
-              />
+              <Figure v={hist ? fmtInt(rows.reduce((a, r) => a + (r.installs ?? 0), 0)) : "–"} k={hist ? "Installs since v2" : "Installs (not read)"} />
             </div>
             <div className="tablewrap">
               <table className="dt">
@@ -92,18 +89,8 @@ function CatalogPage() {
             <p className="muted" style={{ fontSize: 12, marginTop: 12 }}>
               Eval gas: measured by the Catalog when the policy was listed. Full Safe path gas: the policy's Quote certificate (Safe execution,
               pre-check and outcome check).{" "}
-              {range ? (
-                <>
-                  Installs: FengceGuard <span className="mono">Configured</span> events in blocks{" "}
-                  <span className="mono">
-                    {fmtInt(range.from)}–{fmtInt(range.to)}
-                  </span>{" "}
-                  ({range.windows} requests of 100 blocks{range.failed ? `, ${range.failed} not answered by the RPC` : ""}
-                  {range.complete ? ", back to the v2 deployment" : ""}).
-                </>
-              ) : (
-                "Installs: the public RPC did not answer the event scan (rate limit); reload to try again."
-              )}
+              Installs: distinct Safes configured with the policy (FengceGuard <span className="mono">Configured</span> events since the v2
+              deployment): <HistoryNote h={hist} />.
             </p>
           </>
         )}

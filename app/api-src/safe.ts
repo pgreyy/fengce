@@ -1,7 +1,8 @@
 import { getAddress } from "viem";
 import { safeStatus } from "../src/lib/data";
+import type { Snapshot } from "../src/lib/events";
+import snapshot from "../public/events-snapshot.json";
 import { q, respond, type Req, type Res } from "./_util";
 
-/** GET /api/safe/:address[?windows=N] (N 100-block windows of event history, default 20, at most 200) */
-export default (req: Req, res: Res) =>
-  respond(res, () => safeStatus(getAddress(q(req, "address") ?? ""), Math.min(200, Math.max(1, Number(q(req, "windows") ?? 20)))), 10);
+/** GET /api/safe/:address: configuration plus Fengce events (build snapshot and a live scan of newer blocks). */
+export default (req: Req, res: Res) => respond(res, () => safeStatus(getAddress(q(req, "address") ?? ""), snapshot as unknown as Snapshot), 10);

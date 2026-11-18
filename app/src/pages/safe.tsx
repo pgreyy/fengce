@@ -1,26 +1,14 @@
 import { useState } from "react";
 import { isAddress, type Address } from "viem";
-import { ADDR, DEPLOY_BLOCK, DEPLOYMENT } from "../lib/chain";
+import { ADDR, DEPLOYMENT } from "../lib/chain";
 import { safeStatus } from "../lib/data";
-import { Addr, ErrorLine, Figure, Loading, Section, fmtDuration, fmtInt, href, mount, param, useLoad } from "../ui/kit";
-
-function Range({ r }: { r: any }) {
-  if (!r) return <span className="muted">not scanned</span>;
-  return (
-    <span className="mono">
-      blocks {fmtInt(r.from)}–{fmtInt(r.to)} · {r.windows} × 100{r.failed ? ` · ${r.failed} not answered (rate limit)` : ""}
-      {r.complete ? " · back to the v2 deployment" : ""}
-    </span>
-  );
-}
+import { Addr, ErrorLine, Figure, HistoryNote, Loading, Section, fmtDuration, fmtInt, href, loadSnapshot, mount, param, useLoad } from "../ui/kit";
 
 function SafePage() {
   const safe = (param("address") ?? DEPLOYMENT.demoSafe) as Address;
-  // ?scan=all scans back to the v2 deployment on load.
-  const [windows, setWindows] = useState(param("scan") === "all" ? Number.MAX_SAFE_INTEGER : 20);
   const [input, setInput] = useState(safe);
   const valid = isAddress(safe);
-  const { data, error, loading } = useLoad(async () => (valid ? ((await safeStatus(safe, windows)) as any) : null), [safe, windows]);
+  const { data, error, loading, reload } = useLoad(async () => (valid ? ((await safeStatus(safe, await loadSnapshot())) as any) : null), [safe]);
   const f = data?.fengce;
   const guarded = data && data.guard?.toLowerCase() === ADDR.guard.toLowerCase();
   const moduleGuarded = data && data.moduleGuard?.toLowerCase() === ADDR.guard.toLowerCase();
@@ -44,13 +32,13 @@ function SafePage() {
       {!valid && <p className="err">Not an address.</p>}
       {safe.toLowerCase() === DEPLOYMENT.demoSafe.toLowerCase() && <p className="muted">The demo Safe of release v2: one owner, a 1 USDT0 cap, one agent.</p>}
       {loading && <Loading what="the Safe" />}
-      <ErrorLine error={error} />
+      <ErrorLine error={error} retry={reload} />
       {data && (
         <>
           <div className="figures" style={{ margin: "26px 0 8px" }}>
             <Figure v={`${data.threshold}/${data.owners.length}`} k="Signatures / owners" />
             <Figure v={guarded && moduleGuarded ? "ON" : guarded || moduleGuarded ? "PART" : "OFF"} k="Fengce guards (both paths)" tone={guarded && moduleGuarded ? "amber" : "red"} />
-            <Figure v={fmtInt(data.deniedAgentCalls.length)} k="Denied agent calls in range" tone={data.deniedAgentCalls.length ? "red" : undefined} />
+            <Figure v={fmtInt(data.deniedAgentCalls.length)} k="Denied agent calls since v2" tone={data.deniedAgentCalls.length ? "red" : undefined} />
             <Figure v={fmtInt(data.nonce)} k="Safe nonce" />
           </div>
           <Section n={5} label="Configuration" aside={<Addr a={data.safe} />}>
@@ -132,7 +120,7 @@ function SafePage() {
               </div>
             </div>
           </Section>
-          <Section n={6} label="Denied attempts" aside={<Range r={data.deniedRange} />}>
+          <Section n={6} label="Denied attempts" aside={<HistoryNote h={data.history} />}>
             {data.deniedAgentCalls.length ? (
               <div className="tablewrap">
                 <table className="dt">
@@ -147,46 +135,32 @@ function SafePage() {
                   </thead>
                   <tbody>
                     {[...data.deniedAgentCalls].reverse().map((d: any) => (
-                      <tr key={d.tx}>
+                      <tr key={`${d.tx}:${d.logIndex}`}>
                         <td className="num">{fmtInt(d.block)}</td>
                         <td>
                           <Addr a={d.tx} kind="tx" n={6} />
                         </td>
                         <td>
-                          <Addr a={d.agent} />
+                          <Addr a={String(d.args.agent)} />
                         </td>
                         <td>
-                          <Addr a={d.target} />
+                          <Addr a={String(d.args.target)} />
                         </td>
-                        <td className="mono red">{d.reason}</td>
+                        <td className="mono red">{String(d.args.reason)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             ) : (
-              <p className="muted">No Denied events for this Safe in the scanned range.</p>
+              <p className="muted">No Denied events for this Safe since the v2 deployment.</p>
             )}
-            <div className="row" style={{ marginTop: 14 }}>
-              <button className="btn ghost" type="button" disabled={data.deniedRange?.complete || loading} onClick={() => setWindows((w) => w + 40)}>
-                Look 4,000 blocks further back
-              </button>
-              {!data.deniedRange?.complete && (
-                <button
-                  className="btn ghost"
-                  type="button"
-                  disabled={loading}
-                  onClick={() => setWindows(Number((BigInt(data.head) - DEPLOY_BLOCK) / 100n) + 1)}
-                >
-                  Scan back to the v2 deployment ({fmtInt((BigInt(data.head) - DEPLOY_BLOCK) / 100n + 1n)} requests)
-                </button>
-              )}
-              <span className="muted" style={{ fontSize: 12 }}>
-                X Layer RPCs answer eth_getLogs for at most 100 blocks per request. Owner transactions the guard blocks revert and leave no event.
-              </span>
-            </div>
+            <p className="muted" style={{ fontSize: 12, marginTop: 12 }}>
+              History: the snapshot shipped with this site, then a live scan of newer blocks (X Layer RPCs answer eth_getLogs for at most 100
+              blocks per request). Owner transactions the guard blocks revert and leave no event.
+            </p>
           </Section>
-          <Section n={7} label="Guard events" aside={<Range r={data.eventsRange} />}>
+          <Section n={7} label="Guard events" aside={<HistoryNote h={data.history} />}>
             {data.events.length ? (
               <div className="tablewrap">
                 <table className="dt">
@@ -201,7 +175,7 @@ function SafePage() {
                     {[...data.events].reverse().map((e: any, i: number) => (
                       <tr key={i}>
                         <td className="num">{fmtInt(e.block)}</td>
-                        <td className="mono">{e.event}</td>
+                        <td className="mono">{e.event}{e.args.pinId ? ` ${String(e.args.pinId).slice(0, 10)}…` : ""}</td>
                         <td>
                           <Addr a={e.tx} kind="tx" n={6} />
                         </td>
@@ -211,7 +185,7 @@ function SafePage() {
                 </table>
               </div>
             ) : (
-              <p className="muted">No guard events for this Safe in the scanned range.</p>
+              <p className="muted">No guard events for this Safe since the v2 deployment.</p>
             )}
           </Section>
         </>

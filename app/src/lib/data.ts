@@ -8,7 +8,6 @@ import {
   hexToBytes,
   keccak256,
   parseAbi,
-  parseAbiItem,
   toHex,
   zeroAddress,
 } from "viem";
@@ -27,7 +26,8 @@ import {
   toLayout,
   type SchemaFile,
 } from "@fengce/sdk";
-import { ADDR, AGENT_EXECUTOR, CATALOG, DEPLOY_BLOCK, IN_BROWSER, LOG_WINDOW, client } from "./chain";
+import { ADDR, AGENT_EXECUTOR, CATALOG, client } from "./chain";
+import { history, installsByPin, type Snapshot } from "./events";
 import { quoteFor } from "./quotes";
 import { PRESETS, presetFor, type PolicyPreset } from "./policies";
 
@@ -61,64 +61,6 @@ export function bits(hex: Hex, n: number): string {
   let s = "";
   for (let i = 0; i < n; i++) s += (b[i >> 3] >> (i & 7)) & 1 ? "1" : "0";
   return s; // bit 0 first
-}
-
-// ------------------------------------------------------------------ event scans
-
-export interface ScanRange {
-  /** first block looked at */
-  from: string;
-  /** last block looked at (the head when the scan started) */
-  to: string;
-  /** number of eth_getLogs requests (100-block windows) */
-  windows: number;
-  /** true when the scan reached the floor (the v2 deploy block or block 0) and no window failed */
-  complete: boolean;
-  /** windows that still failed after one retry (public RPCs rate-limit); their blocks were not read */
-  failed: number;
-}
-
-/**
- * Scans logs backwards from `head` in 100-block windows (the X Layer RPC limit), at most `maxWindows` windows and
- * never below `floor`. Three windows are requested at a time in the browser, two on the server. A window that fails is
- * retried once after a pause; if it fails again it is counted in `failed` and the scan goes on.
- */
-export async function scanLogs<T>(
-  fetchWindow: (from: bigint, to: bigint) => Promise<T[]>,
-  head: bigint,
-  maxWindows: number,
-  floor: bigint = DEPLOY_BLOCK,
-): Promise<{ items: T[]; range: ScanRange }> {
-  const windows: [bigint, bigint][] = [];
-  for (let to = head; to >= floor && windows.length < maxWindows; to -= LOG_WINDOW) {
-    const from = to - LOG_WINDOW + 1n > floor ? to - LOG_WINDOW + 1n : floor;
-    windows.push([from, to]);
-  }
-  const items: T[] = [];
-  const parallel = IN_BROWSER ? 3 : 2;
-  let failed = 0;
-  const one = async (f: bigint, t: bigint): Promise<T[]> => {
-    try {
-      return await fetchWindow(f, t);
-    } catch {
-      await new Promise((r) => setTimeout(r, 1500));
-      try {
-        return await fetchWindow(f, t);
-      } catch {
-        failed += 1;
-        return [];
-      }
-    }
-  };
-  for (let i = 0; i < windows.length; i += parallel) {
-    const got = await Promise.all(windows.slice(i, i + parallel).map(([f, t]) => one(f, t)));
-    for (const g of got) items.push(...g);
-  }
-  const last = windows[windows.length - 1];
-  return {
-    items,
-    range: { from: (last ? last[0] : head).toString(), to: head.toString(), windows: windows.length, complete: (!last || last[0] <= floor) && failed === 0, failed },
-  };
 }
 
 // ------------------------------------------------------------------ circuits
@@ -257,18 +199,9 @@ async function slot(safe: Address, s: bigint): Promise<Address> {
   return getAddress(`0x${raw.slice(-40)}`);
 }
 
-const GUARD_EVENTS = [
-  "event RecoveryScheduled(address indexed safe, uint256 readyAt, uint256 expiresAt)",
-  "event RecoveryExecuted(address indexed safe, bytes4 indexed selector, address newGuard)",
-  "event RecoveryCancelled(address indexed safe)",
-  "event AdminScheduled(address indexed safe, bytes32 indexed id, address target, bytes data, uint256 readyAt)",
-  "event AdminExecuted(address indexed safe, bytes32 indexed id)",
-  "event AdminCancelled(address indexed safe, bytes32 indexed id)",
-  "event Configured(address indexed safe, bytes32 indexed pinId)",
-];
 
-export async function safeStatus(safe: Address, maxWindows = 20, floor: bigint = DEPLOY_BLOCK) {
-  const head = await client.getBlockNumber();
+/** A Safe's configuration, plus its Fengce events from the snapshot and a live scan of newer blocks. */
+export async function safeStatus(safe: Address, snapshot: Snapshot | null = null) {
   const [version, owners, threshold, nonce, modules] = await Promise.all([
     client.readContract({ address: safe, abi: safeAbi, functionName: "VERSION" }),
     client.readContract({ address: safe, abi: safeAbi, functionName: "getOwners" }),
@@ -278,8 +211,6 @@ export async function safeStatus(safe: Address, maxWindows = 20, floor: bigint =
   ]);
   const [guard, moduleGuard, fallbackHandler] = await Promise.all([slot(safe, SLOTS.guard), slot(safe, SLOTS.moduleGuard), slot(safe, SLOTS.fallbackHandler)]);
   let fengce: unknown = null;
-  let events: unknown[] = [];
-  let eventsRange: ScanRange | null = null;
   if (guard !== zeroAddress) {
     try {
       const cfg = await client.readContract({ address: guard, abi: FengceGuardArtifact.abi as any, functionName: "configOf", args: [safe] });
@@ -289,48 +220,15 @@ export async function safeStatus(safe: Address, maxWindows = 20, floor: bigint =
       ]);
       const [set, pinId, recoveryDelay, recoveryWindow, adminDelay, tick, tickGroup] = cfg as any[];
       fengce = { set, pinId, recoveryDelay, recoveryWindow, adminDelay, tick, tickGroup, recovery: { readyAt, expiresAt } };
-      const scan = await scanLogs(
-        async (fromBlock, toBlock) =>
-          ((await client.getLogs({ address: guard, events: GUARD_EVENTS.map((e) => parseAbiItem(e)) as any, args: { safe } as any, fromBlock, toBlock })) as any[]).map(
-            (l) => ({ block: l.blockNumber, tx: l.transactionHash, event: l.eventName, args: l.args }),
-          ),
-        head,
-        maxWindows,
-        floor,
-      );
-      events = scan.items;
-      eventsRange = scan.range;
     } catch {
       fengce = null; // the guard is not a FengceGuard
     }
   }
-  // Blocked agent attempts: AgentExecutor emits Denied instead of reverting.
-  let denied: unknown[] = [];
-  let deniedRange: ScanRange | null = null;
-  if (AGENT_EXECUTOR) {
-    const ev = parseAbiItem("event Denied(address indexed safe, address indexed agent, address target, bytes32 factsHash, bytes reason)");
-    const scan = await scanLogs(async (fromBlock, toBlock) => {
-      const out: unknown[] = [];
-      const logs = await client.getLogs({ address: AGENT_EXECUTOR, event: ev, args: { safe }, fromBlock, toBlock });
-      for (const l of logs as any[]) {
-        let reason: string = l.args.reason;
-        try {
-          const d = decodeErrorResult({ abi: FengceGuardArtifact.abi as unknown as any[], data: l.args.reason });
-          reason = `${d.errorName}(${(d.args ?? []).map(String).join(", ")})`;
-        } catch {
-          /* keep raw */
-        }
-        out.push({ block: l.blockNumber, tx: l.transactionHash, agent: l.args.agent, target: l.args.target, factsHash: l.args.factsHash, reason });
-      }
-      return out;
-    }, head, maxWindows, floor);
-    denied = scan.items;
-    deniedRange = scan.range;
-  }
+  const h = await history(snapshot);
+  const mine = h.events.filter((e) => e.safe?.toLowerCase() === safe.toLowerCase());
   return plain({
     safe: getAddress(safe),
     agentExecutor: AGENT_EXECUTOR,
-    deniedAgentCalls: denied,
     version,
     owners,
     threshold,
@@ -340,27 +238,27 @@ export async function safeStatus(safe: Address, maxWindows = 20, floor: bigint =
     moduleGuard,
     fallbackHandler,
     fengce,
-    events,
-    eventsRange,
-    deniedRange,
-    head,
-    blockedAttemptsNote: null,
+    deniedAgentCalls: mine.filter((e) => e.source === "agentExecutor" && e.event === "Denied"),
+    agentEvents: mine.filter((e) => e.source === "agentExecutor" && e.event !== "Denied"),
+    events: mine.filter((e) => e.source === "guard"),
+    history: { snapshot: h.snapshot, live: h.live, gap: h.gap, head: h.head },
     blockedAttempts:
-      "Owner transactions the guard blocks revert and leave no event; use the Simulator to see why one would be blocked. Agent calls through AgentExecutor are recorded as Denied events (below).",
+      "Owner transactions the guard blocks revert and leave no event; use the Simulator to see why one would be blocked. Agent calls through AgentExecutor are recorded as Denied events.",
   });
 }
 
 // ------------------------------------------------------------------ catalog
 
-export async function catalog() {
+export async function catalog(snapshot: Snapshot | null = null) {
   if (!CATALOG) return plain({ deployed: false, note: "No Fengce Catalog is deployed on X Layer yet (set CATALOG_ADDRESS when one is).", entries: [], known: PRESETS.map((p) => ({ key: p.key, name: p.name, processor: p.processor, id: p.id, stateful: !!p.stateful })) });
   const head = await client.getBlockNumber();
   const entries = await readCatalog(client as any, CATALOG);
   const pins = await Promise.all(
     entries.map((e) => client.readContract({ address: ADDR.pinRegistry, abi: PinRegistryArtifact.abi as any, functionName: "circuitPin", args: [e.pinId] }) as Promise<any>),
   );
-  // Install counts are a best-effort extra: a rate-limited scan must not hide the Catalog itself.
-  const installs = await installCounts(head).catch(() => ({ byPin: new Map<string, number>(), range: null as ScanRange | null }));
+  // Installs: snapshot plus live events. A failed live scan must not hide the Catalog itself.
+  const h = await history(snapshot, head).catch(() => null);
+  const installs = h ? installsByPin(h.events) : null;
   const rows = entries.map((e, i) => {
     const processor = getAddress(pins[i].processor) as Address;
     const id = BigInt(pins[i].circuitId);
@@ -375,24 +273,10 @@ export async function catalog() {
       name: preset?.name ?? null,
       fullPathGas: q?.fullPath ?? null,
       quoteEvalGas: q?.evalCall ?? null,
-      installs: installs.range ? (installs.byPin.get(key) ?? 0) : null,
+      installs: installs ? (installs.get(key) ?? 0) : null,
     };
   });
-  return plain({ deployed: true, address: CATALOG, head, entries: rows, installsRange: installs.range, known: PRESETS.map((p) => ({ key: p.key, name: p.name, processor: p.processor, id: p.id, stateful: !!p.stateful })) });
-}
-
-/** Installs per pin: FengceGuard Configured(safe, pinId) events of the v2 guard, scanned from the head down to the
- * v2 deploy block (at most `maxWindows` 100-block windows). */
-export async function installCounts(head: bigint, maxWindows = 20) {
-  const ev = parseAbiItem("event Configured(address indexed safe, bytes32 indexed pinId)");
-  const scan = await scanLogs(
-    async (fromBlock, toBlock) => ((await client.getLogs({ address: ADDR.guard, event: ev, fromBlock, toBlock })) as any[]).map((l) => l.args.pinId as Hex),
-    head,
-    maxWindows,
-  );
-  const byPin = new Map<string, number>();
-  for (const p of scan.items) byPin.set(p.toLowerCase(), (byPin.get(p.toLowerCase()) ?? 0) + 1);
-  return { byPin, range: scan.range };
+  return plain({ deployed: true, address: CATALOG, head, entries: rows, history: h ? { snapshot: h.snapshot, live: h.live, gap: h.gap } : null, known: PRESETS.map((p) => ({ key: p.key, name: p.name, processor: p.processor, id: p.id, stateful: !!p.stateful })) });
 }
 
 // ------------------------------------------------------------------ install

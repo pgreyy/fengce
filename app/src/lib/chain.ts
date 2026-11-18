@@ -1,4 +1,4 @@
-import { createPublicClient, fallback, http, type Address } from "viem";
+import { createPublicClient, fallback, http, type Address, type Transport } from "viem";
 import deployment from "../../../deployments/xlayer-196-v2.json";
 
 /** Runs in the browser (the static pages) and in Node (the Vercel API functions). */
@@ -11,9 +11,59 @@ export const RPCS = env.XLAYER_RPC ? [env.XLAYER_RPC] : ["https://rpc.xlayer.tec
 export const IN_BROWSER = typeof window !== "undefined";
 // Browsers batch JSON-RPC calls; the server side sends them one by one (the public RPCs reject batched log
 // queries from data-centre addresses more readily).
-export const client = createPublicClient({
-  transport: fallback(RPCS.map((u) => http(u, { retryCount: 3, retryDelay: 600, batch: IN_BROWSER ? { batchSize: 10 } : false }))),
-});
+const rpc = fallback(
+  RPCS.map((u) => http(u, { retryCount: 3, retryDelay: 700, batch: IN_BROWSER ? { batchSize: 10 } : false })),
+  { retryCount: 2, retryDelay: 1000 },
+);
+
+/** Reads whose answer cannot change for a fixed block range or code (cached for the page's life), and reads of the
+ * latest state (cached a few seconds), so identical calls made by different parts of a page hit the RPC once. */
+const FOREVER = new Set(["eth_getCode", "eth_chainId"]);
+const SHORT_MS = 4_000;
+const cache = new Map<string, { at: number; value: Promise<unknown> }>();
+
+function ttl(method: string, params: unknown): number {
+  if (FOREVER.has(method)) return Infinity;
+  if (method === "eth_getLogs") {
+    const p = (params as { toBlock?: string }[])?.[0];
+    return p?.toBlock && p.toBlock.startsWith("0x") ? Infinity : SHORT_MS;
+  }
+  if (method === "eth_call" || method === "eth_getStorageAt" || method === "eth_getBalance") return SHORT_MS;
+  return 0; // eth_blockNumber, estimates, everything else: never cached
+}
+
+/** Wraps a transport with an in-memory cache of identical reads (in-flight requests are shared too). */
+function cached(inner: Transport): Transport {
+  return (opts) => {
+    const t = inner(opts);
+    return {
+      ...t,
+      async request(args: { method: string; params?: unknown }) {
+        const life = ttl(args.method, args.params);
+        if (life === 0) return t.request(args as never);
+        const key = `${args.method}:${JSON.stringify(args.params ?? [])}`;
+        const hit = cache.get(key);
+        if (hit && Date.now() - hit.at < life) return hit.value;
+        const value = t.request(args as never);
+        cache.set(key, { at: Date.now(), value });
+        value.catch(() => cache.delete(key));
+        if (cache.size > 2_000) cache.delete(cache.keys().next().value!);
+        return value;
+      },
+    } as ReturnType<Transport>;
+  };
+}
+
+export const client = createPublicClient({ transport: cached(rpc) });
+
+/** A message for people, never a raw transport error. */
+export function friendlyError(e: unknown): string {
+  const m = e instanceof Error ? `${(e as { shortMessage?: string }).shortMessage ?? ""} ${e.message}` : String(e);
+  if (/RPC Request failed|HTTP request failed|rate limit|429|fetch failed|Failed to fetch|timed? ?out|took too long/i.test(m)) {
+    return "X Layer's public RPC nodes (rpc.xlayer.tech, xlayerrpc.okx.com) did not answer in time, usually a short rate limit. Try again in a moment.";
+  }
+  return (e instanceof Error ? ((e as { shortMessage?: string }).shortMessage ?? e.message) : String(e)).split("\n")[0];
+}
 
 /** Largest block range eth_getLogs accepts on the public X Layer RPCs. */
 export const LOG_WINDOW = 100n;
