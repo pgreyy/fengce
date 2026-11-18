@@ -17,6 +17,7 @@ import {
 import { XLAYER, processorAbi, proxyFactoryAbi, safeAbi } from "./abi.js";
 import { FengceGuardArtifact, PinRegistryArtifact } from "./artifacts.js";
 import { type SchemaFile, encodeInputs, parseSchema, schemaHash } from "./schema.js";
+import { MIN_DELAYS } from "./install.js";
 import { parseRefs } from "./netlist.js";
 import { TIERS, type Tier, tierFor } from "./tiers.js";
 
@@ -259,8 +260,8 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
     gas.safeBaseline = (await fork.estimateContractGas({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(recipient, "0x"), account })).toString();
 
     const cfg = {
-      pinId, layout: p.layout, bindings: p.bindings, recoveryDelay: 0n, recoveryWindow: 1n, adminDelay: 0n,
-      preflightTokens: [], preflightSpenders: [], acceptExistingApprovals: false,
+      pinId, layout: p.layout, bindings: p.bindings, ...MIN_DELAYS,
+      preflightTokens: [], preflightSpenders: [], acceptExistingApprovals: false, acceptExistingModules: false,
     };
     await send({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(guard.address, encodeFunctionData({ abi: guard.abi, functionName: "configure", args: [cfg] })) });
     await send({ address: safe, abi: safeAbi, functionName: "execTransaction", args: execArgs(safe, encodeFunctionData({ abi: [{ type: "function", name: "setGuard", inputs: [{ name: "g", type: "address" }], outputs: [], stateMutability: "nonpayable" }], functionName: "setGuard", args: [guard.address] })) });

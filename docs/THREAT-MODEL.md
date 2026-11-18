@@ -15,7 +15,7 @@ inside MultiSend batches.
 |---|---|
 | The TapeOut processor factory (`0x1f09…0761`) reports registered processors honestly through `isCPU` | `isPinned` treats deregistration as a change and fails closed; a dishonest or upgraded factory could report a swapped processor as registered |
 | The circuit beacon's implementation behaves as TAP-02 describes | Fengce pins the implementation address and code hash, so a change is detected, but it cannot judge the code itself |
-| The Safe owners chose the policy, delays and allowlist deliberately | All of these are set by the owners; Fengce enforces what they set, including delays of zero |
+| The Safe owners chose the policy, delays and allowlist deliberately | All of these are set by the owners; Fengce enforces what they set, above fixed minimum delays |
 | Tokens implement ERC-20 / ERC-165 truthfully | Facts come from calldata and a few reads (`allowance`, `supportsInterface`); a lying token can only misreport its own approvals |
 
 ## What is enforced
@@ -52,7 +52,9 @@ Owners holding every signature can schedule recovery and, after the recovery del
 window, replace or remove either guard. Owners holding the normal threshold can, through the admin timelock,
 add modules, change owners or threshold, or change the fallback handler after the admin delay. Fengce makes
 these changes slow and public (events `RecoveryScheduled`, `AdminScheduled`), not impossible. The delays are
-chosen by the Safe at configuration and may be zero; a zero delay gives no protection.
+chosen by the Safe at configuration, but `configure` enforces minimums (`src/safe/FengceLimits.sol`): admin
+timelock at least 1 day, recovery delay at least 2 days, recovery window at least 1 day
+(`test/FengceLimits.t.sol`).
 
 ### Unsealed factory and its implementation
 
@@ -81,8 +83,11 @@ unless the override flag is set. Approvals for tokens or spenders not listed are
 
 ### Modules enabled before install
 
-`configure` does not check for existing modules. The SDK's `buildInstall` refuses a Safe that has modules
-enabled; integrators that build calldata themselves must check.
+`configure` reads the Safe's enabled modules (`getModulesPaginated`) and reverts if there are any, unless the
+`acceptExistingModules` flag is set, in which case it emits `ExistingModuleAccepted` for each module
+(`test/FengceLimits.t.sol`). The check runs when `configure` runs: a module enabled after `configure` but before
+`setGuard` / `setModuleGuard` is not caught, so install in one batch (the SDK's `buildInstall` also refuses a
+Safe with modules). After install, enabling a module needs the admin timelock.
 
 ### Other limits
 

@@ -90,7 +90,7 @@ import { buildInstall, parseSchema } from "@fengce/sdk";
 
 const { calls, multiSend } = await buildInstall(publicClient, {
   safe, guard, pinId, schema: parseSchema(schemaJson),
-  recoveryDelay: 86_400n, recoveryWindow: 172_800n, adminDelay: 86_400n,
+  recoveryDelay: 172_800n, recoveryWindow: 172_800n, adminDelay: 86_400n,
   preflightTokens: [usdt0], preflightSpenders: [],
 });
 ```
@@ -104,7 +104,9 @@ Execute `calls` in order as Safe transactions (or `multiSend` as one delegatecal
 3. `Safe.setModuleGuard(guard)`.
 
 Choose delays you can live with: they are the time your co-signers and monitors have to react, and also the time
-you wait when you need to change something.
+you wait when you need to change something. Minimums are enforced on-chain: admin delay 1 day, recovery delay
+2 days, recovery window 1 day. `configure` also reverts if the Safe has modules enabled, unless
+`acceptExistingModules` is set (it then emits `ExistingModuleAccepted` per module).
 
 ## 6. Operate
 

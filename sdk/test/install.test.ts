@@ -10,15 +10,18 @@ const schema = parseSchema(readFileSync(new URL("../examples/nand-limit.schema.j
 const SAFE = "0x1111111111111111111111111111111111111111";
 const GUARD = "0x2222222222222222222222222222222222222222";
 const PIN = `0x${"ab".repeat(32)}` as const;
-const opts = { safe: SAFE, guard: GUARD, pinId: PIN, schema, recoveryDelay: 1n, recoveryWindow: 2n, adminDelay: 3n } as const;
+const opts = { safe: SAFE, guard: GUARD, pinId: PIN, schema, recoveryDelay: 172_800n, recoveryWindow: 86_400n, adminDelay: 86_400n } as const;
 const client = (modules: string[]) => ({ readContract: async () => [modules, "0x0000000000000000000000000000000000000001"] }) as any;
 
 test("configInput maps bindings to TxFacts sources in field order", () => {
   const c = configInput(opts);
   assert.deepEqual(c.bindings, [{ source: 5, param: 100n }]); // AmountGt
   assert.deepEqual(c.layout, toLayout(schema));
-  assert.equal(c.recoveryWindow, 2n);
+  assert.equal(c.recoveryWindow, 86_400n);
+  assert.equal(c.acceptExistingModules, false);
   assert.throws(() => configInput({ ...opts, recoveryWindow: 0n }), InstallError);
+  assert.throws(() => configInput({ ...opts, recoveryDelay: 172_799n }), /at least 172800/);
+  assert.throws(() => configInput({ ...opts, adminDelay: 86_399n }), /at least 86400/);
   assert.throws(() => configInput({ ...opts, schema: { ...schema, bindings: undefined } }), /no bindings/);
 });
 

@@ -64,7 +64,7 @@ contract FengceBatchBForkTest is ForkBase {
 
         // Recovery scheduled (all owners: this Safe has one), still blocked during the delay.
         assertTrue(_exec(safe, address(guard), 0, abi.encodeCall(SafeAdmin.scheduleRecovery, ())));
-        vm.warp(block.timestamp + DELAY - 1);
+        vm.warp(block.timestamp + RECOVERY_DELAY - 1);
         vm.expectRevert(abi.encodeWithSelector(SafeAdmin.RecoveryNotReady.selector, address(safe)));
         _exec(safe, address(safe), 0, _setGuard(other));
 
@@ -78,7 +78,7 @@ contract FengceBatchBForkTest is ForkBase {
         _install(safe);
         assertTrue(_exec(safe, address(guard), 0, abi.encodeCall(SafeAdmin.scheduleRecovery, ())));
 
-        vm.warp(block.timestamp + DELAY + WINDOW);
+        vm.warp(block.timestamp + RECOVERY_DELAY + WINDOW);
         vm.expectRevert(abi.encodeWithSelector(SafeAdmin.RecoveryExpired.selector, address(safe)));
         _exec(safe, address(safe), 0, _setGuard(address(0)));
     }
@@ -95,7 +95,7 @@ contract FengceBatchBForkTest is ForkBase {
         // Both owners sign: accepted.
         bytes memory both = _sigBoth(safe, address(guard), data);
         assertTrue(_execSigned(safe, address(guard), 0, data, Enum.Operation.Call, both));
-        assertEq(guard.recoveryReadyAt(address(safe)), block.timestamp + DELAY);
+        assertEq(guard.recoveryReadyAt(address(safe)), block.timestamp + RECOVERY_DELAY);
     }
 
     function test_timelockChangeThreshold() public {

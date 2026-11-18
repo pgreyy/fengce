@@ -32,7 +32,7 @@ import { buildInstall } from "@fengce/sdk";
 
 const { calls, multiSend } = await buildInstall(publicClient, {
   safe, guard, pinId, schema,
-  recoveryDelay: 86_400n, recoveryWindow: 172_800n, adminDelay: 86_400n,
+  recoveryDelay: 172_800n, recoveryWindow: 172_800n, adminDelay: 86_400n,
 });
 ```
 

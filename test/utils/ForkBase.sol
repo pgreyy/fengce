@@ -30,7 +30,8 @@ abstract contract ForkBase is Test {
     address constant MSCO = 0xA83c336B20401Af773B6219BA5027174338D1836;
     address constant USDT0 = 0x779Ded0c9e1022225f8E0630b35a9b54bE713736;
     bytes32 constant GUARD_SLOT = 0x4a204f620c8c5ccdca3fd54d003badd85ba500436a431f0cbda4f558c93c34c8;
-    uint64 constant DELAY = 1 days;
+    uint64 constant DELAY = 1 days; // admin timelock (FengceLimits.MIN_ADMIN_DELAY)
+    uint64 constant RECOVERY_DELAY = 2 days; // FengceLimits.MIN_RECOVERY_DELAY
     uint64 constant WINDOW = 2 days;
 
     address immutable RECIP = makeAddr("recipient");
@@ -62,7 +63,7 @@ abstract contract ForkBase is Test {
         c.pinId = pinId;
         c.layout = _layout();
         c.bindings = b;
-        c.recoveryDelay = DELAY;
+        c.recoveryDelay = RECOVERY_DELAY;
         c.recoveryWindow = WINDOW;
         c.adminDelay = DELAY;
     }

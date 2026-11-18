@@ -27,12 +27,14 @@ export interface InstallOptions {
   guard: Address; // deployed FengceGuard
   pinId: Hex;
   schema: SchemaFile; // must include bindings
-  recoveryDelay: bigint; // seconds
-  recoveryWindow: bigint; // seconds, > 0
-  adminDelay: bigint; // seconds
+  recoveryDelay: bigint; // seconds, >= 2 days
+  recoveryWindow: bigint; // seconds, >= 1 day
+  adminDelay: bigint; // seconds, >= 1 day
   preflightTokens?: Address[];
   preflightSpenders?: Address[];
   acceptExistingApprovals?: boolean;
+  /** configure() reverts if the Safe has modules enabled unless this is set (then emits a warning per module). */
+  acceptExistingModules?: boolean;
 }
 
 export interface SafeCall {
@@ -45,6 +47,9 @@ export interface SafeCall {
 
 export class InstallError extends Error {}
 
+/** On-chain minimums (src/safe/FengceLimits.sol); configure reverts below them. Seconds. */
+export const MIN_DELAYS = { recoveryDelay: 172_800n, recoveryWindow: 86_400n, adminDelay: 86_400n } as const;
+
 /** The FengceGuard.ConfigInput struct for `configure`, from a schema file with bindings. */
 export function configInput(o: InstallOptions) {
   const s = parseSchema(o.schema);
@@ -54,7 +59,9 @@ export function configInput(o: InstallOptions) {
     const b = s.bindings!.find((x) => x.field === name)!;
     return { source: BINDING_SOURCES.indexOf(b.source), param: BigInt(b.param ?? 0) };
   });
-  if (o.recoveryWindow <= 0n) throw new InstallError("recoveryWindow must be > 0");
+  for (const k of ["recoveryDelay", "recoveryWindow", "adminDelay"] as const) {
+    if (o[k] < MIN_DELAYS[k]) throw new InstallError(`${k} must be at least ${MIN_DELAYS[k]} seconds (on-chain minimum)`);
+  }
   return {
     pinId: o.pinId,
     layout: toLayout(s),
@@ -65,6 +72,7 @@ export function configInput(o: InstallOptions) {
     preflightTokens: o.preflightTokens ?? [],
     preflightSpenders: o.preflightSpenders ?? [],
     acceptExistingApprovals: o.acceptExistingApprovals ?? false,
+    acceptExistingModules: o.acceptExistingModules ?? false,
   };
 }
 

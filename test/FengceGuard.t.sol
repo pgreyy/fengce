@@ -69,7 +69,7 @@ contract FengceGuardForkTest is ForkBase {
         vm.expectRevert(abi.encodeWithSelector(SafeAdmin.RecoveryNotReady.selector, address(safe)));
         _exec(safe, address(safe), 0, abi.encodeWithSignature("setGuard(address)", address(0)));
 
-        vm.warp(block.timestamp + DELAY);
+        vm.warp(block.timestamp + RECOVERY_DELAY);
         assertTrue(_exec(safe, address(safe), 0, abi.encodeWithSignature("setModuleGuard(address)", address(0))));
         assertTrue(_exec(safe, address(safe), 0, abi.encodeWithSignature("setGuard(address)", address(0))));
 

@@ -16,6 +16,7 @@ import {TxFacts} from "../core/TxFacts.sol";
 import {ApprovalScan} from "../core/ApprovalScan.sol";
 import {SafeAdmin} from "./SafeAdmin.sol";
 import {MultiSendDecoder} from "./MultiSendDecoder.sol";
+import {FengceLimits} from "./FengceLimits.sol";
 
 /// @title FengceGuard
 /// @notice Safe v1.5.0 transaction guard and module guard that run every outgoing call through a
@@ -33,18 +34,24 @@ import {MultiSendDecoder} from "./MultiSendDecoder.sol";
 contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard {
     address public constant MULTI_SEND_CALL_ONLY = 0xA83c336B20401Af773B6219BA5027174338D1836;
     /// @notice Recovery window used while a Safe has no configuration.
-    uint256 public constant DEFAULT_RECOVERY_WINDOW = 7 days;
+    uint256 public constant DEFAULT_RECOVERY_WINDOW = FengceLimits.DEFAULT_RECOVERY_WINDOW;
+    /// @notice Minimum delays every configuration must meet (see FengceLimits).
+    uint256 public constant MIN_ADMIN_DELAY = FengceLimits.MIN_ADMIN_DELAY;
+    uint256 public constant MIN_RECOVERY_DELAY = FengceLimits.MIN_RECOVERY_DELAY;
+    uint256 public constant MIN_RECOVERY_WINDOW = FengceLimits.MIN_RECOVERY_WINDOW;
+    address internal constant SENTINEL_MODULES = address(0x1);
 
     struct ConfigInput {
         bytes32 pinId;
         Schema.Layout layout;
         TxFacts.Binding[] bindings; // one per non-Flag field, in field order
-        uint64 recoveryDelay;
-        uint64 recoveryWindow; // > 0
-        uint64 adminDelay;
+        uint64 recoveryDelay; // >= MIN_RECOVERY_DELAY
+        uint64 recoveryWindow; // >= MIN_RECOVERY_WINDOW
+        uint64 adminDelay; // >= MIN_ADMIN_DELAY
         address[] preflightTokens; // checked for existing approvals on first configuration
         address[] preflightSpenders; // Permit2 is always added
         bool acceptExistingApprovals; // override: configure anyway and emit warnings
+        bool acceptExistingModules; // override: configure despite enabled modules and emit warnings
     }
 
     struct Config {
@@ -92,6 +99,14 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
     error FengceModuleAdminDenied(address to);
     error FengceNotAllOwners();
     error FengceExistingApprovals(uint256 count);
+    error FengceDelayTooShort(uint256 given, uint256 minimum);
+    error FengceModulesEnabled(uint256 count);
+    error FengceModulesUnreadable(address safe);
+
+    /// @notice Configuration went ahead although `module` is enabled on the Safe (override flag set).
+    /// @param safe The Safe
+    /// @param module An enabled module, which can act through the module guard path
+    event ExistingModuleAccepted(address indexed safe, address module);
 
     constructor(PinRegistry registry_, uint256 evalGasCap_) PolicyEngine(registry_, evalGasCap_) {}
 
@@ -102,7 +117,10 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
     /// Safe already granted approvals (see `preflight`), unless `acceptExistingApprovals` is set.
     function configure(ConfigInput calldata input) external {
         Schema.Layout memory l = input.layout;
-        if (input.recoveryWindow == 0) revert FengceBadConfig();
+        _checkDelay(input.recoveryDelay, FengceLimits.MIN_RECOVERY_DELAY);
+        _checkDelay(input.recoveryWindow, FengceLimits.MIN_RECOVERY_WINDOW);
+        _checkDelay(input.adminDelay, FengceLimits.MIN_ADMIN_DELAY);
+        _checkModules(input.acceptExistingModules);
         if (!registry.isPinned(input.pinId)) revert EngineNotPinned(input.pinId);
         (,, uint32 nIn,, bytes32 netlistHash, bytes32 schemaHash) = registry.evalInfo(input.pinId);
         if (Schema.hash(l) != schemaHash || l.nIn != nIn || l.netlistHash != netlistHash) revert FengceBadConfig();
@@ -131,6 +149,36 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
             c.bindings.push(input.bindings[i]);
         }
         emit Configured(msg.sender, input.pinId);
+    }
+
+    function _checkDelay(uint64 given, uint64 minimum) private pure {
+        if (given < minimum) revert FengceDelayTooShort(given, minimum);
+    }
+
+    /// @dev Reads the calling Safe's enabled modules. Reverts if there are any, unless `accept` is
+    /// set, in which case it emits one ExistingModuleAccepted per module.
+    function _checkModules(bool accept) private {
+        address start = SENTINEL_MODULES;
+        uint256 count;
+        for (uint256 page; page < 64; page++) {
+            address[] memory mods;
+            address next;
+            try ISafe(payable(msg.sender)).getModulesPaginated(start, FengceLimits.MODULE_PAGE) returns (
+                address[] memory m, address n
+            ) {
+                (mods, next) = (m, n);
+            } catch {
+                revert FengceModulesUnreadable(msg.sender);
+            }
+            count += mods.length;
+            if (mods.length != 0 && !accept) revert FengceModulesEnabled(count);
+            for (uint256 i; i < mods.length; i++) {
+                emit ExistingModuleAccepted(msg.sender, mods[i]);
+            }
+            if (next == SENTINEL_MODULES || next == address(0) || mods.length == 0) return;
+            start = next;
+        }
+        revert FengceModulesUnreadable(msg.sender);
     }
 
     function _firstConfigPreflight(ConfigInput calldata input) private {

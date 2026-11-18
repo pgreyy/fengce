@@ -18,9 +18,9 @@ const { calls, multiSend } = await buildInstall(client as any, {
   guard: getAddress(guard),
   pinId: pinId as Hex,
   schema,
-  recoveryDelay: 86_400n, // 1 day
-  recoveryWindow: 172_800n, // 2 days
-  adminDelay: 86_400n, // 1 day
+  recoveryDelay: 172_800n, // 2 days (minimum)
+  recoveryWindow: 172_800n, // 2 days (minimum 1 day)
+  adminDelay: 86_400n, // 1 day (minimum)
 });
 for (const c of calls) console.log(`${c.description}\n  to ${c.to}\n  data ${c.data}\n`);
 console.log(`${multiSend.description} (operation 1 = delegatecall)\n  to ${multiSend.to}\n  data ${multiSend.data}`);
