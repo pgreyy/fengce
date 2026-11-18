@@ -189,23 +189,30 @@ Behaviour with a test behind it:
 
 ## App
 
-`app/` is a read-only Next.js app over live X Layer data (no wallet connection, nothing is sent), hosted at
-[getfengce.vercel.app](https://getfengce.vercel.app):
+`app/` is a read-only static site over live X Layer data (no wallet connection, nothing is sent), hosted at
+[getfengce.vercel.app](https://getfengce.vercel.app). Every page reads X Layer directly from the browser
+(`rpc.xlayer.tech`, `xlayerrpc.okx.com`; both accept browser requests); the pages make no server calls. The build is plain
+multi-page HTML with relative paths and self-hosted fonts, so the same `app/dist/` also runs from TapeOut DeWeb.
 
-| Page or route | What |
+| Page | What |
 |---|---|
-| `/` and `/api/catalog` | Catalog entries and known circuits on X Layer |
-| `/policy/[processor]/[id]` and `/api/circuit/[processor]/[id]` | Description, construction, allow and deny vectors with reasons, dependency tree, eval gas and tier (eval gas) |
-| `/simulator` and `POST /api/simulate` | A proposed transaction through a policy in one `eth_call`: facts, circuit input bits, output, decision |
-| `/install` and `POST /api/install` | Preflight per token and spender (checked, found, not checked, kept), then Safe Transaction Builder JSON |
-| `/safe/[address]` and `/api/safe/[address]` | Owners, modules, guards, Fengce configuration, recovery, timelock events |
+| `/` | Catalog: every listed policy with tier, eval gas, full Safe path gas (Quote), gates, installs, designer |
+| `/policy/?processor=…&id=…` | Allow and deny vectors evaluated on chain, circuit card, dependency tree |
+| `/simulator/?preset=…` | A transaction through a policy: facts and input bits (one `eth_call`), then the circuit evaluated gate by gate in the browser (`evaluateTrace`) and drawn as a gate graph; `&run=1` runs it on load |
+| `/install/` | Wallet-type picker with each wallet's guarantees; for a Safe, preflight per token and spender and the Safe Transaction Builder JSON |
+| `/safe/?address=…` | Owners, guards, timelocks, Denied agent calls and guard events (scanned in 100-block windows, the X Layer `eth_getLogs` limit; `&scan=all` scans back to the v2 deployment) |
+| `/wallets/` | Wallet compatibility (docs/WALLETS.md) |
+
+Public API, on Vercel only (the same code, run as Node functions): `GET /api/catalog`, `GET /api/circuit/:processor/:id`,
+`GET /api/safe/:address`, `POST /api/simulate`, `POST /api/install`.
 
 ```sh
-cd sdk && npm ci && cd ../app && npm ci && npm run build && npm start
+cd sdk && npm ci && cd ../app && npm ci && npm run build      # static site in app/dist
+npm run build:vercel                                          # dist plus the API as a Vercel Build Output
 ```
 
-`XLAYER_RPC` sets the RPC endpoint (default `https://xlayerrpc.okx.com`). Contract addresses come from
-`deployments/xlayer-196-v2.json`; `CATALOG_ADDRESS` and `AGENT_EXECUTOR` override them.
+Contract addresses come from `deployments/xlayer-196-v2.json`. In the API functions, `XLAYER_RPC`, `CATALOG_ADDRESS` and
+`AGENT_EXECUTOR` override the defaults.
 
 ## Documentation
 

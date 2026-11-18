@@ -1,4 +1,4 @@
-import { getAddress, type Address, type Hex, hexToBytes } from "viem";
+import { bytesToHex, getAddress, type Address, type Hex, hexToBytes } from "viem";
 
 /** One REF record of a TapeOut netlist (TAP-02 section 2). */
 export interface Ref {
@@ -34,8 +34,8 @@ export function parseRefs(netlist: Hex): { refs: Ref[]; nand: number; latch: num
       const nIns = b[i + 29];
       const len = 31 + 3 * nIns;
       if (b.length - i < len) throw new Error(`netlist truncated at ${i}`);
-      const cpu = getAddress("0x" + Buffer.from(b.slice(i + 1, i + 21)).toString("hex"));
-      const id = BigInt("0x" + Buffer.from(b.slice(i + 21, i + 29)).toString("hex"));
+      const cpu = getAddress(bytesToHex(b.slice(i + 1, i + 21)));
+      const id = BigInt(bytesToHex(b.slice(i + 21, i + 29)));
       refs.push({ cpu, id, nIns, nOuts: b[i + 30] });
       i += len;
     } else {

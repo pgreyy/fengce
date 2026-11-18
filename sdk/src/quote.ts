@@ -1,4 +1,5 @@
 import {
+  hexToBytes,
   type Abi,
   type Address,
   type Hex,
@@ -175,7 +176,7 @@ function probeLayout(netlistHash: Hex, nIn: number, input: Hex) {
 
 /** Reads packed input bytes (LSB first) as an integer. */
 function inputToInt(input: Hex): bigint {
-  const bytes = Buffer.from(input.slice(2), "hex");
+  const bytes = hexToBytes(input);
   let v = 0n;
   for (let i = bytes.length - 1; i >= 0; i--) v = (v << 8n) | BigInt(bytes[i]);
   return v;
@@ -236,7 +237,7 @@ export async function quote(env: QuoteEnv, processor: Address, circuitId: bigint
       };
     }
   } else if (opts.input) {
-    const b = Buffer.from(opts.input.slice(2), "hex");
+    const b = hexToBytes(opts.input);
     if (b.length !== inLen) throw new Error(`input must be exactly ${inLen} byte(s) for nIn ${root.nIn}`);
     if (root.nIn % 8 !== 0 && b[inLen - 1] >> root.nIn % 8 !== 0) throw new Error("input has non-zero padding bits");
     probeInput = opts.input;

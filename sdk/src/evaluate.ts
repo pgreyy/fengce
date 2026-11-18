@@ -125,6 +125,100 @@ export async function evaluateLocally(
   return { output: pack(r.outputs), newState: pack(r.newState) };
 }
 
+// ------------------------------------------------------------------ gate-by-gate trace
+
+/** One record of a traced beat. Signal indices follow TAP-02: 0 = constant 0, 1 = constant 1, 2.. = inputs, then one
+ * signal per NAND or LATCH and nOuts signals per REF, in record order. */
+export interface TraceRecord {
+  op: "nand" | "latch" | "ref";
+  /** signal indices read by this record (NAND: a, b; LATCH: d, read after the beat; REF: its inputs) */
+  ins: number[];
+  /** signal indices this record writes */
+  outs: number[];
+  /** topological level: 1 + the highest level of the signals it reads (constants, inputs and latch outputs are level 0) */
+  level: number;
+  /** REF only: the referenced circuit and its own trace for this beat */
+  ref?: { cpu: Address; id: bigint; trace: CircuitTrace };
+}
+
+export interface CircuitTrace {
+  cpu: Address;
+  id: bigint;
+  nIn: number;
+  nOut: number;
+  nState: number;
+  /** value (0 or 1) of every signal */
+  values: number[];
+  /** level of every signal (0 for constants, inputs and latch outputs) */
+  levels: number[];
+  records: TraceRecord[];
+  /** signal indices of the outputs (the last nOut signals) */
+  outputs: number[];
+  /** highest level in this circuit */
+  depth: number;
+  newState: number[];
+}
+
+function traceBeat(c: LoadedCircuit, state: number[], inputs: number[], all: Map<string, LoadedCircuit>): CircuitTrace {
+  const values: number[] = [0, 1, ...inputs];
+  const levels: number[] = values.map(() => 0);
+  const newState = [...state];
+  const records: TraceRecord[] = [];
+  const latches: { stateIx: number; d: number }[] = [];
+  let st = 0;
+  let depth = 0;
+  for (const r of c.records) {
+    if (r.op === "nand") {
+      const level = 1 + Math.max(levels[r.a], levels[r.b]);
+      records.push({ op: "nand", ins: [r.a, r.b], outs: [values.length], level });
+      values.push(1 - (values[r.a] & values[r.b]));
+      levels.push(level);
+      depth = Math.max(depth, level);
+    } else if (r.op === "latch") {
+      latches.push({ stateIx: st, d: r.d });
+      records.push({ op: "latch", ins: [r.d], outs: [values.length], level: 0 });
+      values.push(state[st]);
+      levels.push(0);
+      st += 1;
+    } else {
+      const sub = all.get(`${r.cpu}:${r.id}`)!;
+      const t = traceBeat(sub, state.slice(st, st + sub.nState), r.ins.map((ix) => values[ix]), all);
+      t.newState.forEach((v, k) => (newState[st + k] = v));
+      const level = 1 + Math.max(0, ...r.ins.map((ix) => levels[ix]));
+      const outs = t.outputs.map((_, k) => values.length + k);
+      records.push({ op: "ref", ins: r.ins, outs, level, ref: { cpu: r.cpu, id: r.id, trace: t } });
+      for (const o of t.outputs) {
+        values.push(t.values[o]);
+        levels.push(level);
+      }
+      st += sub.nState;
+      depth = Math.max(depth, level);
+    }
+  }
+  for (const l of latches) newState[l.stateIx] = values[l.d];
+  const outputs = [...Array(c.nOut).keys()].map((k) => values.length - c.nOut + k);
+  return { cpu: c.cpu, id: c.id, nIn: c.nIn, nOut: c.nOut, nState: c.nState, values, levels, records, outputs, depth, newState };
+}
+
+/**
+ * Evaluates a circuit like {@link evaluateLocally} and also returns every gate's output and its topological level
+ * (REF sub-circuits nested), for gate-by-gate display. `output` and `newState` are packed exactly as evaluateLocally
+ * returns them.
+ */
+export async function evaluateTrace(
+  client: PublicClient,
+  processor: Address,
+  circuitId: bigint,
+  input: Hex,
+  state: Hex = "0x",
+  cache?: Map<string, LoadedCircuit>,
+): Promise<{ output: Hex; newState: Hex; trace: CircuitTrace }> {
+  const all = await loadCircuit(client, processor, circuitId, cache);
+  const c = all.get(`${getAddress(processor)}:${circuitId}`)!;
+  const trace = traceBeat(c, unpack(state, c.nState), unpack(input, c.nIn), all);
+  return { output: pack(trace.outputs.map((o) => trace.values[o])), newState: pack(trace.newState), trace };
+}
+
 // ------------------------------------------------------------------ pre-sign check
 
 const tokenAbi = parseAbi(["function transfer(address,uint256)", "function approve(address,uint256)"]);

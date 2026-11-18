@@ -60,14 +60,16 @@ it), `tierFor`, `PinRegistryArtifact` and `FengceGuardArtifact` (ABI and bytecod
 ## Local evaluation
 
 ```ts
-import { evaluateLocally, preSign } from "@fengce/sdk";
+import { evaluateLocally, evaluateTrace, preSign } from "@fengce/sdk";
 
 await evaluateLocally(client, processor, circuitId, "0x02");               // { output, newState }, from the on-chain netlist
+await evaluateTrace(client, processor, circuitId, "0x02");                 // also every gate's output and topological level (REF nested)
 await preSign(client, { processor, circuitId, schema }, safe, { to, value, data }); // facts -> input -> "allow" | "deny"
 ```
 
 The interpreter follows TAP-02 (NAND, LATCH with state, REF sub-circuits) on the netlist bytes read from chain.
-`scripts/differential.ts` compares it with on-chain `eval` on random inputs (`npm run test:live`).
+`scripts/differential.ts` compares it with on-chain `eval` on random inputs (`npm run test:live`);
+`scripts/trace-check.ts` compares `evaluateTrace` with on-chain `eval` (`npx tsx scripts/trace-check.ts`).
 `preSign` covers native transfers, ERC-20 transfer and approve offline; use the app's simulator for other calls.
 
 ## Development
