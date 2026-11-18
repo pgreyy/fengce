@@ -108,15 +108,28 @@ Safe with modules). After install, enabling a module needs the admin timelock.
   (Fengce) checks every call; the executor refuses to act if FengceGuard is not the module guard. Any single
   owner can revoke an agent at once. Adding an agent needs an allowlisted Safe transaction
   (`test/AgentExecutor.t.sol`).
+- **ERC-7579 module changes (Safe7579 + FengceGuard)**: the guarantee below holds only for a Safe that runs
+  Rhinestone's Safe7579 adapter v1.0.0 **with FengceGuard as both transaction guard and module guard**.
+  `installModule` / `uninstallModule` are timelocked admin calls on every route: an owner transaction, a
+  validator-approved user operation (the adapter's helper delegatecall is allowed only for a matured schedule),
+  another module (always refused), and bundles of module changes in one MultiSend or one 7579 batch (always
+  refused; each change must be made on its own) (`test/FengceSafe7579Admin.t.sol`). The schedule covers
+  (install or uninstall, module type, module), not the init data. The helper and MultiSendCallOnly are checked
+  by runtime code hash, not only by address. With FengceGuard as module guard, Safe7579 batch executions are
+  refused (they delegatecall the adapter's helper); use single executions. If `FengceHook` is also installed,
+  its `preCheck` call must be allowlisted on the guard.
 - **ERC-7579 (`FengceHook`)**: executions (`execute`, `executeFromExecutor`, single and batch) go through the
   same policy; delegatecall and unknown modes are denied (`test/FengceHook7579.t.sol`, on Safe7579). Limits:
   Safe7579 v1.0.0 does not run a hook when that same hook is being uninstalled, so on Safe7579 the hook's
   uninstall delay never applies and whoever can authorise `uninstallModule` (validators, or the Safe itself)
   can remove it at once. Installing or removing other modules is not checked by the hook.
-- **Tick**: state lives in the Tick contract per (account, pinId), resets to zero at each period boundary
-  (period index = floor(timestamp / period), Unix-epoch aligned), and advances only when the circuit allows,
-  with a nonce check (`test/FengceTick.t.sol`). Tick is a separate contract: an account (or a module acting for
-  it) must call it before acting; FengceGuard does not call Tick yet.
+- **Tick**: state lives in the Tick contract per policy group (several Safes or agents can share one budget),
+  resets to zero at each period boundary (period index = floor(timestamp / period), Unix-epoch aligned), and
+  advances only when the circuit allows (`test/FengceTick.t.sol`). FengceGuard advances the Safe's group on
+  every checked call, on the owner and module paths, so an agent cannot skip it; if the Safe reports the
+  execution failed, the guard rolls the advance back (`test/FengceTickGuard.t.sol`). Off-chain signed approvals
+  (the signature verifier path) do not advance Tick. A group's admin controls membership: removing a Safe makes
+  its guarded transactions fail closed until the Safe reconfigures (timelocked).
 - **Catalog**: entries carry the certificate hash from the pin; the tier and gas figures are the lister's
   statement and are not verified on-chain. Readers should fetch the certificate and check its hash. Designer
   revenue share is not implemented.

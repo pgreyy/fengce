@@ -17,6 +17,7 @@ import {ApprovalScan} from "../core/ApprovalScan.sol";
 import {SafeAdmin} from "./SafeAdmin.sol";
 import {MultiSendDecoder} from "./MultiSendDecoder.sol";
 import {FengceLimits} from "./FengceLimits.sol";
+import {Tick} from "../core/Tick.sol";
 
 /// @title FengceGuard
 /// @notice Safe v1.5.0 transaction guard and module guard that run every outgoing call through a
@@ -33,6 +34,15 @@ import {FengceLimits} from "./FengceLimits.sol";
 /// Steps 2 and 3 make no call to the circuit, its processors or the pin registry.
 contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard {
     address public constant MULTI_SEND_CALL_ONLY = 0xA83c336B20401Af773B6219BA5027174338D1836;
+    /// @notice Runtime code hash of MultiSendCallOnly v1.5.0 (same on every chain); checked, not just the address.
+    bytes32 public constant MULTI_SEND_CALL_ONLY_CODEHASH = 0xcdbdcec38d2f1c7d961b0029ff8416b7e86e9974d6f0e9c9580c7d17fcfb6663;
+    /// @notice Rhinestone Safe7579 adapter v1.0.0 (canonical address) and the helper it delegatecalls
+    /// for module installs, with the helper's runtime code hash.
+    address public constant SAFE7579 = 0x7579EE8307284F293B1927136486880611F20002;
+    address public constant SAFE7579_UTIL = 0x45D7deB1229E0254a0561a2769B4A28e4e67Df00;
+    bytes32 public constant SAFE7579_UTIL_CODEHASH = 0x8f0d2fbb486628e5358279f76072cf0491d49b982c96d7de72f7f601e4872d6a;
+    bytes4 internal constant UTIL_INSTALL = 0x9517e29f; // installModule(uint256,address,bytes)
+    bytes4 internal constant UTIL_UNINSTALL = 0x78272525; // unInstallModule(uint256,address,bytes)
     /// @notice Recovery window used while a Safe has no configuration.
     uint256 public constant DEFAULT_RECOVERY_WINDOW = FengceLimits.DEFAULT_RECOVERY_WINDOW;
     /// @notice Minimum delays every configuration must meet (see FengceLimits).
@@ -64,6 +74,8 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         uint64 adminDelay;
         Schema.Field[] fields;
         TxFacts.Binding[] bindings;
+        address tick; // optional Tick state host (stateful policy)
+        bytes32 tickGroup; // Tick policy group shared by this Safe
     }
 
     mapping(address safe => Config) internal _configs;
@@ -102,6 +114,13 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
     error FengceDelayTooShort(uint256 given, uint256 minimum);
     error FengceModulesEnabled(uint256 count);
     error FengceModulesUnreadable(address safe);
+    error FengceBadTick();
+
+    /// @notice A Safe connected (or disconnected, tick = 0) a Tick policy group.
+    /// @param safe The Safe
+    /// @param tick Tick contract
+    /// @param groupId Policy group
+    event TickConfigured(address indexed safe, address tick, bytes32 groupId);
 
     /// @notice Configuration went ahead although `module` is enabled on the Safe (override flag set).
     /// @param safe The Safe
@@ -181,6 +200,20 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         revert FengceModulesUnreadable(msg.sender);
     }
 
+    /// @notice Called by the Safe. Every allowed call then also advances `groupId` on `tick`, and is denied
+    /// if the stateful circuit denies. The Safe must be a member of the group and must have set this
+    /// guard as its relayer on Tick. Same rule as configure: free until first configured, then timelocked.
+    function configureTick(address tick, bytes32 groupId) external {
+        if (tick != address(0)) {
+            if (!Tick(tick).isMember(groupId, msg.sender) || !Tick(tick).relayers(msg.sender, address(this))) {
+                revert FengceBadTick();
+            }
+        }
+        _configs[msg.sender].tick = tick;
+        _configs[msg.sender].tickGroup = groupId;
+        emit TickConfigured(msg.sender, tick, groupId);
+    }
+
     function _firstConfigPreflight(ConfigInput calldata input) private {
         ApprovalScan.Finding[] memory f = preflight(msg.sender, input.preflightTokens, input.preflightSpenders);
         if (f.length == 0) return;
@@ -236,19 +269,21 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         else _checkCall(safe, to, value, data);
     }
 
-    function checkAfterExecution(bytes32, bool) external override {}
+    function checkAfterExecution(bytes32, bool success) external override {
+        if (!success) _rollbackTick(msg.sender);
+    }
 
     // ------------------------------------------------------------------ module guard
 
     function checkModuleTransaction(address to, uint256 value, bytes memory data, Enum.Operation operation, address module)
         external
-        view
         override
         returns (bytes32)
     {
         address safe = msg.sender;
         if (operation == Enum.Operation.DelegateCall) {
-            _checkBatch(safe, to, value, data);
+            if (to == SAFE7579_UTIL) _check7579ModuleChange(safe, value, data, module);
+            else _checkBatch(safe, to, value, data);
         } else {
             // Modules never reach recovery, the timelock or Safe admin functions.
             if (to == safe || to == address(this)) revert FengceModuleAdminDenied(to);
@@ -257,7 +292,9 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         return keccak256(abi.encode(safe, to, value, keccak256(data), operation, module));
     }
 
-    function checkAfterModuleExecution(bytes32, bool) external override {}
+    function checkAfterModuleExecution(bytes32, bool success) external override {
+        if (!success) _rollbackTick(msg.sender);
+    }
 
     function supportsInterface(bytes4 id) external pure override returns (bool) {
         return id == type(ITransactionGuard).interfaceId || id == type(IModuleGuard).interfaceId
@@ -302,10 +339,45 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
         }
         if (!_isAdminSelector(sel)) revert FengceSafeCallDenied(sel);
         _consumeAdmin(safe, safe, data);
+        if ((sel == ERC7579_INSTALL || sel == ERC7579_UNINSTALL) && data.length >= 68) {
+            // The adapter will delegatecall its helper in this same transaction; let that one through.
+            (uint256 moduleType, address module) = _moduleArgs(data);
+            bytes32 key = erc7579AdminId(safe, sel == ERC7579_INSTALL, moduleType, module);
+            assembly {
+                tstore(key, 1)
+            }
+        }
     }
 
-    function _checkBatch(address safe, address to, uint256 value, bytes memory data) private view {
-        if (to != MULTI_SEND_CALL_ONLY || value != 0) revert FengceDelegateCallDenied(to);
+    /// @dev Safe7579 installs and removes ERC-7579 modules by having the Safe delegatecall its helper.
+    /// Allowed only from the adapter itself, to the helper with the expected code, for a change that
+    /// either an owner transaction just consumed from the timelock (same transaction) or that is
+    /// scheduled and ready (a validator-approved user operation).
+    function _check7579ModuleChange(address safe, uint256 value, bytes memory data, address module) private {
+        bytes4 sel = _sel(data);
+        if (
+            module != SAFE7579 || value != 0 || SAFE7579_UTIL.codehash != SAFE7579_UTIL_CODEHASH
+                || (sel != UTIL_INSTALL && sel != UTIL_UNINSTALL) || data.length < 68
+        ) revert FengceDelegateCallDenied(SAFE7579_UTIL);
+        (uint256 moduleType, address m) = _moduleArgs(data);
+        bytes32 key = erc7579AdminId(safe, sel == UTIL_INSTALL, moduleType, m);
+        uint256 approved;
+        assembly {
+            approved := tload(key)
+        }
+        if (approved == 1) {
+            assembly {
+                tstore(key, 0)
+            }
+        } else {
+            _consumeAdminId(safe, key);
+        }
+    }
+
+    function _checkBatch(address safe, address to, uint256 value, bytes memory data) private {
+        if (to != MULTI_SEND_CALL_ONLY || value != 0 || to.codehash != MULTI_SEND_CALL_ONLY_CODEHASH) {
+            revert FengceDelegateCallDenied(to);
+        }
         MultiSendDecoder.Call[] memory calls = MultiSendDecoder.decode(data, safe);
         for (uint256 i; i < calls.length; i++) {
             address t = calls[i].to;
@@ -315,11 +387,43 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
     }
 
     /// @dev The single policy path shared by both guards.
-    function _checkCall(address safe, address to, uint256 value, bytes memory data) private view {
+    function _checkCall(address safe, address to, uint256 value, bytes memory data) private {
         Config storage c = _configs[safe];
         if (!c.set) revert FengceNotConfigured(safe);
         bool listed = allowlisted[safe][to][TxFacts.selectorOf(data)];
-        _policy(safe, c, TxFacts.decode(safe, to, value, data, listed), to);
+        TxFacts.Facts memory f = TxFacts.decode(safe, to, value, data, listed);
+        _policy(safe, c, f, to);
+        _advanceTick(safe, c, f);
+    }
+
+    /// @dev Stateful part of the policy: advance the Safe's Tick group (reverts if it denies) and
+    /// remember it in transient storage so a failed Safe transaction can roll it back.
+    function _advanceTick(address safe, Config storage c, TxFacts.Facts memory f) private {
+        address tick = c.tick;
+        if (tick == address(0)) return;
+        bytes32 group = c.tickGroup;
+        Tick(tick).advanceFacts(safe, group, f);
+        bytes32 k = keccak256(abi.encode("fengce.guard.tick", safe));
+        assembly {
+            tstore(k, tick)
+            tstore(add(k, 1), group)
+        }
+    }
+
+    function _rollbackTick(address safe) private {
+        bytes32 k = keccak256(abi.encode("fengce.guard.tick", safe));
+        address tick;
+        bytes32 group;
+        assembly {
+            tick := tload(k)
+            group := tload(add(k, 1))
+        }
+        if (tick == address(0)) return;
+        assembly {
+            tstore(k, 0)
+            tstore(add(k, 1), 0)
+        }
+        Tick(tick).rollback(group);
     }
 
     function _policy(address safe, Config storage c, TxFacts.Facts memory f, address to) private view {
@@ -380,6 +484,7 @@ contract FengceGuard is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGuard
 
     function _isGuardConfigCall(bytes memory data) internal pure override returns (bool) {
         bytes4 sel = TxFacts.selectorOf(data);
-        return sel == FengceGuard.configure.selector || sel == FengceGuard.setAllowlisted.selector;
+        return sel == FengceGuard.configure.selector || sel == FengceGuard.setAllowlisted.selector
+            || sel == FengceGuard.configureTick.selector;
     }
 }

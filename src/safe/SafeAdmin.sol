@@ -97,8 +97,43 @@ abstract contract SafeAdmin {
 
     // ------------------------------------------------------------------ timelock
 
+    /// keccak256("installModule(uint256,address,bytes)"), on Safe7579 (ERC-7579)
+    bytes4 internal constant ERC7579_INSTALL = 0x9517e29f;
+    /// keccak256("uninstallModule(uint256,address,bytes)"), on Safe7579 (ERC-7579)
+    bytes4 internal constant ERC7579_UNINSTALL = 0xa71763a8;
+
+    /// @notice Timelock entry id. For ERC-7579 installModule / uninstallModule calls to the Safe the id
+    /// covers (install or uninstall, module type, module) and not the init data, so the same schedule
+    /// matches the change whether an owner transaction or a validator-approved user operation makes it.
     function adminId(address safe, address target, bytes memory data) public pure returns (bytes32) {
+        bytes4 sel = _sel(data);
+        if (target == safe && (sel == ERC7579_INSTALL || sel == ERC7579_UNINSTALL) && data.length >= 68) {
+            (uint256 moduleType, address module) = _moduleArgs(data);
+            return erc7579AdminId(safe, sel == ERC7579_INSTALL, moduleType, module);
+        }
         return keccak256(abi.encode(safe, target, keccak256(data)));
+    }
+
+    function erc7579AdminId(address safe, bool install, uint256 moduleType, address module) public pure returns (bytes32) {
+        return keccak256(abi.encode(safe, "erc7579", install, moduleType, module));
+    }
+
+    function _sel(bytes memory data) internal pure returns (bytes4 sel) {
+        if (data.length < 4) return bytes4(0);
+        assembly {
+            sel := mload(add(data, 32))
+        }
+    }
+
+    /// @dev First two arguments (uint256, address) of an ABI call; reverts on a dirty address word.
+    function _moduleArgs(bytes memory data) internal pure returns (uint256 moduleType, address module) {
+        uint256 m;
+        assembly {
+            moduleType := mload(add(data, 36))
+            m := mload(add(data, 68))
+        }
+        require(m >> 160 == 0, "bad module");
+        module = address(uint160(m));
     }
 
     /// @notice Schedules one admin call. `target` is the Safe itself or this guard (reconfigure).
@@ -120,7 +155,10 @@ abstract contract SafeAdmin {
     }
 
     function _consumeAdmin(address safe, address target, bytes memory data) internal {
-        bytes32 id = adminId(safe, target, data);
+        _consumeAdminId(safe, adminId(safe, target, data));
+    }
+
+    function _consumeAdminId(address safe, bytes32 id) internal {
         uint256 r = adminReadyAt[id];
         if (r == 0 || block.timestamp < r) revert AdminNotReady(id);
         delete adminReadyAt[id];
@@ -147,6 +185,8 @@ abstract contract SafeAdmin {
             || sel == ISignatureVerifierMuxer.setDomainVerifier.selector || sel == IFallbackHandler.setSafeMethod.selector
             || sel == IERC165Handler.setSupportedInterface.selector
             || sel == IERC165Handler.addSupportedInterfaceBatch.selector
-            || sel == IERC165Handler.removeSupportedInterfaceBatch.selector;
+            || sel == IERC165Handler.removeSupportedInterfaceBatch.selector
+            // ERC-7579 module changes through the Safe7579 adapter
+            || sel == ERC7579_INSTALL || sel == ERC7579_UNINSTALL;
     }
 }

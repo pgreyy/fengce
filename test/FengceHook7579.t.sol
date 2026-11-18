@@ -101,8 +101,8 @@ contract FengceHook7579ForkTest is ForkBase {
         xs[0] = FengceHook.Execution(RECIP, 40, "");
         xs[1] = FengceHook.Execution(RECIP, 150, "");
         bytes32 batchMode = bytes32(bytes1(0x01));
-        vm.prank(ENTRYPOINT);
         vm.expectRevert();
+        vm.prank(ENTRYPOINT);
         IERC7579Exec(address(account)).execute(batchMode, abi.encode(xs));
         assertEq(RECIP.balance, 0);
 

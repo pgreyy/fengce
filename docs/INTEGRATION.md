@@ -190,9 +190,11 @@ See THREAT-MODEL.md for the Safe7579 uninstall limit.
 
 ## Stateful policies (Tick)
 
-For a circuit with LATCH state, the account calls `tick.configure(pinId, periodSeconds)` once and
-`tick.advance(pinId, input, expectedNonce)` before each action it wants to limit; `advance` reverts if the circuit
-denies. State is reset to zero at each period boundary.
+Create a policy group: `tick.createGroup(salt, pinId, periodSeconds, layout, bindings)` (the layout and bindings
+turn transaction facts into the stateful circuit's input), then `tick.setMember(groupId, safe, true)` for each
+Safe that shares the budget. Each Safe, before Fengce is configured: `tick.setRelayer(guard, true)` and
+`guard.configureTick(tick, groupId)` (later changes are timelocked). From then on every checked call advances the
+group and is denied when the circuit denies; state resets to zero at each period boundary.
 
 ## Catalog
 
