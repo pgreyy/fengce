@@ -5,6 +5,31 @@ Chain: X Layer mainnet, chain id 196, RPC `https://rpc.xlayer.tech`.
 Checked live on 2026-11-18 at block 76,214,799 with `eth_getCode` (size = deployed bytecode in bytes).
 Safe addresses are the canonical v1.5.0 deployments from `safe-global/safe-deployments`.
 
+## Fengce on X Layer
+
+Deployed at block 76243766. Source of truth: [deployments/xlayer-196.json](../deployments/xlayer-196.json)
+(compiler settings per contract: [deployments/manifest-xlayer-196.json](../deployments/manifest-xlayer-196.json)).
+Read-only app over these contracts: [getfengce.vercel.app](https://getfengce.vercel.app).
+
+| Contract | Address |
+|---|---|
+| AaveV3PoolDecoder | `0xd8FbEA5246546b1aDb73134b4CFF7301D69c4dF9` |
+| AgentExecutor | `0x28251f9364F86FD7F218cd5d591dF65f04510214` |
+| BoundVault | `0x2282233a4Edd5e0540d97d89540a7e561119648B` |
+| Catalog | `0x17Df6cc2882e3b4F5C4f5d6a788A8711d2D1Fde7` |
+| FengceBinding | `0xEB8F721b188De251bE83346f857d122f44B496eb` |
+| FengceFloors | `0xc9d258ceFA3270083F2D0142492080c52212f8cD` |
+| FengceGuard | `0xB0562fc0B5dcd7E4a97DeCD344e55A682836c1Ac` |
+| FengceHook | `0xD0F8271217da4F611c432875D9998878Fd98e097` |
+| FengceInspector | `0x533E583D0D61dFf06A9289aa7798B3071B98bc67` |
+| FengceSignatureVerifier | `0x7AA60e55D1562b6EAC83472079F524D4661F06c4` |
+| FengceStrictHandler | `0xFFeFb5a00fBde84C61eC86BC701A28253F7839c1` |
+| PinRegistry | `0xE606dfe83780359852Db7F8D531fD33681fAbC67` |
+| PolicyEngine | `0xD282fc956957640ba14151EC265C0a5837Dfbd31` |
+| Tick | `0x94C4d576f1306b6E2d6E48Cdd1e7ad7060d44bCf` |
+| UniswapV2RouterDecoder | `0x40699111263c1708525070EB6671fA593FEAf9B0` |
+| UniswapV3RouterDecoder | `0xE5c57db07ef2CeCC3802080D4419b8e0964B0E8f` |
+
 ## Safe v1.5.0
 
 | Contract | Address | Code size |

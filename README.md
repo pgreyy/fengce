@@ -24,8 +24,10 @@ It has three parts:
 | `src/safe` (agents) | `AgentExecutor`: a Safe module that lets an agent key act only through the Fengce module guard |
 | `sdk/` | TypeScript: schema file format and encoder, Quote certificates (dependency tree, full Safe path gas and tier), install calldata builder, Catalog reader |
 
-Status: version 0.1.0. Not deployed, not independently reviewed. All on-chain behaviour below is tested against
-X Layer mainnet state on local forks; no transaction has been sent.
+Status: version 0.1.0, deployed on X Layer mainnet (addresses: [deployments/xlayer-196.json](deployments/xlayer-196.json)).
+Not independently reviewed. The on-chain behaviour below is tested against X Layer mainnet state on local forks.
+
+App: [getfengce.vercel.app](https://getfengce.vercel.app) (read-only, live X Layer data).
 
 ## Security statement
 
@@ -160,11 +162,12 @@ Behaviour with a test behind it:
 
 ## App
 
-`app/` is a read-only Next.js app over live X Layer data (no wallet connection, nothing is sent):
+`app/` is a read-only Next.js app over live X Layer data (no wallet connection, nothing is sent), hosted at
+[getfengce.vercel.app](https://getfengce.vercel.app):
 
 | Page or route | What |
 |---|---|
-| `/` and `/api/catalog` | Catalog entries (when `CATALOG_ADDRESS` is set) and known circuits on X Layer |
+| `/` and `/api/catalog` | Catalog entries and known circuits on X Layer |
 | `/policy/[processor]/[id]` and `/api/circuit/[processor]/[id]` | Description, construction, allow and deny vectors with reasons, dependency tree, eval gas and tier (eval gas) |
 | `/simulator` and `POST /api/simulate` | A proposed transaction through a policy in one `eth_call`: facts, circuit input bits, output, decision |
 | `/install` and `POST /api/install` | Preflight per token and spender (checked, found, not checked, kept), then Safe Transaction Builder JSON |
@@ -174,7 +177,8 @@ Behaviour with a test behind it:
 cd sdk && npm ci && cd ../app && npm ci && npm run build && npm start
 ```
 
-`XLAYER_RPC` sets the RPC endpoint (default `https://xlayerrpc.okx.com`).
+`XLAYER_RPC` sets the RPC endpoint (default `https://xlayerrpc.okx.com`). Contract addresses come from
+`deployments/xlayer-196.json`; `CATALOG_ADDRESS` and `AGENT_EXECUTOR` override them.
 
 ## Documentation
 
