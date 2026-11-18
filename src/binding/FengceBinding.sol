@@ -15,6 +15,10 @@ import {FengceGuard} from "../safe/FengceGuard.sol";
 /// earliestChange = the soonest time any guard, policy or admin change could execute:
 ///   min(now + adminDelay, now + recoveryDelay, earliest pending admin call, scheduled recovery ready time)
 /// (a pending item that is already ready counts as "now"). The pending-admin figure is a lower bound.
+///
+/// Only Safe accounts guarded by FengceGuard can be bound. Accounts that use FengceHook, FengceHook6900 or
+/// FengceAgentOwner always return false: on some of them the hook can be removed without running it (Etherspot
+/// uninstall, Nexus emergency uninstall), so no notice period can be promised (see docs/WALLETS.md).
 contract FengceBinding {
     /// keccak256("guard_manager.guard.address")
     uint256 internal constant GUARD_SLOT = 0x4a204f620c8c5ccdca3fd54d003badd85ba500436a431f0cbda4f558c93c34c8;

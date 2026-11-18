@@ -123,7 +123,9 @@ Safe with modules). After install, enabling a module needs the admin timelock.
   same policy; delegatecall and unknown modes are denied (`test/FengceHook7579.t.sol`, on Safe7579). Limits:
   Safe7579 v1.0.0 does not run a hook when that same hook is being uninstalled, so on Safe7579 the hook's
   uninstall delay never applies and whoever can authorise `uninstallModule` (validators, or the Safe itself)
-  can remove it at once. Installing or removing other modules is not checked by the hook.
+  can remove it at once. Since v2, installing or removing validator, executor and fallback modules, account
+  upgrades, and Kernel validation changes are timelocked admin actions where the account runs the hook on them
+  (Kernel v3.3: `test/wallets/FengceKernel.t.sol`); installing other hooks is not checked.
   Per-wallet uninstall behaviour (Kernel, Nexus, Etherspot) and the ERC-6900 and EIP-7702 limits are listed in
   `docs/WALLETS.md`.
 - **Tick**: state lives in the Tick contract per policy group (several Safes or agents can share one budget),

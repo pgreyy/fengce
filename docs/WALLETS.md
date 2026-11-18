@@ -16,7 +16,7 @@ addresses on the X Layer fork. Nothing from these wallets is stored in this repo
 |---|---|---|---|---|---|---|
 | Safe v1.5.0 | yes | FengceGuard (transaction guard and module guard) | checked | checked (AgentExecutor) | admin timelock; removal by recovery with all owners | `test/FengceGuard.t.sol`, `test/AgentExecutor.t.sol` |
 | Safe + Safe7579 v1.0.0 | Safe yes, Safe7579 adapter no | FengceHook (with FengceGuard for Safe owner transactions) | checked | checked (FengceGuard as module guard) | **gap**: Safe7579 does not run the hook on its own uninstall | `test/FengceHook7579.t.sol`, `test/FengceSafe7579Admin.t.sol` |
-| ZeroDev Kernel v3.3 | yes (v3.1 also deployed, not tested) | FengceHook as the root validation's hook | checked (root user operations) | only validations or executors installed with FengceHook as their hook (Kernel hooks are per validation; not tested) | hook delay enforced; **gap**: `changeRootValidator` to a validation without a hook removes it at once | `test/wallets/FengceKernel.t.sol` |
+| ZeroDev Kernel v3.3 | yes (v3.1 also deployed, not tested) | FengceHook as the root validation's hook | checked (root user operations) | only validations or executors installed with FengceHook as their hook (Kernel hooks are per validation; not tested) | hook delay enforced; changing the root validator and installing a validator are timelocked admin actions (2 days, scheduled per call) | `test/wallets/FengceKernel.t.sol` |
 | Biconomy Nexus 1.2.0 | no | FengceHook (global hook) | checked | executors go through `executeFromExecutor`, which runs the hook (from source, not tested) | hook delay enforced; **gap**: `emergencyUninstallHook` (owner-signed, Nexus's own 1-day timelock) removes the hook without running it (from source, not tested) | `test/wallets/FengceNexus.t.sol` |
 | Startale smart account | not checked | Nexus base, so FengceHook should apply | not tested | not tested | not tested | none |
 | Etherspot ModularEtherspotWallet v1.0.0 | no | FengceHook (global hook) | checked | not tested | **gap**: `uninstallModule` does not run the hook; removable at once | `test/wallets/FengceEtherspot.t.sol` |
@@ -41,10 +41,22 @@ owners. Both accept extra owners (Coinbase Smart Wallet: any owner; Light Accoun
 transfer refused and recorded as `Denied`, an agent's call to the wallet itself refused, and the wallet owner's own
 transfer not checked.
 
-**ERC-7579 accounts and module changes.** FengceHook checks executions. It does not check other administrative
-calls the account makes to itself: installing or removing other modules, changing validators, or upgrading the
-account (on Kernel, `upgradeTo`; from source, not tested). Where those calls can remove the hook's effect, the
-table lists them as gaps.
+**ERC-7579 accounts and module changes.** Besides executions, FengceHook (v2) treats these calls as timelocked
+admin actions: installing or uninstalling a validator, executor or fallback module (types 1 to 3), upgrading the
+account (`upgradeTo`, `upgradeToAndCall`), and on Kernel v3 `changeRootValidator`, `installValidations` and
+`uninstallValidation`. The account schedules the exact call with `scheduleAdmin(keccak256(call))` (an execution
+to the hook); after 2 days that call passes once. This works only where the account runs the hook on the admin
+call. Kernel v3.3 does (tested: root validator change and validator install). Nexus and Etherspot do not run the
+hook on `installModule` (from source, not tested), so there the timelock does not apply; installing a validator
+there does not bypass the global hook, but their uninstall gaps in the table remain. Installing other hooks is
+not checked.
+
+**FengceBinding (`isBound`).** Binding vouches only for Safe accounts guarded by FengceGuard: the trusted guard as
+transaction and module guard, a pinned policy, and a notice period before any change. Every account that uses
+FengceHook, FengceHook6900 or FengceAgentOwner returns `isBound == false`, because on some of them the hook can be
+removed without running it (Etherspot uninstall, Nexus emergency uninstall), so no notice period can be promised.
+Shown on a Kernel v3.3 account in `test/wallets/FengceKernel.t.sol`; the same code path (the Safe guard slots read
+as empty) applies to every non-Safe account (from source).
 
 **FengceInspector (outcome checks).** v2 accepts all four adapters (FengceGuard, FengceHook, FengceHook6900,
 FengceAgentOwner). On Safe accounts it also detects configuration changes (owners, threshold, modules, guards,

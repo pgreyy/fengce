@@ -51,9 +51,9 @@ interface IERC20Live {
 ///
 /// Steps: (1) deploy every contract through the CREATE2 deployer; (2) pin five seed policies (each with its stored
 /// Quote certificate, sdk/quotes/*.json) and list them in the Catalog, which runs their test vectors on-chain;
-/// (3) if the deployer holds at least 2 USDT0 (or the demo Safe already exists): create a demo Safe 1.5.0 owned by
+/// (3) if the deployer holds at least 1.5 USDT0 (or the demo Safe already exists): create a demo Safe 1.5.0 owned by
 /// the deployer, install FengceGuard as both guards with a USDT0 cap of 1, register DEMO_AGENT in AgentExecutor and
-/// fund the Safe with 2 USDT0. Writes deployments/xlayer-196-v2.json (addresses) and
+/// fund the Safe with 1.5 USDT0. Writes deployments/xlayer-196-v2.json (addresses) and
 /// deployments/manifest-xlayer-196-v2.json (everything needed to reproduce and verify the deployment).
 contract DeployLive is Script {
     address constant CREATE2 = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
@@ -66,7 +66,7 @@ contract DeployLive is Script {
     bytes32 constant MODULE_GUARD_SLOT = 0xb104e0b93118902c651344349b610029d694cfdec91c589c91ebafbcd0289947;
     uint256 constant CAP = 2_000_000; // eval gas cap for engines
     uint256 constant DEMO_CAP = 1_000_000; // 1 USDT0 (6 decimals)
-    uint256 constant DEMO_FUNDING = 2_000_000; // 2 USDT0
+    uint256 constant DEMO_FUNDING = 1_500_000; // 1.5 USDT0
     string constant VERSION = "v2.0.0";
 
     struct Rec {
@@ -344,7 +344,7 @@ contract DeployLive is Script {
     function _demo() internal {
         (,, address predicted) = _safeInit("demo");
         if (predicted.code.length == 0 && IERC20Live(USDT0).balanceOf(deployer) < DEMO_FUNDING) {
-            console2.log("Deployer holds less than 2 USDT0 and no demo Safe exists: demo skipped");
+            console2.log("Deployer holds less than 1.5 USDT0 and no demo Safe exists: demo skipped");
             return;
         }
         demoSafe = _ensureSafe("demo");
@@ -490,7 +490,7 @@ contract DeployLive is Script {
         vm.serializeUint(k, "BoundVault.minNotice", vault.minNotice());
         vm.serializeString(k, "FengceFloors", "per account: floor owner and delay set by the account (minimum 1 day); none set at deployment");
         vm.serializeString(k, "Tick", "per group: group admin; no groups at deployment");
-        vm.serializeString(k, "FengceHook", "per account; uninstall delay 2 days (enforced only where the account runs the hook on its own uninstall: Kernel v3.3, Nexus 1.2.0; not Safe7579, Etherspot)");
+        vm.serializeString(k, "FengceHook", "per account; uninstall delay 2 days and admin delay 2 days for validator, executor, fallback and upgrade calls (enforced only where the account runs the hook on them: uninstall on Kernel v3.3 and Nexus 1.2.0, admin calls on Kernel v3.3; not Safe7579, Etherspot)");
         vm.serializeString(k, "FengceHook6900", "per account; uninstall and upgrade delay 2 days");
         vm.serializeString(k, "FengceAgentOwner", "per wallet: policy and agents set by the wallet; wallet owners are not checked");
         return vm.serializeString(k, "others", "PolicyEngine, FengceStrictHandler, FengceSignatureVerifier, decoders: no roles");

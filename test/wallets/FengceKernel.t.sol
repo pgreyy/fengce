@@ -2,6 +2,7 @@
 pragma solidity 0.8.28;
 
 import {FengceHook} from "../../src/erc7579/FengceHook.sol";
+import {FengceBinding} from "../../src/binding/FengceBinding.sol";
 import {WalletBase, IERC7579Account, PackedUserOperation} from "./WalletBase.sol";
 
 interface IKernelFactory {
@@ -88,9 +89,7 @@ contract FengceKernelForkTest is WalletBase {
         assertEq(RECIP.balance, 80);
     }
 
-    /// Kernel runs the root hook on uninstallModule, so FengceHook's own delay applies. Kernel also lets the
-    /// root validation replace itself (changeRootValidator) with a validation that has no hook; FengceHook
-    /// does not check that call, so the hook can be bypassed that way at once (documented gap).
+    /// Kernel runs the root hook on uninstallModule, so FengceHook's own delay applies.
     function test_kernelHookUninstall() public {
         bytes memory deinit = abi.encodePacked(bytes1(0xff)); // ModuleLib passes deInitData to onUninstall
         bytes memory uninstall = abi.encodeCall(IERC7579Account.uninstallModule, (4, address(hook), deinit));
@@ -105,14 +104,31 @@ contract FengceKernelForkTest is WalletBase {
         assertFalse(hook.isInitialized(account));
     }
 
-    function test_kernelGapChangeRootValidatorDropsHook() public {
+    /// Changing the root validator, or installing another validator, is a timelocked admin action: the exact
+    /// call must be scheduled, waits ADMIN_DELAY, then passes once.
+    function test_kernelValidatorChangesTimelocked() public {
         OpenValidator open = new OpenValidator();
         bytes21 newRoot = bytes21(abi.encodePacked(bytes1(0x01), address(open)));
-        assertTrue(_op(abi.encodeCall(IKernel.changeRootValidator, (newRoot, address(0), "", ""))));
-        // The new root validation has no hook: an over-limit transfer is a plain execute and passes.
-        assertTrue(
-            _handleOp(account, 0, abi.encodeCall(IERC7579Account.execute, (SINGLE, _single(RECIP, 150, ""))), OWNER_KEY)
+        bytes memory change = abi.encodeCall(IKernel.changeRootValidator, (newRoot, address(0), "", ""));
+        bytes memory installValidator = abi.encodeCall(
+            IERC7579Account.installModule,
+            (1, address(open), abi.encodePacked(address(0), abi.encode(bytes(""), bytes(""), bytes(""))))
         );
-        assertEq(RECIP.balance, 150);
+
+        assertFalse(_op(change)); // HookAdminNotReady
+        assertFalse(_op(installValidator)); // HookAdminNotReady
+        // Still guarded: over the limit is refused.
+        assertFalse(_exec(SINGLE, _single(RECIP, 150, "")));
+
+        bytes memory schedule = abi.encodeCall(FengceHook.scheduleAdmin, (keccak256(change)));
+        assertTrue(_exec(SINGLE, _single(address(hook), 0, schedule)));
+        assertFalse(_op(change)); // inside the delay
+        vm.warp(block.timestamp + hook.ADMIN_DELAY());
+        assertTrue(_op(change)); // passes once
+        assertEq(hook.adminReadyAt(account, keccak256(change)), 0);
+
+        // FengceBinding vouches only for Safes guarded by FengceGuard: a hook account is never reported bound.
+        FengceBinding binding = new FengceBinding(guard);
+        assertFalse(binding.isBound(account, binding.policyHashOf(pinId), 0));
     }
 }

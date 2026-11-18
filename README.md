@@ -39,7 +39,7 @@ App: [getfengce.vercel.app](https://getfengce.vercel.app) (read-only, live X Lay
 |---|---|---|---|---|---|
 | Safe v1.5.0 | yes | FengceGuard | checked | checked (AgentExecutor) | admin timelock, recovery |
 | Safe + Safe7579 | Safe7579 no | FengceHook + FengceGuard | checked | checked | gap: hook not run on its own uninstall |
-| Kernel v3.3 | yes | FengceHook (root validation hook) | checked | only validations with the hook (not tested) | delay enforced; gap: `changeRootValidator` |
+| Kernel v3.3 | yes | FengceHook (root validation hook) | checked | only validations with the hook (not tested) | delay enforced; validator and root changes timelocked |
 | Nexus 1.2.0 | no | FengceHook | checked | not tested | delay enforced; gap: `emergencyUninstallHook` (not tested) |
 | Etherspot modular | no | FengceHook | checked | not tested | gap: removable at once |
 | Modular Account v2 | yes | FengceHook6900 | checked | checked | uninstall and upgrade wait 2 days |
@@ -48,6 +48,7 @@ App: [getfengce.vercel.app](https://getfengce.vercel.app) (read-only, live X Lay
 | Coinbase Smart Wallet | no | FengceAgentOwner | not checked | checked | n/a (owners can remove it) |
 | MultiOwnerLightAccount v2 | yes | FengceAgentOwner | not checked | not tested | n/a |
 
+Only Safes guarded by FengceGuard can pass `FengceBinding.isBound`; hook-based accounts always return false.
 Details, sources and the test behind each cell: [docs/WALLETS.md](docs/WALLETS.md).
 
 ## Security statement
@@ -179,7 +180,7 @@ Behaviour with a test behind it:
 | Catalog entry carries the Quote certificate hash | Quote run (`forkCheck.catalog`) |
 | Swaps decoded (Uniswap V3): foreign recipient and over-cap amount denied, valid swap passes | `test/FengceDecoders.t.sol` |
 | ERC-7579 module changes timelocked on all four routes | `test/FengceSafe7579Admin.t.sol` |
-| Kernel v3.3, Nexus 1.2.0, Etherspot: over the limit and batches blocked; hook uninstall delay or its gap per wallet | `test/wallets/FengceKernel.t.sol`, `test/wallets/FengceNexus.t.sol`, `test/wallets/FengceEtherspot.t.sol` |
+| Kernel v3.3, Nexus 1.2.0, Etherspot: over the limit and batches blocked; hook uninstall delay or its gap per wallet; Kernel validator and root changes timelocked | `test/wallets/FengceKernel.t.sol`, `test/wallets/FengceNexus.t.sol`, `test/wallets/FengceEtherspot.t.sol` |
 | Alchemy Modular Account v2: over the limit and batches blocked; uninstall and upgrade wait 2 days | `test/wallets/FengceModularAccountV2.t.sol` |
 | EIP-7702: agents of a delegated EOA blocked over the limit; the EOA key itself is not restricted | `test/wallets/Fengce7702.t.sol` |
 | Coinbase Smart Wallet: agents blocked over the limit through FengceAgentOwner; owners not checked | `test/wallets/FengceAgentOwner.t.sol` |
