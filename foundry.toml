@@ -17,3 +17,5 @@ remappings = [
 
 [rpc_endpoints]
 xlayer = "https://rpc.xlayer.tech"
+# Read-only source of Safe7579 bytecode for the ERC-7579 fork test (not deployed on X Layer).
+base = "https://mainnet.base.org"

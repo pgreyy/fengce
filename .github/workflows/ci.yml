@@ -46,7 +46,7 @@ jobs:
         run: sed -i "s#^xlayer = .*#xlayer = \"${XLAYER_RPC_URL}\"#" foundry.toml
       - name: Fork tests (core and Safe guard)
         if: env.XLAYER_RPC_URL != ''
-        run: forge test --match-path 'test/{PinNand,Fengce*}.t.sol' -vv
+        run: forge test --match-path 'test/{PinNand,Fengce*,AgentExecutor}.t.sol' -vv
       - name: Fork tests (REF closure)
         if: env.XLAYER_RPC_URL != ''
         run: forge test --match-path 'test/fork/*.t.sol' -vv
