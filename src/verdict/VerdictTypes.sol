@@ -36,6 +36,7 @@ library VerdictTypes {
         DataPlan plan;
         uint64 cutoff; // last moment to bet (exclusive)
         uint64 observationTime; // T: settlement allowed from T, never before
+        uint64 settleWindow; // seconds after T in which settle reads the value; 0 = default (30 min), 5 min..6 h
     }
 
     function values(Binding[] memory b, uint256 observed) internal pure returns (uint256[] memory v) {

@@ -16,13 +16,19 @@ interface IERC20Min {
 /// @notice One parimutuel YES/NO market in a single token (USDT0), settled by a pinned TapeOut
 /// circuit on a native X Layer value. Everything is fixed at creation; there are no setters.
 ///
-/// Lifecycle: bet before `cutoff`; settle from `observationTime` (T) until T + settleWindow;
-/// claim; after the claim period, leftover (rounding dust and unclaimed winnings) goes to the
-/// reserve.
+/// Lifecycle: bet before `cutoff`; settle inside the settle window [T, T + settleWindow]; claim;
+/// after the claim period, leftover (rounding dust and unclaimed winnings) goes to the reserve.
 /// Outcomes: circuit output bit 0 = 1 -> YES, 0 -> NO. INVALID (full refunds, no fee) when the pool
-/// is one-sided, settlement is late, the data source is unpinned or unreadable, or the rule cannot
-/// be evaluated (rule pin broken, encoding rejected, eval failing). A market can never get stuck.
-/// The observed value is read in the settlement transaction (on-chain state at that block).
+/// is one-sided, nobody settled inside the window, the data source is unpinned or unreadable, or the
+/// rule cannot be evaluated (rule pin broken, encoding rejected, eval failing). A market can never
+/// get stuck: after the window, `settle` or `claim` marks it INVALID.
+///
+/// The observed value is read at call time: it is the on-chain state in the block of the settle
+/// transaction, not the state at T. Whoever settles can pick any block inside the settle window, so
+/// the manipulation window equals the settle window.
+///
+/// The settler gets a reward taken out of the fee (min(rewardBps of the pool, fee)), only on YES/NO
+/// outcomes. Winners always receive the pool minus the fee; INVALID refunds carry no fee and no reward.
 contract Market is PolicyEngine {
     enum Side {
         Yes,
@@ -48,9 +54,9 @@ contract Market is PolicyEngine {
     struct Terms {
         IERC20Min token;
         uint16 feeBps; // on the total pool, YES/NO outcomes only
+        uint16 rewardBps; // settler reward, paid out of the fee
         address feeRecipient;
         address reserve;
-        uint64 settleWindow;
         uint64 claimPeriod;
     }
 
@@ -59,6 +65,7 @@ contract Market is PolicyEngine {
     address public immutable factory;
     IERC20Min public immutable token;
     uint16 public immutable feeBps;
+    uint16 public immutable rewardBps;
     address public immutable feeRecipient;
     address public immutable reserve;
     uint64 public immutable cutoff;
@@ -88,7 +95,15 @@ contract Market is PolicyEngine {
 
     event Bet(address indexed who, Side side, uint256 amount);
     event Settled(
-        State outcome, InvalidReason reason, uint256 observed, bytes input, bytes output, uint256 fee, uint256 distributable
+        State outcome,
+        InvalidReason reason,
+        uint256 observed,
+        bytes input,
+        bytes output,
+        uint256 fee,
+        uint256 distributable,
+        address settler,
+        uint256 reward
     );
     event Claimed(address indexed who, uint256 amount);
     event Swept(uint256 amount);
@@ -114,9 +129,10 @@ contract Market is PolicyEngine {
         factory = msg.sender;
         token = terms.token;
         feeBps = terms.feeBps;
+        rewardBps = terms.rewardBps;
         feeRecipient = terms.feeRecipient;
         reserve = terms.reserve;
-        settleWindow = terms.settleWindow;
+        settleWindow = spec.settleWindow;
         claimPeriod = terms.claimPeriod;
         cutoff = spec.cutoff;
         observationTime = spec.observationTime;
@@ -160,6 +176,10 @@ contract Market is PolicyEngine {
     function settle() external {
         if (state != State.Open) revert MarketAlreadySettled();
         if (block.timestamp < observationTime) revert MarketTooEarly(observationTime);
+        if (_late()) {
+            _invalidate(InvalidReason.Late);
+            return;
+        }
         if (gasleft() < settleMinGas()) revert MarketNotEnoughGas();
 
         InvalidReason r;
@@ -168,8 +188,6 @@ contract Market is PolicyEngine {
         uint256 value;
         if (totals[0] == 0 || totals[1] == 0) {
             r = InvalidReason.OneSided;
-        } else if (block.timestamp > uint256(observationTime) + settleWindow) {
-            r = InvalidReason.Late;
         } else if (sourcePinId != bytes32(0) && !registry.isPinned(sourcePinId)) {
             r = InvalidReason.SourceUnpinned;
         } else {
@@ -185,21 +203,33 @@ contract Market is PolicyEngine {
                 r = InvalidReason.SourceReadFailed;
             }
         }
+        if (r != InvalidReason.None) {
+            _invalidate(r);
+            return;
+        }
 
         settledAt = block.timestamp;
         observed = value;
-        uint256 fee;
-        if (r != InvalidReason.None) {
-            state = State.Invalid;
-            invalidReason = r;
-        } else {
-            state = (uint8(output[0]) & 1) == 1 ? State.Yes : State.No;
-            uint256 total = totals[0] + totals[1];
-            fee = total * feeBps / 10_000;
-            distributable = total - fee;
-        }
-        emit Settled(state, r, value, input, output, fee, distributable);
-        if (fee != 0) _push(feeRecipient, fee);
+        state = (uint8(output[0]) & 1) == 1 ? State.Yes : State.No;
+        uint256 total = totals[0] + totals[1];
+        uint256 fee = total * feeBps / 10_000;
+        uint256 reward = total * rewardBps / 10_000;
+        if (reward > fee) reward = fee;
+        distributable = total - fee;
+        emit Settled(state, r, value, input, output, fee, distributable, msg.sender, reward);
+        if (reward != 0) _push(msg.sender, reward);
+        if (fee != reward) _push(feeRecipient, fee - reward);
+    }
+
+    function _late() private view returns (bool) {
+        return block.timestamp > uint256(observationTime) + settleWindow;
+    }
+
+    function _invalidate(InvalidReason r) private {
+        settledAt = block.timestamp;
+        state = State.Invalid;
+        invalidReason = r;
+        emit Settled(State.Invalid, r, 0, "", "", 0, 0, msg.sender, 0);
     }
 
     /// @notice The data plan read, exactly as settlement does it. Anyone can call it to re-run.
@@ -228,6 +258,7 @@ contract Market is PolicyEngine {
     }
 
     function claim() external {
+        if (state == State.Open && block.timestamp >= observationTime && _late()) _invalidate(InvalidReason.Late);
         if (state == State.Open) revert MarketNotSettled();
         uint256 amount = claimable(msg.sender);
         if (amount == 0) revert MarketNothingToClaim();

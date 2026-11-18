@@ -16,10 +16,15 @@ contract MarketFactory {
     IERC20Min public immutable token;
     uint256 public immutable evalGasCap;
     uint16 public immutable feeBps;
+    uint16 public immutable rewardBps;
     address public immutable feeRecipient;
     address public immutable reserve;
-    uint64 public immutable settleWindow;
     uint64 public immutable claimPeriod;
+
+    uint64 public constant DEFAULT_SETTLE_WINDOW = 30 minutes;
+    uint64 public constant MIN_SETTLE_WINDOW = 5 minutes;
+    uint64 public constant MAX_SETTLE_WINDOW = 6 hours;
+    uint16 public constant DEFAULT_REWARD_BPS = 50; // 0.5% of the pool
 
     address[] public markets;
 
@@ -30,6 +35,7 @@ contract MarketFactory {
         bytes32 dataPlanHash,
         uint64 cutoff,
         uint64 observationTime,
+        uint64 settleWindow,
         VerdictTypes.Binding[] bindings,
         VerdictTypes.DataPlan plan
     );
@@ -39,38 +45,53 @@ contract MarketFactory {
     error FactoryBadTimes();
     error FactoryBadSource();
     error FactoryBadTerms();
+    error FactoryBadWindow();
 
     constructor(
         PinRegistry registry_,
         IERC20Min token_,
         uint256 evalGasCap_,
         uint16 feeBps_,
+        uint16 rewardBps_,
         address feeRecipient_,
         address reserve_,
-        uint64 settleWindow_,
         uint64 claimPeriod_
     ) {
-        if (feeBps_ > 1_000 || settleWindow_ == 0 || feeRecipient_ == address(0) || reserve_ == address(0)) {
+        if (feeBps_ > 1_000 || rewardBps_ > feeBps_ || feeRecipient_ == address(0) || reserve_ == address(0)) {
             revert FactoryBadTerms();
         }
         registry = registry_;
         token = token_;
         evalGasCap = evalGasCap_;
         feeBps = feeBps_;
+        rewardBps = rewardBps_;
         feeRecipient = feeRecipient_;
         reserve = reserve_;
-        settleWindow = settleWindow_;
         claimPeriod = claimPeriod_;
     }
 
+    /// @notice `spec.settleWindow` 0 means DEFAULT_SETTLE_WINDOW; otherwise it must be within
+    /// [MIN_SETTLE_WINDOW, MAX_SETTLE_WINDOW]. The value is read at settle time, so this window is
+    /// also the manipulation window.
     function createMarket(VerdictTypes.MarketSpec calldata spec) external returns (address market) {
         _check(spec);
+        VerdictTypes.MarketSpec memory s = spec;
+        if (s.settleWindow == 0) s.settleWindow = DEFAULT_SETTLE_WINDOW;
+        if (s.settleWindow < MIN_SETTLE_WINDOW || s.settleWindow > MAX_SETTLE_WINDOW) revert FactoryBadWindow();
         bytes32 planHash = keccak256(abi.encode(spec.plan));
-        Market.Terms memory terms = Market.Terms(token, feeBps, feeRecipient, reserve, settleWindow, claimPeriod);
-        market = address(new Market(registry, evalGasCap, spec, planHash, terms));
+        Market.Terms memory terms = Market.Terms(token, feeBps, rewardBps, feeRecipient, reserve, claimPeriod);
+        market = address(new Market(registry, evalGasCap, s, planHash, terms));
         markets.push(market);
         emit MarketCreated(
-            market, markets.length - 1, spec.pinId, planHash, spec.cutoff, spec.observationTime, spec.bindings, spec.plan
+            market,
+            markets.length - 1,
+            spec.pinId,
+            planHash,
+            spec.cutoff,
+            spec.observationTime,
+            s.settleWindow,
+            spec.bindings,
+            spec.plan
         );
     }
 

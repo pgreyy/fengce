@@ -39,7 +39,7 @@ contract VerdictForkTest is Test {
         rulePin = reg.pin(CMP_CPU, CMP_ID, Schema.hash(_layout()), bytes32(0));
         // The factory proxy exposes no implementation getter, so it is pinned by code hash only.
         sourcePin = reg.pinContract(address(TAPEOUT), bytes4(0));
-        factory = new MarketFactory(reg, USDT0, 2_000_000, 100, treasury, reserveAddr, 1 days, 30 days);
+        factory = new MarketFactory(reg, USDT0, 2_000_000, 100, 50, treasury, reserveAddr, 30 days); // fee 1%, settler reward 0.5%
         liveCount = TAPEOUT.cpuCount();
         deal(address(USDT0), alice, 1_000e6);
         deal(address(USDT0), bob, 1_000e6);
@@ -65,6 +65,7 @@ contract VerdictForkTest is Test {
         );
         s.cutoff = uint64(block.timestamp + 1 hours);
         s.observationTime = uint64(block.timestamp + 1 hours);
+        s.settleWindow = 0; // default 30 minutes
         return Market(factory.createMarket(s));
     }
 
@@ -86,7 +87,9 @@ contract VerdictForkTest is Test {
         assertEq(m.observed(), liveCount);
         (, bytes memory out) = m.evaluateRule(liveCount); // anyone can re-run the rule
         assertEq(out, hex"01");
-        assertEq(USDT0.balanceOf(treasury), 1.5e6); // 1% of the 150 pool
+        // Fee 1% of the 150 pool = 1.5; the settler (this test) gets 0.5% = 0.75 out of it.
+        assertEq(USDT0.balanceOf(treasury), 0.75e6);
+        assertEq(USDT0.balanceOf(address(this)), 0.75e6);
 
         vm.prank(alice);
         m.claim();
@@ -154,5 +157,37 @@ contract VerdictForkTest is Test {
 
         assertEq(uint256(m.state()), uint256(Market.State.Invalid));
         assertEq(uint256(m.invalidReason()), uint256(Market.InvalidReason.RuleFailed));
+    }
+
+    function test_settleInsideWindowPaysReward_afterWindowGoesInvalid() public {
+        address keeper = makeAddr("keeper");
+        assertEq(Market(_market(liveCount - 10)).settleWindow(), 30 minutes);
+
+        // Inside the window (last second): the settler is paid from the fee, winners are untouched.
+        Market m = _market(liveCount - 10);
+        _bet(m, alice, Market.Side.Yes, 100e6);
+        _bet(m, bob, Market.Side.No, 50e6);
+        vm.warp(uint256(m.observationTime()) + m.settleWindow());
+        vm.prank(keeper);
+        m.settle();
+        assertEq(uint256(m.state()), uint256(Market.State.Yes));
+        assertEq(USDT0.balanceOf(keeper), 0.75e6); // 0.5% of 150
+        assertEq(USDT0.balanceOf(treasury), 0.75e6); // fee 1.5 minus reward
+        assertEq(m.claimable(alice), 148.5e6); // pool minus fee, reward not taken from winners
+
+        // After the window: INVALID, full refunds, no reward and no fee.
+        Market late = _market(liveCount - 10);
+        _bet(late, alice, Market.Side.Yes, 100e6);
+        _bet(late, bob, Market.Side.No, 50e6);
+        vm.warp(uint256(late.observationTime()) + late.settleWindow() + 1);
+        vm.prank(keeper);
+        late.settle();
+        assertEq(uint256(late.state()), uint256(Market.State.Invalid));
+        assertEq(uint256(late.invalidReason()), uint256(Market.InvalidReason.Late));
+        assertEq(USDT0.balanceOf(keeper), 0.75e6); // unchanged
+        assertEq(USDT0.balanceOf(treasury), 0.75e6); // unchanged
+        vm.prank(bob);
+        late.claim();
+        assertEq(USDT0.balanceOf(bob), 1_000e6 - 50e6); // lost 50 in the first market, refunded 50 here
     }
 }
