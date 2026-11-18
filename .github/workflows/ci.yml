@@ -16,7 +16,7 @@ jobs:
     name: Contracts (build, unit and fuzz tests)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
       - uses: foundry-rs/foundry-toolchain@v1
@@ -32,7 +32,7 @@ jobs:
     env:
       XLAYER_RPC_URL: ${{ secrets.XLAYER_RPC_URL }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
       - uses: foundry-rs/foundry-toolchain@v1
@@ -46,7 +46,7 @@ jobs:
         run: sed -i "s#^xlayer = .*#xlayer = \"${XLAYER_RPC_URL}\"#" foundry.toml
       - name: Fork tests (core and Safe guard)
         if: env.XLAYER_RPC_URL != ''
-        run: forge test --match-path 'test/{PinNand,FengceGuard,FengceBatchB,FengceApprovals}.t.sol' -vv
+        run: forge test --match-path 'test/{PinNand,Fengce*}.t.sol' -vv
       - name: Fork tests (REF closure)
         if: env.XLAYER_RPC_URL != ''
         run: forge test --match-path 'test/fork/*.t.sol' -vv
@@ -61,8 +61,8 @@ jobs:
       run:
         working-directory: sdk
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
