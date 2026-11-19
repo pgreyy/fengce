@@ -5,11 +5,14 @@ Safe guard install calldata. Built on [viem](https://viem.sh). Node 20 or later.
 
 ## Install
 
-Not published yet. From the repository:
+On npm as [@fengce/sdk](https://www.npmjs.com/package/@fengce/sdk):
 
 ```sh
-cd sdk && npm ci && npm run build
+npm install @fengce/sdk
+npx fengce-quote <processor> <circuitId> --out quote.json   # the Quote CLI
 ```
+
+From the repository instead: `cd sdk && npm ci && npm run build`.
 
 ## Schemas
 

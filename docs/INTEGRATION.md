@@ -11,9 +11,11 @@ Addresses used below are in [ADDRESSES.md](ADDRESSES.md). Fengce's own contracts
 The policy is any stateless TapeOut circuit: the guard allows a transaction when output bit 0 is 1.
 
 ```sh
-cd sdk && npm ci && npm run build
-node dist/cli/quote.js <processor> <circuitId> --out quote.json
+npm install @fengce/sdk
+npx fengce-quote <processor> <circuitId> --out quote.json
 ```
+
+From a clone of the repository, `cd sdk && npm ci && npm run build && node dist/cli/quote.js …` does the same.
 
 Quote reads the circuit and every circuit it references (REF), measures gas on the full Safe path on a local
 fork (Safe execution overhead + the guard's pre-check + the outcome check, reported separately), and assigns a

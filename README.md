@@ -10,7 +10,7 @@ rule takes days, and everyone can see it.
 
 **X Layer Mainnet · Chain ID 196 · v2 live**
 
-[Live app](https://getfengce.vercel.app) · [On TapeOut DeWeb: 6.2.180.tape](https://6-2-180.tapekit.org/) · [Try it](docs/TRY-IT.md) · [Demo video](#demo-video) · [Docs](docs/INTEGRATION.md) · [SDK](sdk/README.md) · [Sourcify](https://repo.sourcify.dev/196/0x9D2A482fFA86fa3193F85c451A44576E2f1C8E6e)
+[Live app](https://getfengce.vercel.app) · [On TapeOut DeWeb: 6.2.180.tape](https://6-2-180.tapekit.org/) · [Try it](docs/TRY-IT.md) · [Demo video](#demo-video) · [Docs](docs/INTEGRATION.md) · [SDK on npm](https://www.npmjs.com/package/@fengce/sdk) · [Sourcify](https://repo.sourcify.dev/196/0x9D2A482fFA86fa3193F85c451A44576E2f1C8E6e)
 <!-- demo-video: replace the #demo-video link above with the video URL -->
 
 </div>
@@ -108,7 +108,11 @@ flowchart LR
 **Website.** On [Install](https://getfengce.vercel.app/install/), pick the wallet type, run the preflight for a Safe (existing approvals) and
 import the Safe Transaction Builder JSON. Other wallet types show the exact install calls.
 
-**SDK** ([sdk/README.md](sdk/README.md)):
+**SDK** ([@fengce/sdk on npm](https://www.npmjs.com/package/@fengce/sdk), [sdk/README.md](sdk/README.md)):
+
+```sh
+npm install @fengce/sdk
+```
 
 ```ts
 import { preSign, buildInstall } from "@fengce/sdk";
