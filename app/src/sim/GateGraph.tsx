@@ -250,7 +250,7 @@ function ActivityStrip({
             const on = level <= cur;
             return (
               <div className="lv" key={level} title={`level ${level}: ${p.one} high, ${p.zero} low`}>
-                <span style={{ height: `${(p.one / max) * 96}px`, background: on ? "var(--amber)" : "var(--line)" }} />
+                <span style={{ height: `${(p.one / max) * 96}px`, background: on ? "var(--allowed)" : "var(--line)" }} />
                 <span style={{ height: `${(p.zero / max) * 96}px`, background: on ? "var(--muted)" : "var(--line)", opacity: on ? 0.45 : 1 }} />
               </div>
             );

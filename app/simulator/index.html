@@ -1,10 +1,19 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark-copper">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Fengce · Simulator</title>
     <meta name="description" content="Fengce: TapeOut circuit policies for smart wallets on X Layer. Read-only; reads the chain from your browser." />
+    <script>
+      /* Theme before first paint: saved choice, else the system preference; dark when nothing is known. */
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem("fengce-theme"); } catch (e) {}
+        if (t !== "light" && t !== "dark") t = window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", t === "light" ? "light-ember" : "dark-copper");
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

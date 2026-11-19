@@ -1,0 +1,42 @@
+/* Fengce design tokens. Default theme is dark. Set data-theme on <html>. */
+:root,
+[data-theme="dark-copper"] {
+  --bg: #0B0A09; --surface: #141210; --raised: #1C1916; --line: #2A2622;
+  --text: #EDE6DC; --muted: #A0968A;
+  --accent: #C8733A; --accent-text: #160B03;
+  --allowed: #E3A44A; --denied: #E8664D;
+  --nav-bg: #0B0A09CC; --code-bg: #0F0D0B; --code-text: #EDE6DC;
+}
+[data-theme="dark-red"] {
+  --bg: #0B0A09; --surface: #141210; --raised: #1C1916; --line: #2A2622;
+  --text: #EDE6DC; --muted: #A0968A;
+  --accent: #E5483D; --accent-text: #160403;
+  --allowed: #7FD6A4; --denied: #FF8A7A;
+  --nav-bg: #0B0A09CC; --code-bg: #0F0D0B; --code-text: #EDE6DC;
+}
+[data-theme="light-datasheet"] {
+  --bg: #F2F2EF; --surface: #FFFFFF; --raised: #E8E8E3; --line: #D3D3CD;
+  --text: #121314; --muted: #54585E;
+  --accent: #C1271F; --accent-text: #FFFFFF;
+  --allowed: #11673F; --denied: #B3261E;
+  --nav-bg: #F2F2EFCC; --code-bg: #121314; --code-text: #F2F2EF;
+}
+[data-theme="light-ember"] {
+  --bg: #F6F2EC; --surface: #FFFFFF; --raised: #EDE6DB; --line: #DDD3C5;
+  --text: #1A1512; --muted: #665C52;
+  --accent: #A8571F; --accent-text: #FFFFFF;
+  --allowed: #8A5A00; --denied: #B23B26;
+  --nav-bg: #F6F2ECCC; --code-bg: #1A1512; --code-text: #F6F2EC;
+}
+:root {
+  --font-display: "Manrope", system-ui, sans-serif;
+  --font-body: "Manrope", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --r-button: 8px; --r-card: 12px; --r-pill: 6px; --r-panel: 16px;
+  --container: 1240px; --gutter: 28px; --section-y: 100px;
+  --ease-out: cubic-bezier(.2,.7,.2,1);
+}
+
+/* Fengce app: colour scheme per theme (form controls, scrollbars). */
+:root, [data-theme="dark-copper"], [data-theme="dark-red"] { color-scheme: dark; }
+[data-theme="light-ember"], [data-theme="light-datasheet"] { color-scheme: light; }

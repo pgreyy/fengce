@@ -2,6 +2,7 @@ import { StrictMode, useEffect, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { client, EXPLORER, friendlyError } from "../lib/chain";
 import type { Snapshot } from "../lib/events";
+import "../tokens.css";
 import "../styles.css";
 
 /** Pages live at the root (catalog) or one folder deep; links are relative so the build runs from any base path. */
@@ -61,6 +62,37 @@ function LiveBlock() {
   );
 }
 
+/** The two themes of this build (design handoff: DARK_ACCENT copper, LIGHT_THEME ember). */
+const THEMES = { dark: "dark-copper", light: "light-ember" } as const;
+type ThemeKey = keyof typeof THEMES;
+
+function currentTheme(): ThemeKey {
+  return document.documentElement.getAttribute("data-theme")?.startsWith("light") ? "light" : "dark";
+}
+
+/** Dark / Light segmented switch; the choice is remembered (localStorage, when available). */
+export function ThemeSwitch() {
+  const [theme, setTheme] = useState<ThemeKey>(() => currentTheme());
+  const pick = (t: ThemeKey) => {
+    document.documentElement.setAttribute("data-theme", THEMES[t]);
+    try {
+      localStorage.setItem("fengce-theme", t);
+    } catch {
+      /* storage blocked: the choice lasts for this page only */
+    }
+    setTheme(t);
+  };
+  return (
+    <div className="theme-switch" role="group" aria-label="Theme">
+      {(["dark", "light"] as ThemeKey[]).map((t) => (
+        <button key={t} type="button" aria-pressed={theme === t} onClick={() => pick(t)}>
+          {t === "dark" ? "Dark" : "Light"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function Shell({ page, children }: { page: string; children: ReactNode }) {
   return (
     <>
@@ -76,6 +108,7 @@ function Shell({ page, children }: { page: string; children: ReactNode }) {
               </a>
             ))}
           </nav>
+          <ThemeSwitch />
           <LiveBlock />
         </div>
       </header>
