@@ -1,10 +1,9 @@
-/* Self-hosted fonts (OFL), woff2 only, Latin subset. */
-@font-face { font-family: "Archivo"; font-weight: 600; font-display: swap; src: url("../node_modules/@fontsource/archivo/files/archivo-latin-600-normal.woff2") format("woff2"); }
-@font-face { font-family: "Archivo"; font-weight: 800; font-display: swap; src: url("../node_modules/@fontsource/archivo/files/archivo-latin-800-normal.woff2") format("woff2"); }
-@font-face { font-family: "Archivo"; font-weight: 900; font-display: swap; src: url("../node_modules/@fontsource/archivo/files/archivo-latin-900-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-weight: 400; font-display: swap; src: url("../node_modules/@fontsource/inter/files/inter-latin-400-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-weight: 500; font-display: swap; src: url("../node_modules/@fontsource/inter/files/inter-latin-500-normal.woff2") format("woff2"); }
-@font-face { font-family: "Inter"; font-weight: 600; font-display: swap; src: url("../node_modules/@fontsource/inter/files/inter-latin-600-normal.woff2") format("woff2"); }
+/* Self-hosted fonts (OFL), woff2 only, Latin subset: Manrope 400-800, JetBrains Mono 400-500. */
+@font-face { font-family: "Manrope"; font-weight: 400; font-display: swap; src: url("../node_modules/@fontsource/manrope/files/manrope-latin-400-normal.woff2") format("woff2"); }
+@font-face { font-family: "Manrope"; font-weight: 500; font-display: swap; src: url("../node_modules/@fontsource/manrope/files/manrope-latin-500-normal.woff2") format("woff2"); }
+@font-face { font-family: "Manrope"; font-weight: 600; font-display: swap; src: url("../node_modules/@fontsource/manrope/files/manrope-latin-600-normal.woff2") format("woff2"); }
+@font-face { font-family: "Manrope"; font-weight: 700; font-display: swap; src: url("../node_modules/@fontsource/manrope/files/manrope-latin-700-normal.woff2") format("woff2"); }
+@font-face { font-family: "Manrope"; font-weight: 800; font-display: swap; src: url("../node_modules/@fontsource/manrope/files/manrope-latin-800-normal.woff2") format("woff2"); }
 @font-face { font-family: "JetBrains Mono"; font-weight: 400; font-display: swap; src: url("../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2") format("woff2"); }
 @font-face { font-family: "JetBrains Mono"; font-weight: 500; font-display: swap; src: url("../node_modules/@fontsource/jetbrains-mono/files/jetbrains-mono-latin-500-normal.woff2") format("woff2"); }
 
@@ -17,7 +16,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--text); }
-body { font: 400 14px/1.5 var(--body); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
+body { font: 400 15px/1.6 var(--body); font-variant-numeric: tabular-nums; -webkit-font-smoothing: antialiased; }
 a { color: inherit; text-decoration: none; }
 a:hover { color: var(--accent); }
 ::selection { background: var(--accent); color: var(--accent-text); }
@@ -38,7 +37,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .top { position: sticky; top: 0; z-index: 20; background: var(--bg); border-bottom: 1px solid var(--line); }
 .top .wrap { display: flex; align-items: center; gap: 28px; height: 52px; }
-.wordmark { font: 900 20px/1 var(--display); letter-spacing: -0.04em; text-transform: uppercase; }
+.wordmark { font: 800 20px/1 var(--display); letter-spacing: -0.04em; text-transform: uppercase; }
 .wordmark span { color: var(--accent); }
 .nav { display: flex; gap: 22px; flex: 1; overflow-x: auto; }
 .nav a { font: 600 11.5px/1 var(--display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); padding: 19px 0 17px; border-bottom: 2px solid transparent; white-space: nowrap; }
@@ -58,9 +57,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .label { font: 600 11.5px/1 var(--display); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin: 0 0 22px; display: flex; gap: 14px; align-items: baseline; }
 .label b { color: var(--accent); font-weight: 600; }
 .label .aside { margin-left: auto; letter-spacing: 0.04em; text-transform: none; font: 400 12px/1 var(--mono); }
-.headline { font: 900 clamp(40px, 7.4vw, 118px)/0.92 var(--display); letter-spacing: -0.045em; margin: 36px 0 26px; max-width: 14ch; }
+.headline { font: 800 clamp(40px, 7.4vw, 118px)/0.92 var(--display); letter-spacing: -0.045em; margin: 36px 0 26px; max-width: 14ch; }
 .subhead { font: 400 17px/1.55 var(--body); color: var(--text); max-width: 62ch; margin: 0 0 8px; }
-.title { font: 900 clamp(36px, 6vw, 92px)/0.95 var(--display); letter-spacing: -0.04em; margin: 32px 0 14px; }
+.title { font: 800 clamp(36px, 6vw, 92px)/0.95 var(--display); letter-spacing: -0.04em; margin: 32px 0 14px; }
 .lede { font-size: 16px; color: var(--muted); max-width: 70ch; margin: 0 0 8px; }
 h3 { font: 800 15px/1.2 var(--display); letter-spacing: -0.01em; text-transform: uppercase; margin: 0 0 12px; }
 
@@ -123,7 +122,7 @@ pre.json { background: var(--surface); border: 1px solid var(--line); padding: 1
 /* ---------------------------------------------------------------- stepper */
 .steps { list-style: none; margin: 0; padding: 0; counter-reset: s; }
 .steps > li { counter-increment: s; display: grid; grid-template-columns: 64px 1fr; border-top: 1px solid var(--line); padding: 20px 0; }
-.steps > li::before { content: counter(s, decimal-leading-zero); font: 900 34px/1 var(--display); letter-spacing: -0.04em; color: var(--accent); }
+.steps > li::before { content: counter(s, decimal-leading-zero); font: 800 34px/1 var(--display); letter-spacing: -0.04em; color: var(--accent); }
 
 /* ---------------------------------------------------------------- tree */
 .tree { list-style: none; margin: 0; padding-left: 0; }
@@ -155,7 +154,7 @@ pre.json { background: var(--surface); border: 1px solid var(--line); padding: 1
 .strip { display: flex; align-items: flex-end; gap: 2px; height: 120px; padding: 12px; }
 .strip .lv { flex: 1; min-width: 3px; display: flex; flex-direction: column-reverse; }
 .strip .lv span { display: block; }
-.verdict { font: 900 clamp(56px, 9vw, 150px)/0.9 var(--display); letter-spacing: -0.05em; margin: 18px 0 6px; }
+.verdict { font: 800 clamp(56px, 9vw, 150px)/0.9 var(--display); letter-spacing: -0.05em; margin: 18px 0 6px; }
 .verdict.allow { color: var(--allowed); }
 .verdict.deny { color: var(--denied); }
 .levelbar { font: 400 12px var(--mono); color: var(--muted); padding: 8px 12px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; }

@@ -10,9 +10,8 @@
     "snapshot": "tsx scripts/snapshot.mts"
   },
   "dependencies": {
-    "@fontsource/archivo": "^5.3.0",
-    "@fontsource/inter": "^5.3.0",
     "@fontsource/jetbrains-mono": "^5.3.0",
+    "@fontsource/manrope": "^5.3.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "viem": "^2.58.0"
