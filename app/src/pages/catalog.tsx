@@ -23,16 +23,8 @@ function CatalogPage() {
   const hist = data?.history;
   return (
     <>
-      <div className="grid">
-        <div className="c12">
-          <h1 className="headline">Spending limits that even the wallet's owners can't quietly skip.</h1>
-          <p className="subhead">
-            Other tools only limit an AI agent's key. With Fengce, every transaction from your wallet, whether it comes from you, a co-owner or an AI
-            agent, has to pass a TapeOut circuit on X Layer first. If it fails, it doesn't go through. Changing the rule takes days, and everyone can
-            see it.
-          </p>
-        </div>
-      </div>
+      <h1 className="title">Catalog</h1>
+      <p className="lede">Every policy listed on X Layer, with its gas, tier and installs. Read from the chain by your browser.</p>
       <Section n={1} label="Catalog" aside={data ? <Addr a={data.address} /> : null}>
         {loading && <Loading what="the Catalog" />}
         <ErrorLine error={error} retry={reload} />
@@ -99,4 +91,4 @@ function CatalogPage() {
   );
 }
 
-mount("catalog", 0, <CatalogPage />);
+mount("catalog", 1, <CatalogPage />);

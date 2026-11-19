@@ -1,31 +1,46 @@
 import { StrictMode, useEffect, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { client, EXPLORER, friendlyError } from "../lib/chain";
+import { DEPLOYMENT, EXPLORER, RELEASE_COMMIT, client, friendlyError } from "../lib/chain";
+import deweb from "../../../deployments/deweb-xlayer-196.json";
 import type { Snapshot } from "../lib/events";
 import "../tokens.css";
 import "../styles.css";
 
 /** Pages live at the root (catalog) or one folder deep; links are relative so the build runs from any base path. */
 let DEPTH = 0;
-export function href(page: "" | "simulator" | "install" | "safe" | "wallets" | "policy", query?: Record<string, string>) {
+export type Page = "" | "catalog" | "simulator" | "install" | "safe" | "wallets" | "policy";
+export function href(page: Page, query?: Record<string, string>, hash?: string) {
   const base = DEPTH === 0 ? "./" : "../";
   const q = query ? `?${new URLSearchParams(query).toString()}` : "";
-  return `${base}${page ? `${page}/` : ""}${q}`;
+  return `${base}${page ? `${page}/` : ""}${q}${hash ? `#${hash}` : ""}`;
 }
 
-const NAV: { page: "" | "simulator" | "install" | "safe" | "wallets"; label: string }[] = [
-  { page: "", label: "Catalog" },
-  { page: "simulator", label: "Simulator" },
+const NAV: { page: Page; label: string; hash?: string; landing?: boolean }[] = [
+  { page: "catalog", label: "Catalog", landing: true },
+  { page: "simulator", label: "Simulator", landing: true },
   { page: "install", label: "Install" },
   { page: "safe", label: "Safe" },
-  { page: "wallets", label: "Wallets" },
+  { page: "wallets", label: "Wallets", landing: true },
+  { page: "", label: "Developers", hash: "developers", landing: true },
 ];
 
-export function mount(page: string, depth: number, node: ReactNode) {
+/** The DeWeb copy of this site (deployments/deweb-xlayer-196.json) and a gateway that opens it in any browser. */
+export const DEWEB = { name: deweb.name as string, gateway: `https://${String(deweb.name).replace(/\.tape$/, "").replace(/\./g, "-")}.tapekit.org/` };
+export const RELEASE = `v${String(DEPLOYMENT.version).replace(/^v/, "").split(".")[0]}`;
+export const LINKS = {
+  repo: "https://github.com/pgreyy/fengce",
+  docs: "https://github.com/pgreyy/fengce/tree/main/docs",
+  api: "https://github.com/pgreyy/fengce/blob/main/docs/API.md",
+  sourcify: `https://repo.sourcify.dev/196/${DEPLOYMENT.contracts.FengceGuard}`,
+};
+
+export function mount(page: string, depth: number, node: ReactNode, opts: { landing?: boolean } = {}) {
   DEPTH = depth;
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
-      <Shell page={page}>{node}</Shell>
+      <Shell page={page} landing={!!opts.landing}>
+        {node}
+      </Shell>
     </StrictMode>,
   );
 }
@@ -104,7 +119,7 @@ export function ThemeSwitch() {
   );
 }
 
-function Shell({ page, children }: { page: string; children: ReactNode }) {
+function Shell({ page, landing, children }: { page: string; landing: boolean; children: ReactNode }) {
   return (
     <>
       <header className="top">
@@ -113,30 +128,51 @@ function Shell({ page, children }: { page: string; children: ReactNode }) {
             <LogoMark />
             <span>Fengce</span>
           </a>
-          <nav className="nav">
-            {NAV.map((n) => (
-              <a key={n.label} href={href(n.page)} aria-current={(n.page || "catalog") === page ? "page" : undefined}>
+          <nav className="nav" aria-label="Main">
+            {NAV.filter((n) => !landing || n.landing).map((n) => (
+              <a key={n.label} href={href(n.page, undefined, n.hash)} aria-current={!n.hash && n.page === page ? "page" : undefined}>
                 {n.label}
               </a>
             ))}
           </nav>
           <ThemeSwitch />
-          <LiveBlock />
+          {landing ? (
+            <a className="btn" href={href("catalog")}>
+              Open app
+            </a>
+          ) : (
+            <LiveBlock />
+          )}
         </div>
       </header>
-      <main className="wrap">{children}</main>
-      <footer className="foot">
-        <div className="wrap">
-          <span>Read-only. Every figure on this page is read from X Layer by your browser; nothing is sent.</span>
-          <span className="mono">
-            chain 196 · release v2 · on TapeOut DeWeb:{" "}
-            <a href="https://6-2-180.tapekit.org/" target="_blank" rel="noreferrer noopener" title="tape://6.2.180.tape (files stored on X Layer, verified by SHA-256)">
-              6.2.180.tape
-            </a>
-          </span>
-        </div>
-      </footer>
+      {landing ? <main className="landing">{children}</main> : <main className="wrap">{children}</main>}
+      <Footer />
     </>
+  );
+}
+
+function Footer() {
+  return (
+    <footer className="foot">
+      <div className="wrap">
+        <div className="foot-brand">
+          <span className="foot-name">Fengce</span>
+          <span>Wallet enforcement for TapeOut circuits on X Layer.</span>
+        </div>
+        <nav className="foot-links" aria-label="Project">
+          <a href={LINKS.docs} target="_blank" rel="noreferrer noopener">Docs</a>
+          <a href={LINKS.repo} target="_blank" rel="noreferrer noopener">GitHub</a>
+          <a href={LINKS.api} target="_blank" rel="noreferrer noopener">API</a>
+          <a href={LINKS.sourcify} target="_blank" rel="noreferrer noopener">Sourcify</a>
+        </nav>
+        <span className="mono">
+          {RELEASE} · {RELEASE_COMMIT} · also on TapeOut:{" "}
+          <a href={DEWEB.gateway} target="_blank" rel="noreferrer noopener" title={`tape://${DEWEB.name} (files stored on X Layer, verified by SHA-256)`}>
+            {DEWEB.name}
+          </a>
+        </span>
+      </div>
+    </footer>
   );
 }
 

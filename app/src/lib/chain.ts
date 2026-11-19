@@ -94,4 +94,7 @@ export const DEPLOYMENT = deployment;
  * need to look further back. */
 export const DEPLOY_BLOCK = 76_250_360n;
 
+/** Commit the v2 release was built from (deployments/manifest-xlayer-196-v2.json "gitCommit"). */
+export const RELEASE_COMMIT = "e260a37";
+
 export const EXPLORER = "https://www.oklink.com/x-layer";
