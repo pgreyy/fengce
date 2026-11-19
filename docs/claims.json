@@ -624,6 +624,51 @@
       ]
     },
     {
+      "id": "wallet-types-8",
+      "claim": "8 wallet types have an adapter with a passing test: Safe, Safe + Safe7579, Kernel, Nexus, Etherspot, Modular Account v2, EIP-7702 (SemiModularAccount7702) and Coinbase Smart Wallet.",
+      "status": "fork-tested",
+      "network": "X Layer mainnet fork (Safe also on X Layer mainnet)",
+      "release": "v2",
+      "evidence": [
+        {
+          "label": "Safe v1.5.0: test_ownerSend150Blocked",
+          "url": "test/FengceGuard.t.sol#L32"
+        },
+        {
+          "label": "Safe + Safe7579 v1.0.0: test_7579AccountBlockedOverLimit",
+          "url": "test/FengceHook7579.t.sol#L86"
+        },
+        {
+          "label": "ZeroDev Kernel v3.3: test_kernelOverLimitBlocked",
+          "url": "test/wallets/FengceKernel.t.sol#L78"
+        },
+        {
+          "label": "Biconomy Nexus 1.2.0: test_nexusOverLimitBlocked",
+          "url": "test/wallets/FengceNexus.t.sol#L51"
+        },
+        {
+          "label": "Etherspot ModularEtherspotWallet v1.0.0: test_etherspotOverLimitBlocked",
+          "url": "test/wallets/FengceEtherspot.t.sol#L44"
+        },
+        {
+          "label": "Alchemy Modular Account v2 (ERC-6900): test_mav2OverLimitBlocked",
+          "url": "test/wallets/FengceModularAccountV2.t.sol#L45"
+        },
+        {
+          "label": "EIP-7702 EOA (SemiModularAccount7702): test_7702AgentGoesThroughCircuitOwnerKeyDoesNot",
+          "url": "test/wallets/Fengce7702.t.sol#L52"
+        },
+        {
+          "label": "Coinbase Smart Wallet v1.1: test_coinbaseAgentThroughCircuit",
+          "url": "test/wallets/FengceAgentOwner.t.sol#L47"
+        },
+        {
+          "label": "list with status per wallet",
+          "url": "docs/WALLETS.md#wallet-types-with-a-tested-adapter-8"
+        }
+      ]
+    },
+    {
       "id": "wallet-kernel",
       "claim": "ZeroDev Kernel v3.3: FengceHook blocks over-limit transfers and hidden batches; uninstall waits 2 days; validator and root changes are timelocked admin actions.",
       "status": "fork-tested",

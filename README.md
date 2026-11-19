@@ -54,6 +54,7 @@ Policy: [Stablecoin Transfer Limit](https://getfengce.vercel.app/policy/?process
 built from commit `e260a37`. The previous release ran the same demo: [0.5 allowed](https://www.oklink.com/x-layer/tx/0x6797257c0ea35fe0ec7b2d80f3bd29275a172e52286f9dbff96fc98e81f05e38), [1.5 denied](https://www.oklink.com/x-layer/tx/0xbfe43e982f563f9e3dc1a4641e259b04ace0635dfab769c59ec7532492e24760).
 
 - **Tests:** 112 pass in [CI for e260a37](https://github.com/pgreyy/fengce/actions/runs/44346520788): 44 unit, 53 core and Safe fork tests, 15 wallet fork tests.
+- **Wallet types:** 8 with a tested adapter: Safe, Safe + Safe7579, Kernel, Nexus, Etherspot, Modular Account v2, EIP-7702 and Coinbase Smart Wallet ([evidence](docs/CLAIMS.md#wallet-types-8)).
 - **Sourcify:** 18/18 v2 contracts verified, exact match ([list](docs/CLAIMS.md#sourcify-18)).
 - **Every claim** in this README links to its evidence in [docs/CLAIMS.md](docs/CLAIMS.md) ([claims.json](docs/claims.json)).
 
@@ -148,6 +149,9 @@ The rule for agents: before acting for a Safe, preflight the transaction; if the
 not split, reroute or retry it.
 
 ## Wallet compatibility
+
+8 wallet types have an adapter with a passing test ([list with tests](docs/WALLETS.md#wallet-types-with-a-tested-adapter-8)); the table also lists
+wallets that are untested or not integrated.
 
 **Mainnet**: adapter on X Layer mainnet and used there in real transactions. **Fork-tested**: adapter on mainnet, behaviour
 proven on a fork of live mainnet state. **Agent-only**: agents are checked, owners are not. **Partial**: pre-execution checks

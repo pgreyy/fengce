@@ -21,6 +21,8 @@
     "knownBypasses": "known ways around the check",
     "evidence": "claim ids in docs/claims.json"
   },
+  "testedWalletTypes": 8,
+  "testedWalletTypesNote": "wallets whose adapter has a passing test (tests != \"none\"); see docs/CLAIMS.md#wallet-types-8",
   "wallets": [
     {
       "key": "safe",

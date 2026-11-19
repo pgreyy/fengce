@@ -20,6 +20,23 @@ Non-Safe hooks (FengceHook, FengceHook6900) still check every call before it exe
 is the Safe configuration invariants (owners, threshold, modules, guards, fallback handler), which FengceInspector can only
 read on Safe accounts; on other accounts it checks the outcome and the account's code hash.
 
+## Wallet types with a tested adapter (8)
+
+The app's "wallet types" figure counts these: every wallet in the matrix whose adapter has a passing test.
+Alchemy MultiOwnerLightAccount v2 (agent-only, not tested) and the three not-integrated wallets are not counted. Claim:
+[wallet-types-8](CLAIMS.md#wallet-types-8).
+
+| # | Wallet | Status | Test |
+|---|---|---|---|
+| 1 | Safe v1.5.0 | **Mainnet** | [`test_ownerSend150Blocked`](../test/FengceGuard.t.sol#L32) in `test/FengceGuard.t.sol` (plus the v2 mainnet demo) |
+| 2 | Safe + Safe7579 v1.0.0 | **Partial** | [`test_7579AccountBlockedOverLimit`](../test/FengceHook7579.t.sol#L86) in `test/FengceHook7579.t.sol` (admin routes: test/FengceSafe7579Admin.t.sol) |
+| 3 | ZeroDev Kernel v3.3 | **Fork-tested** | [`test_kernelOverLimitBlocked`](../test/wallets/FengceKernel.t.sol#L78) in `test/wallets/FengceKernel.t.sol` |
+| 4 | Biconomy Nexus 1.2.0 | **Partial** | [`test_nexusOverLimitBlocked`](../test/wallets/FengceNexus.t.sol#L51) in `test/wallets/FengceNexus.t.sol` |
+| 5 | Etherspot ModularEtherspotWallet v1.0.0 | **Partial** | [`test_etherspotOverLimitBlocked`](../test/wallets/FengceEtherspot.t.sol#L44) in `test/wallets/FengceEtherspot.t.sol` |
+| 6 | Alchemy Modular Account v2 (ERC-6900) | **Fork-tested** | [`test_mav2OverLimitBlocked`](../test/wallets/FengceModularAccountV2.t.sol#L45) in `test/wallets/FengceModularAccountV2.t.sol` |
+| 7 | EIP-7702 EOA (SemiModularAccount7702) | **Agent-only** | [`test_7702AgentGoesThroughCircuitOwnerKeyDoesNot`](../test/wallets/Fengce7702.t.sol#L52) in `test/wallets/Fengce7702.t.sol` |
+| 8 | Coinbase Smart Wallet v1.1 | **Agent-only** | [`test_coinbaseAgentThroughCircuit`](../test/wallets/FengceAgentOwner.t.sol#L47) in `test/wallets/FengceAgentOwner.t.sol` |
+
 ## Matrix
 
 | Wallet | Status | Adapter (live on mainnet) | Test environment | Pre-execution check | Outcome check | Safe config invariants | Uninstall / admin protection | Agent-only | isBound | Known bypasses | Evidence |

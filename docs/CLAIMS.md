@@ -37,6 +37,7 @@ property of the code or setup). Test links point at the test function in this re
 | [agent-demo-fork](#agent-demo-fork) | fork-tested | X Layer mainnet fork | v2 |
 | [preflight-own-policy](#preflight-own-policy) | mainnet | X Layer mainnet (196), read-only | v2 |
 | [deweb-hosted](#deweb-hosted) | mainnet | X Layer mainnet (196) | v2 |
+| [wallet-types-8](#wallet-types-8) | fork-tested | X Layer mainnet fork (Safe also on X Layer mainnet) | v2 |
 | [wallet-kernel](#wallet-kernel) | fork-tested | X Layer mainnet fork (live Kernel v3.3 code) | v2 |
 | [wallet-nexus](#wallet-nexus) | fork-tested | X Layer mainnet fork with Nexus code from Base | v2 |
 | [wallet-etherspot](#wallet-etherspot) | fork-tested | X Layer mainnet fork with Etherspot code from Base | v2 |
@@ -330,6 +331,22 @@ Status: **mainnet** · Network: X Layer mainnet (196) · Release: v2
 - [record](../deployments/deweb-xlayer-196.json)
 - [TAP-10 resolution and SHA-256 check](../app/scripts/deweb-check.mts)
 - [gateway](https://6-2-180.tapekit.org/)
+
+## wallet-types-8
+
+8 wallet types have an adapter with a passing test: Safe, Safe + Safe7579, Kernel, Nexus, Etherspot, Modular Account v2, EIP-7702 (SemiModularAccount7702) and Coinbase Smart Wallet.
+
+Status: **fork-tested** · Network: X Layer mainnet fork (Safe also on X Layer mainnet) · Release: v2
+
+- Safe v1.5.0: [test_ownerSend150Blocked](../test/FengceGuard.t.sol#L32)
+- Safe + Safe7579 v1.0.0: [test_7579AccountBlockedOverLimit](../test/FengceHook7579.t.sol#L86)
+- ZeroDev Kernel v3.3: [test_kernelOverLimitBlocked](../test/wallets/FengceKernel.t.sol#L78)
+- Biconomy Nexus 1.2.0: [test_nexusOverLimitBlocked](../test/wallets/FengceNexus.t.sol#L51)
+- Etherspot ModularEtherspotWallet v1.0.0: [test_etherspotOverLimitBlocked](../test/wallets/FengceEtherspot.t.sol#L44)
+- Alchemy Modular Account v2 (ERC-6900): [test_mav2OverLimitBlocked](../test/wallets/FengceModularAccountV2.t.sol#L45)
+- EIP-7702 EOA (SemiModularAccount7702): [test_7702AgentGoesThroughCircuitOwnerKeyDoesNot](../test/wallets/Fengce7702.t.sol#L52)
+- Coinbase Smart Wallet v1.1: [test_coinbaseAgentThroughCircuit](../test/wallets/FengceAgentOwner.t.sol#L47)
+- [list with status per wallet](WALLETS.md#wallet-types-with-a-tested-adapter-8)
 
 ## wallet-kernel
 
