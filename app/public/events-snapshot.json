@@ -8,8 +8,8 @@
   "catalog": "0x26C5437428cdD7e4854614DC5DDEFE2776B51dFe"
  },
  "fromBlock": "76250360",
- "toBlock": "76269220",
- "generatedAt": "2026-11-18T21:44:38.376Z",
+ "toBlock": "76297786",
+ "generatedAt": "2026-11-19T05:41:58.990Z",
  "events": [
   {
    "source": "catalog",
