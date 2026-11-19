@@ -4,7 +4,7 @@ version: "0.1.0"
 description: "Check a transaction against a wallet's Fengce spending policy on X Layer before acting, and treat Denied as final."
 author:
   name: "Fengce"
-  github: "REPLACE_WITH_SUBMITTER_GITHUB_USERNAME"
+  github: "pgreyy"
 license: MIT
 category: dapp
 tags:
