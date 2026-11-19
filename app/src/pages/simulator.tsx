@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { encodeFunctionData, isAddress, parseAbi, type Address, type Hex } from "viem";
 import { evaluateTrace, type CircuitTrace } from "@fengce/sdk";
 import { ADDR, DEPLOYMENT, client } from "../lib/chain";
@@ -95,9 +95,24 @@ function SimulatorPage() {
     }
   }
 
-  // ?run=1 runs the example transaction on load (shareable links).
+  // ?run=1 runs the example transaction on load (shareable links); otherwise the example runs once when the
+  // gate graph area scrolls into view, so the gate-by-gate animation starts on its own.
+  const stageRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    if (param("run") === "1") go();
+    if (param("run") === "1") {
+      go();
+      return;
+    }
+    const el = stageRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver((es) => {
+      if (es.some((e) => e.isIntersecting)) {
+        io.disconnect();
+        go();
+      }
+    }, { threshold: 0.35 });
+    io.observe(el);
+    return () => io.disconnect();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -210,7 +225,7 @@ function SimulatorPage() {
               </>
             )}
           </div>
-          <div className="c8">
+          <div className="c8" ref={stageRef}>
             {trace ? (
               <GateGraph trace={trace} cur={cur} fields={sim?.input?.bits ? expandFields(sim.policy.schema) : undefined} />
             ) : (

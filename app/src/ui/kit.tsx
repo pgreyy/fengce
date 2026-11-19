@@ -5,6 +5,7 @@ import deweb from "../../../deployments/deweb-xlayer-196.json";
 import type { Snapshot } from "../lib/events";
 import "../tokens.css";
 import "../styles.css";
+import { initMotion } from "./motion";
 
 /** Pages live at the root (catalog) or one folder deep; links are relative so the build runs from any base path. */
 let DEPTH = 0;
@@ -36,6 +37,7 @@ export const LINKS = {
 
 export function mount(page: string, depth: number, node: ReactNode, opts: { landing?: boolean } = {}) {
   DEPTH = depth;
+  initMotion();
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
       <Shell page={page} landing={!!opts.landing}>

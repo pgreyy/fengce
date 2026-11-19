@@ -166,5 +166,9 @@ pre.json { background: var(--surface); border: 1px solid var(--line); padding: 1
   * { transition: none !important; }
 }
 
-.foot { border-top: 1px solid var(--line); padding: 22px 0 40px; color: var(--muted); font-size: 12px; }
-.foot .wrap { display: flex; gap: 24px; flex-wrap: wrap; justify-content: space-between; }
+.foot { border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
+.foot .wrap { max-width: var(--container); padding: 40px var(--gutter); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 20px; }
+.foot-brand { display: flex; flex-direction: column; gap: 6px; }
+.foot-name { font: 800 17px/1.2 var(--font-display); color: var(--text); }
+.foot-links { display: flex; flex-wrap: wrap; gap: 22px; }
+.foot .mono a { color: var(--accent); }
