@@ -37,8 +37,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 
 .top { position: sticky; top: 0; z-index: 20; background: var(--bg); border-bottom: 1px solid var(--line); }
 .top .wrap { display: flex; align-items: center; gap: 28px; height: 52px; }
-.wordmark { font: 800 20px/1 var(--display); letter-spacing: -0.04em; text-transform: uppercase; }
-.wordmark span { color: var(--accent); }
+.wordmark { display: flex; align-items: center; gap: 10px; color: var(--text); }
+.wordmark span { font: 800 20px/1 var(--display); letter-spacing: -0.03em; }
+.wordmark:hover { color: var(--text); }
 .nav { display: flex; gap: 22px; flex: 1; overflow-x: auto; }
 .nav a { font: 600 11.5px/1 var(--display); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); padding: 19px 0 17px; border-bottom: 2px solid transparent; white-space: nowrap; }
 .nav a:hover { color: var(--text); }
