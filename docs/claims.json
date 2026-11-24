@@ -179,7 +179,7 @@
         },
         {
           "label": "live status page",
-          "url": "https://getfengce.vercel.app/safe/"
+          "url": "https://getfengce.vercel.app/protect/?step=3&wallet=safe&address=0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707"
         }
       ]
     },

@@ -58,7 +58,7 @@ Alchemy MultiOwnerLightAccount v2 (agent-only, not tested) and the three not-int
 
 | Contract | Accounts | Install |
 |---|---|---|
-| `FengceGuard` (`src/safe`) | Safe v1.5.0 | `configure`, then `setGuard` and `setModuleGuard` (the app's Install page builds the Safe Transaction Builder JSON) |
+| `FengceGuard` (`src/safe`) | Safe v1.5.0 | `configure`, then `setGuard` and `setModuleGuard` (the app's Protect page, Install step, builds the Safe Transaction Builder JSON) |
 | `FengceHook` (`src/erc7579`) | ERC-7579 accounts with a hook slot | `installModule(4, hook, abi.encode(pinId, layout, bindings))`; on Kernel as the validation's hook, with a 1-byte flag before the data. Admin changes: `scheduleAdmin(keccak256(call))`, wait 2 days |
 | `FengceHook6900` (`src/erc6900`) | ERC-6900 v0.8 accounts (Modular Account v2, SemiModularAccount7702) | `installExecution(hook, hook.executionManifest(), abi.encode(pinId, layout, bindings))` |
 | `FengceAgentOwner` (`src/agent`) | wallets that accept extra owners and expose `execute(address,uint256,bytes)` | add as owner, then from the wallet `configure(pinId, layout, bindings)` and `addAgent(agent, expiresAt)` |

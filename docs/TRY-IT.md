@@ -18,27 +18,27 @@ Safe holding a few dollars, never a real treasury**.
 
 1. **Create the test Safe.** Use Safe{Wallet} at app.safe.global (check that X Layer is in its network list) or any Safe
    v1.5.0 deployment on X Layer. One owner is fine for a test. Send it a few dollars of USDT0.
-2. **Open Install.** On [getfengce.vercel.app/install](https://getfengce.vercel.app/install/), pick **Safe**, paste your
+2. **Open Protect.** On [getfengce.vercel.app/protect](https://getfengce.vercel.app/protect/), choose **Safe**, go to **Install**, paste your
    Safe address, pick a policy (for example *Stablecoin Transfer Limit*) and a cap in base units (USDT0 has 6 decimals:
    `1000000` is 1 USDT0). Add the tokens to check (USDT0 is filled in).
 3. **Run the preflight.** It checks existing approvals from your Safe. If something is found, revoke it first, or tick
    *keep* to install anyway (the guard then records a warning). A new Safe has none.
 4. **Download the Transaction Builder JSON** and import it in your Safe's Transaction Builder. It holds three transactions,
    in order: `configure` on FengceGuard, `setGuard`, `setModuleGuard`. Review them, then sign and execute the batch.
-5. **Check the result** on [the Safe page](https://getfengce.vercel.app/safe/): enter your address. *Fengce guards* should
+5. **Check the result** on [Protect → Check a wallet](https://getfengce.vercel.app/protect/?step=3&wallet=safe): enter your address. *Fengce guards* should
    read **ON**, with your policy pin and timelocks.
 
 ## See Allowed and Denied
 
-- **Before sending**, test any transaction in the [Simulator](https://getfengce.vercel.app/simulator/): pick the same policy
-  and cap, enter the transfer, press Run, and watch the circuit decide gate by gate. For your own Safe's exact policy, the
+- **Before sending**, test any transaction in the **Try it** tab of the policy's page in the [Catalog](https://getfengce.vercel.app/catalog/): use the
+  same cap, enter the transfer, press Run, and watch the circuit decide gate by gate. For your own Safe's exact policy, the
   API answers too: `POST https://getfengce.vercel.app/api/preflight` with `{"safe", "to", "value", "data"}` (see
   [API.md](API.md)).
 - **From your Safe**: propose a USDT0 transfer **above** your cap. The guard refuses it: the Safe interface reports the
   transaction would fail, and if you execute anyway it reverts and nothing moves. A transfer **within** the cap goes through.
   Owner transactions that the guard refuses revert and leave no event.
 - **Agents**: an agent acting through AgentExecutor that hits the limit does not revert; it records a `Denied` event, which
-  the Safe page lists. See the live example on the [v2 demo Safe](https://getfengce.vercel.app/safe/).
+  Protect → Check a wallet lists. See the live example on the [v2 demo Safe](https://getfengce.vercel.app/protect/?step=3&wallet=safe&address=0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707).
 
 ## Removing it
 

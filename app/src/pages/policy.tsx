@@ -2,7 +2,9 @@ import type { Address } from "viem";
 import { circuit } from "../lib/data";
 import { quoteFor } from "../lib/quotes";
 import { PRESETS } from "../lib/policies";
-import { Addr, ErrorLine, Figure, Loading, Pill, Section, fmtInt, href, mount, param, tierTone, useLoad } from "../ui/kit";
+import { STATELESS, Simulator } from "../sim/Simulator";
+import { useState } from "react";
+import { Addr, ErrorLine, Figure, Loading, Pill, Section, fmtInt, mount, param, tierTone, useLoad } from "../ui/kit";
 
 interface TreeNode {
   processor: string;
@@ -30,18 +32,56 @@ function Tree({ node }: { node: TreeNode }) {
 }
 
 function PolicyPage() {
-  const first = PRESETS[0];
-  const processor = (param("processor") ?? first.processor) as Address;
-  const id = BigInt(param("id") ?? first.id.toString());
+  // ?preset=<key> (links from the former Simulator page) or ?processor=&id=; ?tab=try opens "Try it".
+  const byKey = PRESETS.find((p) => p.key === param("preset"));
+  const first = byKey ?? PRESETS[0];
+  const processor = ((byKey ? null : param("processor")) ?? first.processor) as Address;
+  const id = BigInt((byKey ? null : param("id")) ?? first.id.toString());
+  const [tab, setTab] = useState<"details" | "try">(param("tab") === "try" ? "try" : "details");
+  const pick = (t: "details" | "try") => {
+    setTab(t);
+    try {
+      const u = new URL(location.href);
+      if (t === "try") u.searchParams.set("tab", "try");
+      else u.searchParams.delete("tab");
+      history.replaceState(null, "", u);
+    } catch {
+      /* ignore */
+    }
+  };
+  const tryable = STATELESS.find((p) => p.processor.toLowerCase() === processor.toLowerCase() && p.id === id);
   const { data, error, loading } = useLoad(async () => (await circuit(processor, id)) as any, [processor, id.toString()]);
   const q = quoteFor(processor, id);
   return (
     <>
       <h1 className="title">{data?.name ?? `Circuit #${id}`}</h1>
       <p className="lede">{data?.description ?? (loading ? " " : "A TapeOut circuit on X Layer (no description known to this app).")}</p>
-      {loading && <Loading what="the circuit" />}
+      <div className="seg" role="tablist" aria-label="Policy view" style={{ margin: "18px 0 0" }}>
+        <button type="button" role="tab" aria-pressed={tab === "details"} aria-selected={tab === "details"} onClick={() => pick("details")}>
+          Details
+        </button>
+        <button type="button" role="tab" aria-pressed={tab === "try"} aria-selected={tab === "try"} onClick={() => pick("try")}>
+          Try it
+        </button>
+      </div>
+      {tab === "try" && (
+        <Section n={1} label="Try it">
+          {tryable ? (
+            <>
+              <p className="lede" style={{ marginTop: 0 }}>
+                A proposed transaction, run through this policy gate by gate. Facts and input bits come from one eth_call on X Layer; the gates are
+                evaluated in your browser from the circuit's on-chain netlist.
+              </p>
+              <Simulator presetKey={tryable.key} />
+            </>
+          ) : (
+            <p className="note">Try it runs the stateless Catalog policies. This circuit is stateful or not a Catalog preset, so it cannot be tried here.</p>
+          )}
+        </Section>
+      )}
+      {tab === "details" && loading && <Loading what="the circuit" />}
       <ErrorLine error={error} />
-      {data && (
+      {tab === "details" && data && (
         <>
           <div className="figures" style={{ margin: "26px 0 8px" }}>
             <Figure v={fmtInt(data.gateCount)} k="Gates (with REF)" />
@@ -49,7 +89,7 @@ function PolicyPage() {
             <Figure v={data.evalGas ? fmtInt(data.evalGas) : "–"} k="Eval gas, zero input" />
             <Figure v={q?.fullPath ? fmtInt(q.fullPath) : "–"} k="Full Safe path gas (Quote)" />
           </div>
-          <Section n={2} label="Policy" aside={<a href={href("simulator", { preset: data.presetKey ?? "" })}>Open in simulator →</a>}>
+          <Section n={2} label="Policy" aside={tryable ? <a href="#" onClick={(e) => { e.preventDefault(); pick("try"); }}>Try it →</a> : undefined}>
             <div className="grid">
               <div className="c7">
                 <h3>Allow and deny vectors</h3>

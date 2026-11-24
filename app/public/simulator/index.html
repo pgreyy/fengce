@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fengce · moved</title>
+    <meta name="robots" content="noindex" />
+    <noscript><meta http-equiv="refresh" content="0; url=../policy/?tab=try" /></noscript>
+    <script>
+      /* The Simulator is now the "Try it" tab of each policy page. moved. Client-side redirect (works on any static host, including TapeOut DeWeb); the query is kept. */
+      (function () {
+        var q = new URLSearchParams(location.search);
+        var o = new URLSearchParams();
+        if (q.get("preset")) o.set("preset", q.get("preset"));
+        o.set("tab", "try");
+        if (q.get("run")) o.set("run", q.get("run"));
+        var target = "policy/?" + o.toString();
+        location.replace("../" + target + location.hash);
+      })();
+    </script>
+  </head>
+  <body style="background:#0A0B0F;color:#ECEEF3;font-family:system-ui,sans-serif;padding:24px">
+    <p>This page moved. <a style="color:#5B7CFF" href="../policy/?tab=try">Continue</a>.</p>
+  </body>
+</html>

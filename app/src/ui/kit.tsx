@@ -9,21 +9,18 @@ import { initMotion } from "./motion";
 
 /** Pages live at the root (catalog) or one folder deep; links are relative so the build runs from any base path. */
 let DEPTH = 0;
-export type Page = "" | "catalog" | "simulator" | "install" | "safe" | "wallets" | "policy" | "verdict";
+export type Page = "" | "catalog" | "protect" | "policy" | "verdict";
 export function href(page: Page, query?: Record<string, string>, hash?: string) {
   const base = DEPTH === 0 ? "./" : "../";
   const q = query ? `?${new URLSearchParams(query).toString()}` : "";
   return `${base}${page ? `${page}/` : ""}${q}${hash ? `#${hash}` : ""}`;
 }
 
-const NAV: { page: Page; label: string; hash?: string; landing?: boolean }[] = [
-  { page: "catalog", label: "Catalog", landing: true },
-  { page: "simulator", label: "Simulator", landing: true },
-  { page: "install", label: "Install" },
-  { page: "safe", label: "Safe" },
-  { page: "wallets", label: "Wallets", landing: true },
-  { page: "verdict", label: "Verdict", landing: true },
-  { page: "", label: "Developers", hash: "developers", landing: true },
+const NAV: { page: Page; label: string; hash?: string }[] = [
+  { page: "catalog", label: "Catalog" },
+  { page: "protect", label: "Protect" },
+  { page: "verdict", label: "Verdict" },
+  { page: "", label: "Developers", hash: "developers" },
 ];
 
 /** The DeWeb copy of this site (deployments/deweb-xlayer-196.json) and a gateway that opens it in any browser. */
@@ -133,7 +130,7 @@ function Shell({ page, landing, children }: { page: string; landing: boolean; ch
             <span>Fengce</span>
           </a>
           <nav className="nav" aria-label="Main">
-            {NAV.filter((n) => !landing || n.landing).map((n) => (
+            {NAV.map((n) => (
               <a key={n.label} href={href(n.page, undefined, n.hash)} aria-current={!n.hash && n.page === page ? "page" : undefined}>
                 {n.label}
               </a>
@@ -141,7 +138,7 @@ function Shell({ page, landing, children }: { page: string; landing: boolean; ch
           </nav>
           <ThemeSwitch />
           {landing ? (
-            <a className="btn" href={href("catalog")}>
+            <a className="btn" href={href("protect")}>
               Open app
             </a>
           ) : (

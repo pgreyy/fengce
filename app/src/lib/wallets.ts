@@ -150,3 +150,40 @@ export const INSTALL_TYPES: { key: string; label: string }[] = [
   { key: "7702", label: "7702 / agent" },
   { key: "coinbase", label: "Coinbase / agent" },
 ];
+
+/** Pill tone for a guarantee cell. */
+export function tone(g: Guarantee) {
+  return g === "checked" ? "checked" : g === "gap" || g === "not restricted" || g === "not checked" ? "gap" : "neutral";
+}
+
+export type Coverage = "Full" | "Partial" | "Agent only" | "Not integrated";
+/** Coverage per wallet, from the status column of docs/WALLETS.md (Mainnet and Fork-tested = Full). */
+export const COVERAGE: Record<string, Coverage> = {
+  safe: "Full",
+  safe7579: "Partial",
+  kernel: "Full",
+  nexus: "Partial",
+  etherspot: "Partial",
+  mav2: "Full",
+  "7702": "Agent only",
+  coinbase: "Agent only",
+  lightmulti: "Agent only",
+  metamask: "Not integrated",
+  okx: "Not integrated",
+  light: "Not integrated",
+};
+/** Which deployed adapter a wallet uses, for the "Check a wallet" step (null: nothing to read). */
+export const CHECK_ADAPTER: Record<string, "guard" | "hook7579" | "hook6900" | "agentOwner" | null> = {
+  safe: "guard",
+  safe7579: "hook7579",
+  kernel: "hook7579",
+  nexus: "hook7579",
+  etherspot: "hook7579",
+  mav2: "hook6900",
+  "7702": "hook6900",
+  coinbase: "agentOwner",
+  lightmulti: "agentOwner",
+  metamask: null,
+  okx: null,
+  light: null,
+};

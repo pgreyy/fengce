@@ -49,7 +49,8 @@ Demo Safe `0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707`, demo agent `0x81DeB61C44
 - SDK: [sdk/README.md](sdk/README.md) (schemas, Quote, install calldata, local evaluation and `evaluateTrace`).
 - HTTP API: [docs/API.md](docs/API.md), [docs/openapi.yaml](docs/openapi.yaml).
 - MCP server for agents: [mcp/README.md](mcp/README.md); OnchainOS skill: [skills/fengce/SKILL.md](skills/fengce/SKILL.md).
-- App: [app/](app) (static pages reading X Layer from the browser).
+- App: [app/](app) (static pages reading X Layer from the browser): Catalog (policy pages with a Try it tab), Protect
+  (choose a wallet, install, check a wallet), Verdict. The old /simulator, /install, /safe and /wallets URLs redirect there.
 
 ## Running the checks
 

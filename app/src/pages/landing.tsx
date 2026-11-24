@@ -149,10 +149,10 @@ function Hero() {
           Your rules run as TapeOut circuits on X Layer, and the wallet itself enforces them, for owners and AI agents alike.
         </p>
         <div className="fi hero-cta" style={v({ animationDelay: ".9s" })}>
-          <a className="cta" href={href("install")}>
+          <a className="cta" href={href("protect")}>
             Protect a wallet
           </a>
-          <a className="cta ghost" href={href("safe")}>
+          <a className="cta ghost" href={href("protect", { step: "3", wallet: "safe" })}>
             See it on mainnet
           </a>
         </div>

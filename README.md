@@ -98,9 +98,9 @@ built from commit `e260a37`. The previous release ran the same demo: [0.5 allowe
 
 1. Open [getfengce.vercel.app](https://getfengce.vercel.app). Everything is read from X Layer by your browser; nothing to connect.
 2. **Catalog**: five listed policies with tier, gas and installs.
-3. **Simulator**: pick *Numeric Transaction Limit* and press Run. Watch the 114-gate circuit evaluate level by level and
-   end on ALLOWED or DENIED, with the facts and input bits on the left.
-4. **Safe**: the demo Safe's guards, timelocks and the Denied agent call.
+3. **Try it**: open *Numeric Transaction Limit* in the Catalog and its **Try it** tab, then press Run. Watch the 114-gate
+   circuit evaluate level by level and end on ALLOWED or DENIED, with the facts and input bits on the left.
+4. **Protect → Check a wallet**: the demo Safe's guards, timelocks and the Denied agent call.
 5. Open the two transactions above on the explorer.
 
 ## How it works
@@ -141,7 +141,7 @@ flowchart LR
 
 ## Integration quickstarts
 
-**Website.** On [Install](https://getfengce.vercel.app/install/), pick the wallet type, run the preflight for a Safe (existing approvals) and
+**Website.** On [Protect](https://getfengce.vercel.app/protect/), choose the wallet, then Install: run the preflight for a Safe (existing approvals) and
 import the Safe Transaction Builder JSON. Other wallet types show the exact install calls.
 
 **SDK** ([@fengce/sdk on npm](https://www.npmjs.com/package/@fengce/sdk), [sdk/README.md](sdk/README.md)):

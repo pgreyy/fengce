@@ -73,7 +73,7 @@ await preSign(client, { processor, circuitId, schema }, safe, { to, value, data 
 The interpreter follows TAP-02 (NAND, LATCH with state, REF sub-circuits) on the netlist bytes read from chain.
 `scripts/differential.ts` compares it with on-chain `eval` on random inputs (`npm run test:live`);
 `scripts/trace-check.ts` compares `evaluateTrace` with on-chain `eval` (`npx tsx scripts/trace-check.ts`).
-`preSign` covers native transfers, ERC-20 transfer and approve offline; use the app's simulator for other calls.
+`preSign` covers native transfers, ERC-20 transfer and approve offline; use the Try it tab of a policy page in the app for other calls.
 
 ## Development
 
