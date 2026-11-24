@@ -1,6 +1,6 @@
 import { StrictMode, useEffect, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
-import { DEPLOYMENT, EXPLORER, RELEASE_COMMIT, client, friendlyError } from "../lib/chain";
+import { DEPLOYMENT, EXPLORER, client, friendlyError } from "../lib/chain";
 import deweb from "../../../deployments/deweb-xlayer-196.json";
 import type { Snapshot } from "../lib/events";
 import "../tokens.css";
@@ -32,6 +32,7 @@ export const LINKS = {
   repo: "https://github.com/pgreyy/fengce",
   docs: "https://github.com/pgreyy/fengce/tree/main/docs",
   api: "https://github.com/pgreyy/fengce/blob/main/docs/API.md",
+  npm: "https://www.npmjs.com/package/@fengce/sdk",
   sourcify: `https://repo.sourcify.dev/196/${DEPLOYMENT.contracts.FengceGuard}`,
 };
 
@@ -159,20 +160,24 @@ function Footer() {
       <div className="wrap">
         <div className="foot-brand">
           <span className="foot-name">Fengce</span>
-          <span>Wallet enforcement for TapeOut circuits on X Layer.</span>
+          <span>The wallet-level enforcement layer for TapeOut.</span>
         </div>
         <nav className="foot-links" aria-label="Project">
           <a href={LINKS.docs} target="_blank" rel="noreferrer noopener">Docs</a>
           <a href={LINKS.repo} target="_blank" rel="noreferrer noopener">GitHub</a>
           <a href={LINKS.api} target="_blank" rel="noreferrer noopener">API</a>
+          <a href={LINKS.npm} target="_blank" rel="noreferrer noopener">npm</a>
           <a href={LINKS.sourcify} target="_blank" rel="noreferrer noopener">Sourcify</a>
         </nav>
         <span className="mono">
-          {RELEASE} · {RELEASE_COMMIT} · also on TapeOut:{" "}
+          {RELEASE} · X Layer 196 · also on TapeOut:{" "}
           <a href={DEWEB.gateway} target="_blank" rel="noreferrer noopener" title={`tape://${DEWEB.name} (files stored on X Layer, verified by SHA-256)`}>
             {DEWEB.name}
           </a>
         </span>
+      </div>
+      <div className="foot-word" aria-hidden="true">
+        Fengce
       </div>
     </footer>
   );

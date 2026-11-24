@@ -168,8 +168,11 @@ pre.json { background: var(--code-bg); color: var(--code-text); border: 1px soli
 }
 
 .foot { border-top: 1px solid var(--line); color: var(--muted); font-size: 13px; }
-.foot .wrap { max-width: var(--container); padding: 40px var(--gutter); display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 20px; }
+.foot .wrap { max-width: var(--container); padding: 40px var(--gutter) 0; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 20px; }
 .foot-brand { display: flex; flex-direction: column; gap: 6px; }
 .foot-name { font: 600 16px/1.2 var(--font-display); color: var(--text); }
 .foot-links { display: flex; flex-wrap: wrap; gap: 22px; }
 .foot .mono a { color: var(--accent); }
+.foot { overflow: hidden; }
+.foot-word { max-width: var(--container); margin: 20px auto 0; padding: 0 var(--gutter); font: 600 248px/.82 var(--display); letter-spacing: -0.05em; color: transparent; -webkit-text-stroke: 1px var(--line); white-space: nowrap; user-select: none; }
+@media (max-width: 760px) { .foot-word { font-size: 31vw; } }
