@@ -1,154 +1,144 @@
 {
-  "block": 76310486,
+  "block": 76753932,
   "chainId": 196,
   "circuitId": 6,
   "container": "0xd136c115B2B6dB3179d240503834dE785bF29BB2",
   "domainBinding": "0x68809Fd2fb343aA57D0aeB7f33Defe477c9666f9",
   "files": {
-    "assets/catalog/index-CP2X9VEW.js": {
+    "assets/catalog/index-JoiFS2D4.js": {
       "chunks": 1,
-      "sha256": "0x1cd4fafcb92a2b5713131b7517b3e6b8a17ce874a13830ac85278d3fc80b01f1",
+      "sha256": "0x378f8ed8414642e08e41d4c5186a66f172b9ec8bef2f338b767c23212f2249b9",
       "size": 3006
     },
-    "assets/data-C0NfIePl.js": {
+    "assets/data-v00TDSS-.js": {
       "chunks": 8,
-      "sha256": "0x6a2815219a562f615093c198c5de230600fe16078f1fefaafb9fd7a4108b8700",
+      "sha256": "0x353ef51c0087b32a47f14d5892bdf88d2abb2c6b4d0be54a1f0da3112019808c",
       "size": 169246
     },
-    "assets/index-CSk4Ps-m.css": {
+    "assets/figtree-latin-400-normal-g7Dtegnw.woff2": {
       "chunks": 1,
-      "sha256": "0xcdc3c807ed56599c4d64b71283cd5ec7864d8bb1f07689ee6f792a8407540f3f",
-      "size": 7569
+      "sha256": "0x8f98dd642986f1fa39c45b89665a57372897c235b36028e0e4a136e43dc5f8ab",
+      "size": 11384
     },
-    "assets/index-b839ZbgT.js": {
+    "assets/figtree-latin-500-normal-BWnGEVsr.woff2": {
       "chunks": 1,
-      "sha256": "0x1d20240b73be70fbb8478040cbf8e21958abfafcb0ef7b68ddf244ffa308a8cc",
-      "size": 14638
+      "sha256": "0x953a6a4294b1205a1b4d4b9e5529478e8c9e1c5a67a9aa24a551414cd85b6f51",
+      "size": 11432
     },
-    "assets/install/index-BCKVDSrl.js": {
+    "assets/figtree-latin-600-normal-Cv_xCTDl.woff2": {
       "chunks": 1,
-      "sha256": "0xec9e79a4b174f44ed08de2b7d3d6f5fc729a1c919ae995dd1db9f32dee51afad",
+      "sha256": "0x367d713287918784702563518f59239989da815c80d3c7337686b9816635a08b",
+      "size": 11544
+    },
+    "assets/index-C4P34Yth.js": {
+      "chunks": 2,
+      "sha256": "0x6ac6669730b69a763ccc80b665e41884051b2c0011f0d803262643e4cc87670f",
+      "size": 25753
+    },
+    "assets/index-yxjvd5TN.css": {
+      "chunks": 1,
+      "sha256": "0x22b814e09b805ab56aeba1f589b4eada55546d33445afe4988f60bc1c30166c1",
+      "size": 15316
+    },
+    "assets/install/index-DvuCfJfZ.js": {
+      "chunks": 1,
+      "sha256": "0x63c08ffab4a076284280c095ebb25ce69b6f92da61497a961adc1bdc76fd5df4",
       "size": 7113
     },
-    "assets/jetbrains-mono-latin-400-normal-V6pRDFza.woff2": {
+    "assets/kit-BI0BGbvl.js": {
       "chunks": 1,
-      "sha256": "0x14425ba9c695763c1547f48a206b7aa60350a33ae23de09f0407877f3fcd89eb",
-      "size": 21168
+      "sha256": "0x9a59d2560c7e6c290161d5eeb01b226e1ee5407cc6c57336100d77bcb51c7633",
+      "size": 13448
     },
-    "assets/jetbrains-mono-latin-500-normal-BWZEU5yA.woff2": {
+    "assets/kit-DqtrAm_V.css": {
       "chunks": 1,
-      "sha256": "0xcb182feeed4d798ff6961d3c79f7026279448fca0676438aaecb21f3fc39553a",
-      "size": 21832
+      "sha256": "0x1fb437de36a0abaa10c7bc3131fc06356085b271739e376cc75ff595007450dd",
+      "size": 17758
     },
-    "assets/kit-CXPbnaxf.css": {
+    "assets/policy/index-Cy-KnZcV.js": {
       "chunks": 1,
-      "sha256": "0x8aaf0557891c04d8673c44eacb0cd35375cb5e3767814bfef5ee1bd4a873f1d2",
-      "size": 17848
-    },
-    "assets/kit-DJdsq67Y.js": {
-      "chunks": 1,
-      "sha256": "0x59d2191e9c954c32abe08b6d8f0464737000be531fc9c234ed8bf210d8741fb4",
-      "size": 15350
-    },
-    "assets/manrope-latin-400-normal-PaqtzbVb.woff2": {
-      "chunks": 1,
-      "sha256": "0x849290ef12a2eeb9af5c11924120d11aa4ae8b435ed3347d7fc8bc240c293ca3",
-      "size": 14108
-    },
-    "assets/manrope-latin-500-normal-BYYD-dBL.woff2": {
-      "chunks": 1,
-      "sha256": "0x19874318747181a650eda439c37955220b849d9c4797c9e0718ee67d4bf929bc",
-      "size": 14044
-    },
-    "assets/manrope-latin-600-normal-4f0koTD-.woff2": {
-      "chunks": 1,
-      "sha256": "0xf7ac6258da20ab7541939b59851155753d1d24f1b30cbcb949077a3faa3d1593",
-      "size": 14172
-    },
-    "assets/manrope-latin-700-normal-BZp_XxE4.woff2": {
-      "chunks": 1,
-      "sha256": "0xd2a12c85a831e4b5db341767d0347fa3d1361d22a1fcb3e361a16b6c90080f71",
-      "size": 14212
-    },
-    "assets/manrope-latin-800-normal-BfWYOv1c.woff2": {
-      "chunks": 1,
-      "sha256": "0x74c161dbcbce7c3590803cc72dc1f63313c360e13367aba5075a7b7b3818ea49",
-      "size": 13648
-    },
-    "assets/policy/index-DLoH711V.js": {
-      "chunks": 1,
-      "sha256": "0x65718c3c28b4a92dc58203dfc218e231a35cbf81366df829af95044611a63e49",
+      "sha256": "0xb7e31bed483bdcd20333e9c106b6894f4e4e03b7a07457279b5312aed5511eda",
       "size": 3853
     },
-    "assets/safe/index-2Aji2f3_.js": {
+    "assets/safe/index-DeRS7qH5.js": {
       "chunks": 1,
-      "sha256": "0x6f5f6d4b05eb76e0365b7d04f589f1d4f17cb03f94ef531aa79c64f9cf6448c4",
+      "sha256": "0xc062bc98ce34e3d6faf92e0dbc717337a575be9722ed93cae8b2460cad27e783",
       "size": 5815
     },
-    "assets/simulator/index-DRxK7m3Y.js": {
+    "assets/simulator/index-CND5w8Pj.js": {
       "chunks": 1,
-      "sha256": "0x32b28c47470ec103776e94c6611e9b50ef7b2fd9d1ddb83b61adc5fc53b88f1a",
+      "sha256": "0x97b10a78e8d4c2d75a2f245ed515ef6d2be82f45688d691be336a28c7d567325",
       "size": 12846
+    },
+    "assets/source-code-pro-latin-400-normal-DEXWLoHG.woff2": {
+      "chunks": 1,
+      "sha256": "0x75aa8cacfd459d58d7c093f3ff0ab8745cc878dfc93c5d4cda052791aeace878",
+      "size": 11656
+    },
+    "assets/source-code-pro-latin-500-normal-DrRT_DWv.woff2": {
+      "chunks": 1,
+      "sha256": "0x8966fa3fbe70f63675bbededb8389023c07258bc46a831fd6d146cb062a5811f",
+      "size": 11604
     },
     "assets/vendor-N_9Jeocm.js": {
       "chunks": 23,
       "sha256": "0x54e23ec1a32fa7635fe540dc2c922f358a9171a7c00883c861d400454070a803",
       "size": 550723
     },
+    "assets/wallets-BTetRSNK.js": {
+      "chunks": 1,
+      "sha256": "0x1d30cd7e81173d36139c0fb72a9f0005456762d075fb644e202cb8495ad05e0c",
+      "size": 2097
+    },
     "assets/wallets-BZigp8nT.js": {
       "chunks": 1,
       "sha256": "0x97e79e158430183e20617c2c1c687f59f20d4e52c19b5eee039a1e4950ec2e1e",
       "size": 5613
     },
-    "assets/wallets-CBsF3VhL.js": {
-      "chunks": 1,
-      "sha256": "0xf711bb8857c238fce62ad9e788cede0040fd1236cde7efe9a205b4424f24447d",
-      "size": 2097
-    },
     "catalog/index.html": {
       "chunks": 1,
-      "sha256": "0x59e15442620919ab4d41ff431f19346daf4f9a6890179d62952490aa8d0eba00",
-      "size": 1426
+      "sha256": "0x2f390e468939d019c4ea8a6467bc65bc36b8954e086b810cddec21d1fb862707",
+      "size": 1427
     },
     "events-snapshot.json": {
       "chunks": 1,
-      "sha256": "0x34fe6c98335f2064f5ce852a33434f22774c6ada32125954add53afbcfe31617",
+      "sha256": "0xd703df38a67af8899ff0ad6924b3e57905aaeb959112edf389178f94df3a8c4c",
       "size": 5028
     },
     "favicon.svg": {
       "chunks": 1,
-      "sha256": "0x2e19262b27d6c5b825cb85f1d0cd0b77994be9fb59996f4f9b76e4f6c0809e9b",
+      "sha256": "0xb5070f57f60c153fd66a6abd02849ef026ef4f27fb5b12a5db1c99d2e6f19634",
       "size": 467
     },
     "index.html": {
       "chunks": 1,
-      "sha256": "0x474f57fce540a05d94cc5f603d7e36fd9fce6d85502ed8a0bb35dbca34da9810",
-      "size": 1885
+      "sha256": "0x6be2c02df9758561328cbe3fba1c46a836a841077dc312f81171c5bf7544815a",
+      "size": 1770
     },
     "install/index.html": {
       "chunks": 1,
-      "sha256": "0xbfbc3b6f67216ab82d89ac96776fe0f5aa1566d65120193f24f6e3d9fd089e6b",
-      "size": 1586
+      "sha256": "0x02d7217912959b82ddde3c75dc13e7a2a695bc206f608310773c18fd2490f550",
+      "size": 1587
     },
     "policy/index.html": {
       "chunks": 1,
-      "sha256": "0x6eea8bcefb8140821b02bc229570ed0058b582faa12065ca5532102c7e971a1c",
-      "size": 1424
+      "sha256": "0x00cecad06b8c19960caf54a7ee7261440c438567afe26f0c1625ac92d5e153f7",
+      "size": 1425
     },
     "safe/index.html": {
       "chunks": 1,
-      "sha256": "0x01d65e063971963e782f02bee1d5e14ac63d598a03056a551684cb63db226c18",
-      "size": 1427
+      "sha256": "0x363f09e1799193f5257b570fa62a634b77ccdc0ccdde2ac2fd0314cdf24da478",
+      "size": 1428
     },
     "simulator/index.html": {
       "chunks": 1,
-      "sha256": "0xa7145d26f47253754a9b3bde97142c344bd74b1c4cd21a231fc3b5dd6275b9fa",
-      "size": 1430
+      "sha256": "0x1d8ad9f45806048e50937f1e9b9bb9d68431a1cc918fe3aa7a35979cf12ffaf6",
+      "size": 1431
     },
     "wallets/index.html": {
       "chunks": 1,
-      "sha256": "0x1111349eadef7ca67b5f75b2f10d496ed934d862cbe1b41895c3b0fffc9e4612",
-      "size": 1435
+      "sha256": "0x395500650d76a7d812a177a9dbf97514ed2b95d038a39b86581161c57a079fec",
+      "size": 1436
     }
   },
   "name": "6.2.180.tape",
