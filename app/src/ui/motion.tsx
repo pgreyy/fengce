@@ -12,7 +12,8 @@ import "../motion.css";
 export function initMotion() {
   const root = document.documentElement;
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (reduce) {
+  // Same gate as the pre-paint script in each page: no entrance animations for automated or headless browsers.
+  if (reduce || !root.classList.contains("anim")) {
     root.classList.add("reduced");
     return;
   }

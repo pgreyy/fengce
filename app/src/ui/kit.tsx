@@ -97,26 +97,43 @@ function currentTheme(): ThemeKey {
   return document.documentElement.getAttribute("data-theme")?.startsWith("light") ? "light" : "dark";
 }
 
-/** Dark / Light segmented switch; the choice is remembered (localStorage, when available). */
-export function ThemeSwitch() {
+/** One icon button: shows a sun in dark mode (switches to light) and a moon in light mode; the choice is remembered
+ * (localStorage, when available). */
+export function ThemeButton() {
   const [theme, setTheme] = useState<ThemeKey>(() => currentTheme());
-  const pick = (t: ThemeKey) => {
-    document.documentElement.setAttribute("data-theme", THEMES[t]);
+  const next: ThemeKey = theme === "dark" ? "light" : "dark";
+  const pick = () => {
+    document.documentElement.setAttribute("data-theme", THEMES[next]);
     try {
-      localStorage.setItem("fengce-theme", t);
+      localStorage.setItem("fengce-theme", next);
     } catch {
       /* storage blocked: the choice lasts for this page only */
     }
-    setTheme(t);
+    setTheme(next);
   };
   return (
-    <div className="theme-switch" role="group" aria-label="Theme">
-      {(["dark", "light"] as ThemeKey[]).map((t) => (
-        <button key={t} type="button" aria-pressed={theme === t} onClick={() => pick(t)}>
-          {t === "dark" ? "Dark" : "Light"}
-        </button>
-      ))}
-    </div>
+    <button className="icon-btn" type="button" aria-label={`Switch to ${next} theme`} title={`Switch to ${next} theme`} onClick={pick}>
+      {theme === "dark" ? (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4" />
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+        </svg>
+      ) : (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
+function GitHubButton() {
+  return (
+    <a className="icon-btn" href={LINKS.repo} target="_blank" rel="noreferrer noopener" aria-label="GitHub" title="GitHub">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21" />
+      </svg>
+    </a>
   );
 }
 
@@ -136,23 +153,20 @@ function Shell({ page, landing, children }: { page: string; landing: boolean; ch
               </a>
             ))}
           </nav>
-          <ThemeSwitch />
-          {landing ? (
-            <a className="btn" href={href("protect")}>
-              Open app
-            </a>
-          ) : (
-            <LiveBlock />
-          )}
+          {!landing && <LiveBlock />}
+          <div className="icons">
+            <ThemeButton />
+            <GitHubButton />
+          </div>
         </div>
       </header>
       {landing ? <main className="landing">{children}</main> : <main className="wrap">{children}</main>}
-      <Footer />
+      <Footer landing={landing} />
     </>
   );
 }
 
-function Footer() {
+function Footer({ landing }: { landing: boolean }) {
   return (
     <footer className="foot">
       <div className="wrap">
@@ -174,9 +188,11 @@ function Footer() {
           </a>
         </span>
       </div>
-      <div className="foot-word" aria-hidden="true">
-        Fengce
-      </div>
+      {landing && (
+        <div className="foot-word" aria-hidden="true">
+          Fengce
+        </div>
+      )}
     </footer>
   );
 }

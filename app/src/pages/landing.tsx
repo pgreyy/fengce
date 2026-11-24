@@ -34,7 +34,8 @@ function HeroLoop() {
   useEffect(() => {
     // Reduced motion: freeze the loop on its last frame (0.5 USDT0 executed).
     const svg = ref.current;
-    if (svg && matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    // Reduced motion, or an automated or headless browser (no html.anim): show the finished frame.
+    if (svg && !document.documentElement.classList.contains("anim")) {
       svg.pauseAnimations();
       svg.setCurrentTime(8.1);
     }

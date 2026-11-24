@@ -33,7 +33,7 @@
 .hero.hover .hero-glow { opacity: 1; }
 .hero-inner { position: relative; max-width: var(--container); margin: 0 auto; padding: 104px var(--gutter) 64px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 22px; }
 .badge { font-size: 12.5px; padding: 7px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); }
-.hero-h1 { margin: 0; font: 500 78px/1.04 var(--display); letter-spacing: -0.025em; max-width: 1000px; }
+.hero-h1 { margin: 0; font: 500 clamp(40px, 5.6vw, 78px)/1.04 var(--display); letter-spacing: -0.025em; max-width: 1000px; }
 .hero-sub { margin: 0; font-size: 20px; line-height: 1.55; color: var(--muted); max-width: 620px; }
 .hero-note { margin: 0; font-size: 14px; line-height: 1.6; color: var(--muted); max-width: 640px; }
 .hero-cta { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
@@ -151,12 +151,12 @@
 @keyframes l-marq { to { transform: translateX(-50%); } }
 .flow { stroke-dasharray: 4 10; }
 @media (prefers-reduced-motion: no-preference) {
-  .mask > span { animation: l-rise 1s cubic-bezier(.2,.75,.15,1) both; }
-  .fi { animation: l-fade .9s cubic-bezier(.2,.7,.2,1) both; }
-  .ul::after { animation: l-ul 1s cubic-bezier(.7,0,.2,1) 1.1s both; }
-  .pulse { animation: l-pulse 2.4s ease-in-out infinite; }
-  .flow { animation: l-dash 1.2s linear infinite; }
-  .ticker-track { animation: l-marq 40s linear infinite; }
+  .anim .mask > span { animation: l-rise 1s cubic-bezier(.2,.75,.15,1) both; }
+  .anim .fi { animation: l-fade .9s cubic-bezier(.2,.7,.2,1) both; }
+  .anim .ul::after { animation: l-ul 1s cubic-bezier(.7,0,.2,1) 1.1s both; }
+  .anim .pulse { animation: l-pulse 2.4s ease-in-out infinite; }
+  .anim .flow { animation: l-dash 1.2s linear infinite; }
+  .anim .ticker-track { animation: l-marq 40s linear infinite; }
 }
 
 /* ---------------------------------------------------------------- scroll-driven effects */
@@ -170,21 +170,21 @@
     @keyframes l-beam { to { top: 100%; } }
     @keyframes l-typ { from { width: 0; } }
     @keyframes l-wfill { to { background-size: 100% 100%; } }
-    .lrv { animation: l-fade linear both; animation-timeline: view(); animation-range: entry 5% entry 75%; }
-    .lrvl { animation: l-slide linear both; animation-timeline: view(); animation-range: entry 5% entry 80%; }
-    .pop { animation: l-pop linear both; animation-timeline: view(); animation-range: entry 40% entry 100%; }
-    .fg-count { animation: l-count linear both; animation-timeline: view(); animation-range: entry 0% cover 40%; counter-reset: fgc var(--fgn); }
-    .fg-count .fg-num { display: none; }
-    .fg-count::after { content: counter(fgc); }
-    .beam { position: relative; }
-    .beam::before { content: ""; position: absolute; left: 0; right: 0; height: 120px; top: -120px; pointer-events: none; z-index: 1;
+    .anim .lrv { animation: l-fade linear both; animation-timeline: view(); animation-range: entry 5% entry 75%; }
+    .anim .lrvl { animation: l-slide linear both; animation-timeline: view(); animation-range: entry 5% entry 80%; }
+    .anim .pop { animation: l-pop linear both; animation-timeline: view(); animation-range: entry 40% entry 100%; }
+    .anim .fg-count { animation: l-count linear both; animation-timeline: view(); animation-range: entry 0% cover 40%; counter-reset: fgc var(--fgn); }
+    .anim .fg-count .fg-num { display: none; }
+    .anim .fg-count::after { content: counter(fgc); }
+    .anim .beam { position: relative; }
+    .anim .beam::before { content: ""; position: absolute; left: 0; right: 0; height: 120px; top: -120px; pointer-events: none; z-index: 1;
       background: linear-gradient(180deg, transparent, var(--accent-soft), transparent);
       animation: l-beam linear both; animation-timeline: view(); animation-range: entry 20% exit 20%; }
-    .type { display: inline-block; overflow: hidden; white-space: pre; vertical-align: bottom; width: calc(var(--n) * 1ch); animation: l-typ both; animation-timeline: view(); animation-timing-function: steps(var(--n)); }
-    .tres { animation: l-fade linear both; animation-timeline: view(); animation-range: entry 80% entry 100%; }
-    .word { color: transparent; -webkit-text-stroke: 1px var(--accent); background: linear-gradient(90deg, var(--accent), var(--accent)) no-repeat 0 0 / 0% 100%; -webkit-background-clip: text; background-clip: text;
+    .anim .type { display: inline-block; overflow: hidden; white-space: pre; vertical-align: bottom; width: calc(var(--n) * 1ch); animation: l-typ both; animation-timeline: view(); animation-timing-function: steps(var(--n)); }
+    .anim .tres { animation: l-fade linear both; animation-timeline: view(); animation-range: entry 80% entry 100%; }
+    .anim .word { color: transparent; -webkit-text-stroke: 1px var(--accent); background: linear-gradient(90deg, var(--accent), var(--accent)) no-repeat 0 0 / 0% 100%; -webkit-background-clip: text; background-clip: text;
       animation: l-wfill linear both; animation-timeline: view(); animation-range: entry 10% cover 60%; }
-    .foot-word { background: linear-gradient(90deg, var(--accent), var(--accent)) no-repeat 0 0 / 0% 100%; -webkit-background-clip: text; background-clip: text;
+    .anim .foot-word { background: linear-gradient(90deg, var(--accent), var(--accent)) no-repeat 0 0 / 0% 100%; -webkit-background-clip: text; background-clip: text;
       animation: l-wfill linear both; animation-timeline: view(); animation-range: entry 10% cover 60%; }
   }
   /* Pinned sections: wide screens only; narrow screens keep the stacked layout above. */
@@ -195,25 +195,25 @@
     @keyframes l-icc { from { --ic: 1; } to { --ic: 4; } }
     @keyframes l-dotx { from { left: 0%; } to { left: 100%; } }
     @keyframes l-lit { from { opacity: .28; transform: translateY(16px); } to { opacity: 1; transform: none; border-color: var(--accent); } }
-    .inc-outer { height: 1900px; padding: 0; view-timeline-name: --inc; }
-    .inc-sticky { position: sticky; top: 64px; height: 760px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; padding: 40px 0; }
-    .inc-track { display: flex; width: max-content; gap: 24px; animation: l-incx linear both; animation-timeline: --inc; animation-range: contain 0% contain 100%; }
-    .inc-track > article { width: 520px; }
-    .inc-bar { transform-origin: left; animation: l-ul linear both; animation-timeline: --inc; animation-range: contain 0% contain 100%; }
-    .stamp { animation: l-stamp linear both; animation-timeline: --inc; }
-    .strike { background-image: linear-gradient(var(--denied), var(--denied)); background-repeat: no-repeat; background-position: 0 55%; background-size: 0% 2px; animation: l-strike linear both; animation-timeline: --inc; }
-    .st1 { animation-range: contain 0% contain 12%; } .st2 { animation-range: contain 22% contain 36%; }
-    .st3 { animation-range: contain 48% contain 62%; } .st4 { animation-range: contain 74% contain 88%; }
-    .inc-count { counter-reset: ic var(--ic); animation: l-icc linear both; animation-timeline: --inc; animation-range: contain 0% contain 100%; }
-    .inc-count::after { content: "0" counter(ic) " / 04"; }
-    .inc-count .fg-num { display: none; }
-    .how-outer { height: 1500px; padding: 0; view-timeline-name: --how; }
-    .how-sticky { position: sticky; top: 64px; min-height: 640px; display: flex; flex-direction: column; justify-content: center; padding: 40px 0; }
-    .how-fill { animation: l-ul linear both; animation-timeline: --how; animation-range: contain 0% contain 90%; }
-    .how-dot { animation: l-dotx linear both; animation-timeline: --how; animation-range: contain 0% contain 90%; }
-    .how-step { animation: l-lit linear both; animation-timeline: --how; }
-    .hs1 { animation-range: contain 0% contain 6%; } .hs2 { animation-range: contain 25% contain 32%; }
-    .hs3 { animation-range: contain 52% contain 59%; } .hs4 { animation-range: contain 80% contain 87%; }
+    .anim .inc-outer { height: 1900px; padding: 0; view-timeline-name: --inc; }
+    .anim .inc-sticky { position: sticky; top: 64px; height: 760px; overflow: hidden; display: flex; flex-direction: column; justify-content: center; padding: 40px 0; }
+    .anim .inc-track { display: flex; width: max-content; gap: 24px; animation: l-incx linear both; animation-timeline: --inc; animation-range: contain 0% contain 100%; }
+    .anim .inc-track > article { width: 520px; }
+    .anim .inc-bar { transform-origin: left; animation: l-ul linear both; animation-timeline: --inc; animation-range: contain 0% contain 100%; }
+    .anim .stamp { animation: l-stamp linear both; animation-timeline: --inc; }
+    .anim .strike { background-image: linear-gradient(var(--denied), var(--denied)); background-repeat: no-repeat; background-position: 0 55%; background-size: 0% 2px; animation: l-strike linear both; animation-timeline: --inc; }
+    .anim .st1 { animation-range: contain 0% contain 12%; } .anim .st2 { animation-range: contain 22% contain 36%; }
+    .anim .st3 { animation-range: contain 48% contain 62%; } .anim .st4 { animation-range: contain 74% contain 88%; }
+    .anim .inc-count { counter-reset: ic var(--ic); animation: l-icc linear both; animation-timeline: --inc; animation-range: contain 0% contain 100%; }
+    .anim .inc-count::after { content: "0" counter(ic) " / 04"; }
+    .anim .inc-count .fg-num { display: none; }
+    .anim .how-outer { height: 1500px; padding: 0; view-timeline-name: --how; }
+    .anim .how-sticky { position: sticky; top: 64px; min-height: 640px; display: flex; flex-direction: column; justify-content: center; padding: 40px 0; }
+    .anim .how-fill { animation: l-ul linear both; animation-timeline: --how; animation-range: contain 0% contain 90%; }
+    .anim .how-dot { animation: l-dotx linear both; animation-timeline: --how; animation-range: contain 0% contain 90%; }
+    .anim .how-step { animation: l-lit linear both; animation-timeline: --how; }
+    .anim .hs1 { animation-range: contain 0% contain 6%; } .anim .hs2 { animation-range: contain 25% contain 32%; }
+    .anim .hs3 { animation-range: contain 52% contain 59%; } .anim .hs4 { animation-range: contain 80% contain 87%; }
   }
 }
 

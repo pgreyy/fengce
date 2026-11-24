@@ -16,6 +16,15 @@
         if (t !== "light" && t !== "dark") t = window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
         document.documentElement.setAttribute("data-theme", t === "light" ? "light-cobalt" : "dark-cobalt");
       })();
+      /* Entrance and scroll animations only for people: not for automated or headless browsers (screenshot and preview
+         tools must see the finished page), and not with reduced motion. Content is fully visible without this class. */
+      (function () {
+        try {
+          var bot = navigator.webdriver || /HeadlessChrome|Headless|Lighthouse|bot|crawl|spider|screenshot|preview/i.test(navigator.userAgent);
+          var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+          if (!bot && !reduce) document.documentElement.classList.add("anim");
+        } catch (e) {}
+      })();
     </script>
   </head>
   <body>

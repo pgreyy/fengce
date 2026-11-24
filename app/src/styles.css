@@ -42,9 +42,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .nav a { font: 500 14px/1 var(--body); color: var(--muted); padding: 12px 0 10px; border-bottom: 2px solid transparent; white-space: nowrap; }
 .nav a:hover { color: var(--text); }
 .nav a[aria-current="page"] { color: var(--text); border-bottom-color: var(--accent); }
-.theme-switch { display: flex; gap: 2px; padding: 3px; border-radius: var(--r-button); border: 1px solid var(--line); background: var(--surface); }
-.theme-switch button { transition: background .3s, color .3s; min-height: 30px; padding: 0 10px; border-radius: var(--r-pill); border: 0; background: transparent; color: var(--muted); font: 400 11.5px/1 var(--mono); cursor: pointer; }
-.theme-switch button[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
+.icons { display: flex; gap: 6px; align-items: center; }
+.icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; border-radius: var(--r-button); border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; transition: color .2s, border-color .2s, background-color .5s; }
+.icon-btn:hover { color: var(--accent); border-color: var(--accent); }
 .live { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
 .live i { width: 7px; height: 7px; border-radius: 50%; background: var(--allowed); display: inline-block; }
 .live.stale i { background: var(--muted); }
@@ -174,5 +174,5 @@ pre.json { background: var(--code-bg); color: var(--code-text); border: 1px soli
 .foot-links { display: flex; flex-wrap: wrap; gap: 22px; }
 .foot .mono a { color: var(--accent); }
 .foot { overflow: hidden; }
-.foot-word { max-width: var(--container); margin: 20px auto 0; padding: 0 var(--gutter); font: 600 248px/.82 var(--display); letter-spacing: -0.05em; color: transparent; -webkit-text-stroke: 1px var(--line); white-space: nowrap; user-select: none; }
+.foot-word { max-width: var(--container); margin: 20px auto 0; padding: 0 var(--gutter); font: 600 clamp(96px, 17vw, 248px)/.82 var(--display); letter-spacing: -0.05em; color: transparent; -webkit-text-stroke: 1px var(--line); white-space: nowrap; user-select: none; }
 @media (max-width: 760px) { .foot-word { font-size: 31vw; } }
