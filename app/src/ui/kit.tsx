@@ -84,14 +84,14 @@ export function LogoMark({ size = 28 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" fill="none" aria-hidden="true" className="logo-mark">
       <rect x="8" y="8" width="16" height="16" stroke="currentColor" strokeWidth="2" />
-      <rect x="13" y="13" width="6" height="6" style={{ fill: "var(--accent)" }} />
+      <rect x="13" y="13" width="6" height="6" className="logo-die" style={{ fill: "var(--accent)" }} />
       <path d="M12 4v4M16 4v4M20 4v4M12 24v4M16 24v4M20 24v4M4 12h4M4 16h4M4 20h4M24 12h4M24 16h4M24 20h4" stroke="currentColor" strokeWidth="2" />
     </svg>
   );
 }
 
-/** The two themes of this build (design handoff: DARK_ACCENT copper, LIGHT_THEME ember). */
-const THEMES = { dark: "dark-copper", light: "light-ember" } as const;
+/** The two themes of this build (cobalt, dark and light). */
+const THEMES = { dark: "dark-cobalt", light: "light-cobalt" } as const;
 type ThemeKey = keyof typeof THEMES;
 
 function currentTheme(): ThemeKey {

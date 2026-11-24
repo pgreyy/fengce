@@ -21,7 +21,7 @@
 
 /* ---------------------------------------------------------------- always-on (motion allowed) */
 .motion .words-load .w, .motion .w-load { display: inline-block; opacity: 0; animation: fg-up .9s var(--ease-out) forwards; animation-delay: var(--d, 0ms); }
-.motion .pulse-dot { animation: fg-pulse 2.4s ease-in-out infinite; }
+.motion .pulse-dot, .motion .logo-die { animation: fg-pulse 2.4s ease-in-out infinite; }
 .motion .hero-circuit .flow { stroke-dasharray: 6 8; animation: fg-dash 1.6s linear infinite; }
 .motion .chip-float { animation: fg-float 6s ease-in-out infinite; }
 .motion .marquee-track { animation: fg-marquee 38s linear infinite; }

@@ -50,7 +50,7 @@ function HeroCircuit() {
         <path className="flow" d="M780 640 H1040 V580" />
         <path className="flow" d="M1100 80 V200 H1240" />
       </g>
-      <g fill="var(--accent)" fontFamily="JetBrains Mono, monospace" fontSize="14">
+      <g fill="var(--accent)" fontFamily="Source Code Pro, monospace" fontSize="14">
         <text x="40" y="128">in: amount = {DEMO.denied}</text>
         <text x="40" y="408">in: cap = {DEMO.cap}</text>
         <text x="980" y="228">out: 0 → DENIED</text>
