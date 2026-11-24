@@ -78,6 +78,8 @@ private one through the `XLAYER_RPC_URL` secret). Nothing in the test suite send
 
 ## Experimental or deferred
 
+- Verdict (prediction markets that settle on a pinned circuit) is next and in progress: not deployed; draft code
+  in [src/verdict](src/verdict), notes in [docs/VERDICT.md](docs/VERDICT.md).
 - No independent security review. The TapeOut processor factory and circuit beacon are upgradeable and not sealed;
   PinRegistry fails closed (denies) if a pinned circuit's code or REF closure changes.
 - Non-Safe adapters (FengceHook, FengceHook6900, FengceAgentOwner) are deployed on mainnet but exercised only on forks;

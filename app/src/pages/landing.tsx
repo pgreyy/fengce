@@ -157,7 +157,7 @@ function Hero() {
           </a>
         </div>
         <p className="fi hero-note" style={v({ animationDelay: "1.05s" })}>
-          Fengce makes any TapeOut circuit enforceable: in your wallet today, in markets with Verdict, and anywhere a circuit's answer needs to be trusted on-chain.
+          Fengce makes any TapeOut circuit enforceable. Today in your wallet. Next, in prediction markets with Verdict.
         </p>
         <div className="fi card loop-card" style={v({ animationDelay: "1.25s" })}>
           <div className="mono loop-head">

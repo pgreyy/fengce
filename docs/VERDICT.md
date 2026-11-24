@@ -1,5 +1,8 @@
 # Verdict V1: settlement rules
 
+**Status: next, in progress.** Verdict is not deployed on X Layer mainnet and nothing here is live. The code
+below is a draft and may change before release.
+
 Code: `src/verdict` (imports only `src/core`). Tests: `test/Verdict.t.sol` (fork of X Layer mainnet).
 
 ## Lifecycle

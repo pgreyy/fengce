@@ -328,7 +328,7 @@ docs            documentation (below)
 - [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md): trust assumptions and limits
 - [docs/POLICY-INTERFACE.md](docs/POLICY-INTERFACE.md): the canonical policy context
 - [docs/ADDRESSES.md](docs/ADDRESSES.md): X Layer addresses Fengce depends on
-- [docs/VERDICT.md](docs/VERDICT.md): the verdict checks
+- [docs/VERDICT.md](docs/VERDICT.md): Verdict, prediction markets that settle on a pinned circuit (next: in progress, not deployed)
 - [sdk/README.md](sdk/README.md): SDK and CLI
 - [mcp/README.md](mcp/README.md): MCP server; [skills/fengce](skills/fengce/SKILL.md): OnchainOS skill
 - [AGENTS.md](AGENTS.md): canonical data and checks, for tools and newcomers

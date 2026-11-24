@@ -77,6 +77,8 @@ Safe7579 adapter (canonical address) and ZeroDev Kernel v3 factory. Fengce deplo
 
 ## Verdict checks (2026-11-18, read-only)
 
+Verdict is next and in progress: not deployed. These checks prepare it.
+
 ### Comparator circuit for "value >= threshold"
 
 Found: processor `0xF9bBdc7f678eb3A49D338ffAcDaaD9339de50a0F`, circuit **7**: `a >= b` on 16-bit operands.
