@@ -6,12 +6,27 @@
 
 Your rules run as TapeOut circuits on X Layer, and the wallet itself enforces them, for owners and AI agents alike.
 
+<a id="demo-video"></a>**Demo video:** DEMO_VIDEO_LINK
+
 **X Layer Mainnet · Chain ID 196 · v2 live**
 
 [Live app](https://getfengce.vercel.app) · [On TapeOut DeWeb: 6.2.180.tape](https://6-2-180.tapekit.org/) · [Try it](docs/TRY-IT.md) · [Demo video](#demo-video) · [Docs](docs/INTEGRATION.md) · [SDK on npm](https://www.npmjs.com/package/@fengce/sdk) · [Sourcify](https://repo.sourcify.dev/196/0x9D2A482fFA86fa3193F85c451A44576E2f1C8E6e)
-<!-- demo-video: replace the #demo-video link above with the video URL -->
+<!-- demo video: replace DEMO_VIDEO_LINK above (and #demo-video in the link row) with the video URL -->
 
 </div>
+
+### Judges start here (60 seconds)
+
+1. Open the live site: [getfengce.vercel.app](https://getfengce.vercel.app). Everything is read from X Layer by your browser.
+2. See the wallet decide on mainnet: an agent's 1.5 USDT0 transfer **DENIED**
+   ([0x9b70…4a1b](https://www.oklink.com/x-layer/tx/0x9b70d386a2782e269ab1d3b1df6de767534a5b5b7904998abd92a651d2584a1b)),
+   then 0.5 USDT0 **ALLOWED** ([0x7a70…ccab](https://www.oklink.com/x-layer/tx/0x7a70f5c9713fd9236ecdd81287bcf775253d2cbea19c857524bb1047acfcccab)).
+3. Open the Verdict demo market: [market #0](https://getfengce.vercel.app/verdict/?id=0) on
+   [`0xb258…7c55`](https://www.oklink.com/x-layer/address/0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55); once it is checkpointed
+   (after the deadline), its Re-run panel re-checks the settlement in your browser.
+4. The same app, stored on X Layer and checked file by file: [6.2.180.tape](https://6-2-180.tapekit.org/).
+5. Install it on your own Safe in a few minutes: [docs/TRY-IT.md](docs/TRY-IT.md). The full write-up:
+   [docs/SUBMISSION.md](docs/SUBMISSION.md).
 
 Fengce is a wallet enforcement layer, not a new wallet, an agent framework, or an off-chain monitor.
 

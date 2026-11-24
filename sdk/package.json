@@ -1,6 +1,6 @@
 {
   "name": "@fengce/sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "TypeScript SDK for Fengce: TapeOut circuit schemas, Quote certificates and Safe guard install calldata",
   "license": "MIT",
   "type": "module",
@@ -18,7 +18,8 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "engines": {
     "node": ">=20"
