@@ -55,6 +55,18 @@ that suits them, can affect the outcome; the manipulation window equals the sett
 should pick the shortest window (minimum 5 minutes, maximum 1 day) that still leaves time for someone to
 checkpoint, and sources that are hard to move.
 
+## The app page
+
+The `/verdict` page of the Fengce app (source:
+[app/src/pages/verdict.tsx](../app/src/pages/verdict.tsx)) lists the markets and opens each one: question, pools,
+deadline, and buttons to bet YES or NO with a browser wallet (USDT0 approval first if needed), checkpoint, settle,
+claim and refund. Its **Re-run** panel shows the recorded inputs and the checkpoint block, encodes the values in the
+browser with an independent copy of the Schema rule, sends them straight to the pinned circuit's `eval` with
+`eth_call`, and shows whether the answer matches the market's on-chain result. It can also re-read each source at
+the checkpoint block, when the RPC serves that block's state. Before Verdict is deployed the page is read-only and
+shows an empty state; it reads the address from `deployments/verdict-xlayer-196.json`, which
+`script/DeployVerdict.s.sol` writes.
+
 ## EIP-2935 on X Layer (checked 2026-11-24)
 
 The block-hash history contract `0x0000F90827F1C53a10cb7A02335B175320002935` exists on X Layer mainnet: 83 bytes of
@@ -63,8 +75,23 @@ returned the correct block hash for blocks 1, 10, 100 and 8,191 back (compared w
 reverted for 8,192 back, as EIP-2935 specifies. The fork test `test_eip2935HistoryContract` checks the same.
 At about one block per second, 8,191 blocks is roughly 2.3 hours of history.
 
-This makes a V2 possible in which the value at a fixed block is proven instead of read at call time (state proof
-against a block hash from the history contract), removing the first-checkpoint choice.
+This makes the V2 plan below possible.
+
+## V2 plan
+
+V2 removes the first-checkpoint choice by proving the value at a fixed block instead of reading it at call time:
+
+1. The market names an observation block `B` (or the first block after the deadline).
+2. Anyone submits an account and storage proof (`eth_getProof`) for each source slot at `B`, together with the block
+   header of `B`.
+3. Verdict checks the header's hash against the EIP-2935 history contract (or `blockhash` for the last 256 blocks),
+   then verifies the proofs against the header's state root and decodes the values.
+4. The proof must be submitted within 8,191 blocks of `B` (about 2.3 hours on X Layer), the history contract's
+   window; after that the market is VOID.
+
+This only works for values held in storage (not computed by a view function), and needs the slot layout of each
+source. The X Layer check above shows the history contract is live; header and proof verification are not built
+yet.
 
 ## Known limits
 

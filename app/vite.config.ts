@@ -4,7 +4,7 @@ import react from "@vitejs/plugin-react";
 
 /** Static multi-page build. Every page is its own HTML file (no client-side routing) and every asset path is
  * relative (base "./"), so the same dist/ runs on Vercel and on TapeOut DeWeb. */
-export const PAGES = ["index", "catalog/index", "simulator/index", "install/index", "safe/index", "wallets/index", "policy/index"];
+export const PAGES = ["index", "catalog/index", "simulator/index", "install/index", "safe/index", "wallets/index", "policy/index", "verdict/index"];
 
 export default defineConfig({
   base: "./",

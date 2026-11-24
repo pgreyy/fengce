@@ -9,7 +9,7 @@ import { initMotion } from "./motion";
 
 /** Pages live at the root (catalog) or one folder deep; links are relative so the build runs from any base path. */
 let DEPTH = 0;
-export type Page = "" | "catalog" | "simulator" | "install" | "safe" | "wallets" | "policy";
+export type Page = "" | "catalog" | "simulator" | "install" | "safe" | "wallets" | "policy" | "verdict";
 export function href(page: Page, query?: Record<string, string>, hash?: string) {
   const base = DEPTH === 0 ? "./" : "../";
   const q = query ? `?${new URLSearchParams(query).toString()}` : "";
@@ -22,6 +22,7 @@ const NAV: { page: Page; label: string; hash?: string; landing?: boolean }[] = [
   { page: "install", label: "Install" },
   { page: "safe", label: "Safe" },
   { page: "wallets", label: "Wallets", landing: true },
+  { page: "verdict", label: "Verdict" },
   { page: "", label: "Developers", hash: "developers", landing: true },
 ];
 
