@@ -27,7 +27,7 @@ import {
   type SchemaFile,
 } from "@fengce/sdk";
 import { ADDR, AGENT_EXECUTOR, CATALOG, client } from "./chain";
-import { history, installsByPin, type Snapshot } from "./events";
+import { history, installsByPin, type History, type Snapshot } from "./events";
 import { quoteFor } from "./quotes";
 import { PRESETS, presetFor, type PolicyPreset } from "./policies";
 
@@ -264,8 +264,8 @@ async function slot(safe: Address, s: bigint): Promise<Address> {
 }
 
 
-/** A Safe's configuration, plus its Fengce events from the snapshot and a live scan of newer blocks. */
-export async function safeStatus(safe: Address, snapshot: Snapshot | null = null) {
+/** A Safe's configuration and on-chain state (no event scan): what the status view shows at once. */
+export async function safeConfig(safe: Address) {
   const [version, owners, threshold, nonce, modules] = await Promise.all([
     client.readContract({ address: safe, abi: safeAbi, functionName: "VERSION" }),
     client.readContract({ address: safe, abi: safeAbi, functionName: "getOwners" }),
@@ -288,8 +288,6 @@ export async function safeStatus(safe: Address, snapshot: Snapshot | null = null
       fengce = null; // the guard is not a FengceGuard
     }
   }
-  const h = await history(snapshot);
-  const mine = h.events.filter((e) => e.safe?.toLowerCase() === safe.toLowerCase());
   return plain({
     safe: getAddress(safe),
     agentExecutor: AGENT_EXECUTOR,
@@ -302,27 +300,41 @@ export async function safeStatus(safe: Address, snapshot: Snapshot | null = null
     moduleGuard,
     fallbackHandler,
     fengce,
+  });
+}
+
+/** A Safe's Fengce events from a history (snapshot plus scanned blocks). */
+export function safeEvents(safe: Address, h: History) {
+  const mine = h.events.filter((e) => e.safe?.toLowerCase() === safe.toLowerCase());
+  return {
     deniedAgentCalls: mine.filter((e) => e.source === "agentExecutor" && e.event === "Denied"),
     agentEvents: mine.filter((e) => e.source === "agentExecutor" && e.event !== "Denied"),
     events: mine.filter((e) => e.source === "guard"),
-    history: { snapshot: h.snapshot, live: h.live, gap: h.gap, head: h.head },
+    history: { snapshot: h.snapshot, live: h.live, gap: h.gap, head: h.head, cached: h.cached ?? null },
+  };
+}
+
+/** Configuration plus events in one answer (the HTTP API). */
+export async function safeStatus(safe: Address, snapshot: Snapshot | null = null) {
+  const [cfg, h] = await Promise.all([safeConfig(safe), history(snapshot)]);
+  return plain({
+    ...(cfg as object),
+    ...safeEvents(safe, h),
     blockedAttempts:
-      "Owner transactions the guard blocks revert and leave no event; use the Simulator to see why one would be blocked. Agent calls through AgentExecutor are recorded as Denied events.",
+      "Owner transactions the guard blocks revert and leave no event; use a policy's Try it tab to see why one would be blocked. Agent calls through AgentExecutor are recorded as Denied events.",
   });
 }
 
 // ------------------------------------------------------------------ catalog
 
-export async function catalog(snapshot: Snapshot | null = null) {
+/** Catalog listings with their pins (no event scan): what the Catalog view shows at once. */
+export async function catalogEntries() {
   if (!CATALOG) return plain({ deployed: false, note: "No Fengce Catalog is deployed on X Layer yet (set CATALOG_ADDRESS when one is).", entries: [], known: PRESETS.map((p) => ({ key: p.key, name: p.name, processor: p.processor, id: p.id, stateful: !!p.stateful })) });
   const head = await client.getBlockNumber();
   const entries = await readCatalog(client as any, CATALOG);
   const pins = await Promise.all(
     entries.map((e) => client.readContract({ address: ADDR.pinRegistry, abi: PinRegistryArtifact.abi as any, functionName: "circuitPin", args: [e.pinId] }) as Promise<any>),
   );
-  // Installs: snapshot plus live events. A failed live scan must not hide the Catalog itself.
-  const h = await history(snapshot, head).catch(() => null);
-  const installs = h ? installsByPin(h.events) : null;
   const rows = entries.map((e, i) => {
     const processor = getAddress(pins[i].processor) as Address;
     const id = BigInt(pins[i].circuitId);
@@ -337,10 +349,25 @@ export async function catalog(snapshot: Snapshot | null = null) {
       name: preset?.name ?? null,
       fullPathGas: q?.fullPath ?? null,
       quoteEvalGas: q?.evalCall ?? null,
-      installs: installs ? (installs.get(key) ?? 0) : null,
+      key,
     };
   });
-  return plain({ deployed: true, address: CATALOG, head, entries: rows, history: h ? { snapshot: h.snapshot, live: h.live, gap: h.gap } : null, known: PRESETS.map((p) => ({ key: p.key, name: p.name, processor: p.processor, id: p.id, stateful: !!p.stateful })) });
+  return plain({ deployed: true, address: CATALOG, head, entries: rows, known: PRESETS.map((p) => ({ key: p.key, name: p.name, processor: p.processor, id: p.id, stateful: !!p.stateful })) });
+}
+
+/** Installs per listing from a history, or null when no history was read. */
+export function catalogInstalls(entries: { key: string }[], h: History | null) {
+  const installs = h ? installsByPin(h.events) : null;
+  return entries.map((e) => (installs ? (installs.get(e.key) ?? 0) : null));
+}
+
+/** Listings plus installs in one answer (the HTTP API). A failed live scan must not hide the Catalog itself. */
+export async function catalog(snapshot: Snapshot | null = null) {
+  const c = (await catalogEntries()) as any;
+  if (!c.deployed) return c;
+  const h = await history(snapshot, BigInt(c.head)).catch(() => null);
+  const inst = catalogInstalls(c.entries, h);
+  return plain({ ...c, entries: c.entries.map((e: any, i: number) => ({ ...e, installs: inst[i] })), history: h ? { snapshot: h.snapshot, live: h.live, gap: h.gap } : null });
 }
 
 // ------------------------------------------------------------------ install

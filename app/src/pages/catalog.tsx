@@ -1,6 +1,7 @@
-import { catalog } from "../lib/data";
+import { catalogEntries, catalogInstalls } from "../lib/data";
+import { SyncNote, useEventSync } from "../ui/sync";
 import { presetFor } from "../lib/policies";
-import { Addr, ErrorLine, Figure, HistoryNote, Loading, Pill, Section, fmtInt, href, loadSnapshot, mount, tierTone, useLoad } from "../ui/kit";
+import { Addr, ErrorLine, Figure, Loading, Pill, Section, fmtInt, href, mount, tierTone, useLoad } from "../ui/kit";
 
 interface Row {
   pinId: string;
@@ -17,10 +18,13 @@ interface Row {
 }
 
 function CatalogPage() {
-  const { data, error, loading, reload } = useLoad(async () => (await catalog(await loadSnapshot())) as any, []);
-  const rows: Row[] = data?.entries ?? [];
+  const { data, error, loading, reload } = useLoad(async () => (await catalogEntries()) as any, []);
+  // Installs come from events: they fill in when the background sync finishes; the listings never wait for it.
+  const sync = useEventSync();
+  const inst = data?.entries ? catalogInstalls(data.entries, sync.history) : [];
+  const rows: Row[] = (data?.entries ?? []).map((e: any, i: number) => ({ ...e, installs: inst[i] ?? null }));
   const full = rows.map((r) => (r.fullPathGas ? BigInt(r.fullPathGas) : null)).filter((x): x is bigint => x !== null);
-  const hist = data?.history;
+  const hist = sync.history;
   return (
     <>
       <h1 className="title">Catalog</h1>
@@ -34,7 +38,7 @@ function CatalogPage() {
               <Figure v={fmtInt(rows.length)} k="Policies listed" />
               <Figure v={fmtInt(rows.filter((r) => r.tier === "Green").length)} k="Green tier" tone="amber" />
               <Figure v={full.length ? fmtInt(full.reduce((a, b) => (a < b ? a : b))) : "–"} k="Lowest full Safe path gas" />
-              <Figure v={hist ? fmtInt(rows.reduce((a, r) => a + (r.installs ?? 0), 0)) : "–"} k={hist ? "Installs since v2" : "Installs (not read)"} />
+              <Figure v={hist ? fmtInt(rows.reduce((a, r) => a + (r.installs ?? 0), 0)) : "…"} k={hist ? "Installs since v2" : "Installs (syncing events…)"} />
             </div>
             <div className="tablewrap">
               <table className="dt">
@@ -68,7 +72,7 @@ function CatalogPage() {
                         <td className="num">{fmtInt(r.measuredGas)}</td>
                         <td className="num">{r.fullPathGas ? fmtInt(r.fullPathGas) : <span className="muted">–</span>}</td>
                         <td className="num">{fmtInt(r.gateCount)}</td>
-                        <td className="num">{r.installs === null ? <span className="muted">–</span> : fmtInt(r.installs)}</td>
+                        <td className="num">{r.installs === null ? <span className="muted">…</span> : fmtInt(r.installs)}</td>
                         <td>
                           <Addr a={r.designer} />
                         </td>
@@ -82,7 +86,7 @@ function CatalogPage() {
               Eval gas: measured by the Catalog when the policy was listed. Full Safe path gas: the policy's Quote certificate (Safe execution,
               pre-check and outcome check).{" "}
               Installs: distinct Safes configured with the policy (FengceGuard <span className="mono">Configured</span> events since the v2
-              deployment): <HistoryNote h={hist} />.
+              deployment): <SyncNote s={sync} />.
             </p>
           </>
         )}

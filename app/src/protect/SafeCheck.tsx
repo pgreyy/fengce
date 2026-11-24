@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { isAddress, type Address } from "viem";
 import { ADDR, DEPLOYMENT } from "../lib/chain";
-import { safeStatus } from "../lib/data";
-import { Addr, ErrorLine, Figure, HistoryNote, Loading, Section, fmtDuration, fmtInt, href, loadSnapshot, param, useLoad } from "../ui/kit";
+import { safeConfig, safeEvents } from "../lib/data";
+import { SyncNote, useEventSync } from "../ui/sync";
+import { Addr, ErrorLine, Figure, Loading, Section, fmtDuration, fmtInt, href, param, useLoad } from "../ui/kit";
 
 /** Status of a Safe guarded by FengceGuard: configuration, guards, denied agent calls and guard events (step 3 of
  * Protect, for Safe). */
@@ -10,7 +11,10 @@ export function SafeCheck() {
   const safe = (param("address") ?? DEPLOYMENT.demoSafe) as Address;
   const [input, setInput] = useState(safe);
   const valid = isAddress(safe);
-  const { data, error, loading, reload } = useLoad(async () => (valid ? ((await safeStatus(safe, await loadSnapshot())) as any) : null), [safe]);
+  const { data, error, loading, reload } = useLoad(async () => (valid ? ((await safeConfig(safe)) as any) : null), [safe]);
+  // Event-derived parts (denied calls, guard events) fill in when the background sync finishes; they never block.
+  const sync = useEventSync();
+  const ev = valid && sync.history ? safeEvents(safe, sync.history) : null;
   const f = data?.fengce;
   const guarded = data && data.guard?.toLowerCase() === ADDR.guard.toLowerCase();
   const moduleGuarded = data && data.moduleGuard?.toLowerCase() === ADDR.guard.toLowerCase();
@@ -39,7 +43,7 @@ export function SafeCheck() {
           <div className="figures" style={{ margin: "26px 0 8px" }}>
             <Figure v={`${data.threshold}/${data.owners.length}`} k="Signatures / owners" />
             <Figure v={guarded && moduleGuarded ? "ON" : guarded || moduleGuarded ? "PART" : "OFF"} k="Fengce guards (both paths)" tone={guarded && moduleGuarded ? "amber" : "red"} />
-            <Figure v={fmtInt(data.deniedAgentCalls.length)} k="Denied agent calls since v2" tone={data.deniedAgentCalls.length ? "red" : undefined} />
+            <Figure v={ev ? fmtInt(ev.deniedAgentCalls.length) : "…"} k={ev ? "Denied agent calls since v2" : "Denied agent calls (syncing events…)"} tone={ev?.deniedAgentCalls.length ? "red" : undefined} />
             <Figure v={fmtInt(data.nonce)} k="Safe nonce" />
           </div>
           <Section n={5} label="Configuration" aside={<Addr a={data.safe} />}>
@@ -121,8 +125,10 @@ export function SafeCheck() {
               </div>
             </div>
           </Section>
-          <Section n={6} label="Denied attempts" aside={<HistoryNote h={data.history} />}>
-            {data.deniedAgentCalls.length ? (
+          <Section n={6} label="Denied attempts" aside={<SyncNote s={sync} />}>
+            {!ev ? (
+              <p className="muted">Syncing events… the Safe's configuration above is already current.</p>
+            ) : ev.deniedAgentCalls.length ? (
               <div className="tablewrap">
                 <table className="dt">
                   <thead>
@@ -135,7 +141,7 @@ export function SafeCheck() {
                     </tr>
                   </thead>
                   <tbody>
-                    {[...data.deniedAgentCalls].reverse().map((d: any) => (
+                    {[...ev.deniedAgentCalls].reverse().map((d: any) => (
                       <tr key={`${d.tx}:${d.logIndex}`}>
                         <td className="num">{fmtInt(d.block)}</td>
                         <td>
@@ -158,11 +164,13 @@ export function SafeCheck() {
             )}
             <p className="muted" style={{ fontSize: 12, marginTop: 12 }}>
               History: the snapshot shipped with this site, then a live scan of newer blocks (X Layer RPCs answer eth_getLogs for at most 100
-              blocks per request). Owner transactions the guard blocks revert and leave no event.
+              blocks per request), cached in this browser. Owner transactions the guard blocks revert and leave no event.
             </p>
           </Section>
-          <Section n={7} label="Guard events" aside={<HistoryNote h={data.history} />}>
-            {data.events.length ? (
+          <Section n={7} label="Guard events" aside={<SyncNote s={sync} />}>
+            {!ev ? (
+              <p className="muted">Syncing events…</p>
+            ) : ev.events.length ? (
               <div className="tablewrap">
                 <table className="dt">
                   <thead>
@@ -173,7 +181,7 @@ export function SafeCheck() {
                     </tr>
                   </thead>
                   <tbody>
-                    {[...data.events].reverse().map((e: any, i: number) => (
+                    {[...ev.events].reverse().map((e: any, i: number) => (
                       <tr key={i}>
                         <td className="num">{fmtInt(e.block)}</td>
                         <td className="mono">{e.event}{e.args.pinId ? ` ${String(e.args.pinId).slice(0, 10)}…` : ""}</td>
