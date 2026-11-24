@@ -48,11 +48,10 @@ function toEntry(e: any): CatalogEntry {
 /** Reads every entry of a Catalog contract. */
 export async function readCatalog(client: PublicClient, catalog: Address): Promise<CatalogEntry[]> {
   const n = (await client.readContract({ address: catalog, abi: CatalogArtifact.abi, functionName: "count" })) as bigint;
-  const out: CatalogEntry[] = [];
-  for (let i = 0n; i < n; i++) {
-    out.push(toEntry(await client.readContract({ address: catalog, abi: CatalogArtifact.abi, functionName: "entryAt", args: [i] })));
-  }
-  return out;
+  // All entries in parallel (one round of calls; a batching transport sends them together), in listing order.
+  const reads = [];
+  for (let i = 0n; i < n; i++) reads.push(client.readContract({ address: catalog, abi: CatalogArtifact.abi, functionName: "entryAt", args: [i] }));
+  return (await Promise.all(reads)).map(toEntry);
 }
 
 /** Reads one entry by pin id (lister is the zero address if it is not listed). */

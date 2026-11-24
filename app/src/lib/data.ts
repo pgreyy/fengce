@@ -336,8 +336,7 @@ export async function safeStatus(safe: Address, snapshot: Snapshot | null = null
 /** Catalog listings with their pins (no event scan): what the Catalog view shows at once. */
 export async function catalogEntries() {
   if (!CATALOG) return plain({ deployed: false, note: "No Fengce Catalog is deployed on X Layer yet (set CATALOG_ADDRESS when one is).", entries: [], known: PRESETS.map((p) => ({ key: p.key, name: p.name, processor: p.processor, id: p.id, stateful: !!p.stateful })) });
-  const head = await client.getBlockNumber();
-  const entries = await readCatalog(client as any, CATALOG);
+  const [head, entries] = await Promise.all([client.getBlockNumber(), readCatalog(client as any, CATALOG)]);
   const pins = await Promise.all(
     entries.map((e) => client.readContract({ address: ADDR.pinRegistry, abi: PinRegistryArtifact.abi as any, functionName: "circuitPin", args: [e.pinId] }) as Promise<any>),
   );
