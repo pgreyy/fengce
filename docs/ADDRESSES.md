@@ -100,7 +100,7 @@ with at most 5,000 gates were tested with `eval`. Other two-operand comparators 
 10-bit `a < b` (`0xF5c2bca1f38C6861F6d1303c0CbE840671ae4298` #123), 8-bit `a < b`
 (`0xF9bBdc7f678eb3A49D338ffAcDaaD9339de50a0F` #5), and smaller ones. None is wider than 16 bits, so a market
 value must fit in 16 bits (0..65,535); a larger value is rejected by Schema and the market settles INVALID.
-The Verdict fork tests use circuit #7 (`test/Verdict.t.sol`). Re-check with
+The Verdict fork tests use circuit #7 through its Catalog listing (`test/fork/VerdictFork.t.sol`). Re-check with
 `npx tsx sdk/scripts/check-comparator.ts 0xF9bBdc7f678eb3A49D338ffAcDaaD9339de50a0F 7 ge`.
 
 ### USDT0
@@ -124,8 +124,8 @@ real `verify()` call is still needed to confirm.
 ### TapeOut factory as a data source
 
 The factory proxy keeps its implementation only in the ERC-1967 slot and exposes no getter, so a contract cannot
-check it. Verdict pins the factory by code hash only (`PinRegistry.pinContract(factory, 0)`); an implementation
-upgrade before settlement is not detected on-chain.
+check it. Verdict records only the code hash of each source it calls, so an implementation upgrade behind a proxy
+source is not detected on-chain (docs/VERDICT.md, Known limits).
 
 ## DeFi protocols on X Layer (checked 2026-11-18, read-only)
 

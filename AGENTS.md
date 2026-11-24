@@ -54,7 +54,7 @@ Demo Safe `0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707`, demo agent `0x81DeB61C44
 ```sh
 git submodule update --init --recursive
 forge build
-forge test --match-path 'test/unit/*.t.sol'                              # 44 unit tests, no network
+forge test --match-path 'test/unit/*.t.sol'                              # unit tests, no network (44 for the v2 release; Verdict adds 19)
 forge test --match-path 'test/{PinNand,Fengce*,AgentExecutor}.t.sol'      # fork tests against X Layer mainnet state
 forge test --match-path 'test/fork/*.t.sol'
 forge test --match-path 'test/wallets/*.t.sol'                           # also reads wallet code from the public Base RPC
@@ -78,8 +78,8 @@ private one through the `XLAYER_RPC_URL` secret). Nothing in the test suite send
 
 ## Experimental or deferred
 
-- Verdict (prediction markets that settle on a pinned circuit) is next and in progress: not deployed; draft code
-  in [src/verdict](src/verdict), notes in [docs/VERDICT.md](docs/VERDICT.md).
+- Verdict (prediction markets that settle on a pinned circuit) is next and in progress: not deployed. Code in
+  [src/verdict](src/verdict) (tests: test/unit/Verdict.t.sol, test/fork/VerdictFork.t.sol), notes in [docs/VERDICT.md](docs/VERDICT.md).
 - No independent security review. The TapeOut processor factory and circuit beacon are upgradeable and not sealed;
   PinRegistry fails closed (denies) if a pinned circuit's code or REF closure changes.
 - Non-Safe adapters (FengceHook, FengceHook6900, FengceAgentOwner) are deployed on mainnet but exercised only on forks;
