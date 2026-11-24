@@ -37,6 +37,9 @@ property of the code or setup). Test links point at the test function in this re
 | [agent-demo-fork](#agent-demo-fork) | fork-tested | X Layer mainnet fork | v2 |
 | [preflight-own-policy](#preflight-own-policy) | mainnet | X Layer mainnet (196), read-only | v2 |
 | [deweb-hosted](#deweb-hosted) | mainnet | X Layer mainnet (196) | v2 |
+| [delegatecall-blocked](#delegatecall-blocked) | fork-tested | X Layer mainnet fork | v2 |
+| [no-prompt-input](#no-prompt-input) | documented | n/a | v2 |
+| [incident-sources](#incident-sources) | documented | n/a | n/a |
 | [wallet-types-8](#wallet-types-8) | fork-tested | X Layer mainnet fork (Safe also on X Layer mainnet) | v2 |
 | [wallet-kernel](#wallet-kernel) | fork-tested | X Layer mainnet fork (live Kernel v3.3 code) | v2 |
 | [wallet-nexus](#wallet-nexus) | fork-tested | X Layer mainnet fork with Nexus code from Base | v2 |
@@ -331,6 +334,36 @@ Status: **mainnet** · Network: X Layer mainnet (196) · Release: v2
 - [record](../deployments/deweb-xlayer-196.json)
 - [TAP-10 resolution and SHA-256 check](../app/scripts/deweb-check.mts)
 - [gateway](https://6-2-180.tapekit.org/)
+
+## delegatecall-blocked
+
+FengceGuard refuses owner delegatecalls to anything but MultiSendCallOnly, so a signed contract upgrade like the Bybit one reverts and the Safe singleton stays unchanged.
+
+Status: **fork-tested** · Network: X Layer mainnet fork · Release: v2
+
+- [test_ownerDelegatecallUpgradeBlocked](../test/FengceGuard.t.sol#L66)
+- [FengceGuard delegatecall rule](../src/safe/FengceGuard.sol#L317)
+
+## no-prompt-input
+
+The circuit's inputs are facts decoded from the transaction itself (recipient, token, amount, kind) and pinned constants; no prompt or agent instruction reaches it.
+
+Status: **documented** · Network: n/a · Release: v2
+
+- [TxFacts.Facts (the policy context)](../src/core/TxFacts.sol#L68)
+- [docs/POLICY-INTERFACE.md](../docs/POLICY-INTERFACE.md)
+- [v2 demo: agent's 1.5 USDT0 denied (mainnet)](https://www.oklink.com/x-layer/tx/0x9b70d386a2782e269ab1d3b1df6de767534a5b5b7904998abd92a651d2584a1b)
+
+## incident-sources
+
+The four incidents in Why Fengce (Binance, Bybit, Freysa, AIXBT) are described from public reports; losses and dates are as those reports state.
+
+Status: **documented** · Network: n/a · Release: n/a
+
+- [Binance](https://socradar.io/blog/binance-hack-6-3b-hot-wallet-theft/)
+- [Bybit](https://blocksec.com/blog/bybit-incident-a-web2-breach-enables-the-largest-crypto-hack-in-history)
+- [Freysa](https://www.theblock.co/post/328747/human-player-outwits-freysa-ai-agent-in-47000-crypto-challenge)
+- [AIXBT](https://www.theblock.co/post/346911/ai-crypto-bot-aixbt-lost-eth-hack-unauthorized-dashboard-access)
 
 ## wallet-types-8
 

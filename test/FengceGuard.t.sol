@@ -10,6 +10,15 @@ import {FengceGuard} from "../src/safe/FengceGuard.sol";
 import {SafeAdmin} from "../src/safe/SafeAdmin.sol";
 import {ForkBase} from "./utils/ForkBase.sol";
 
+/// Stand-in for the Bybit attack contract: when delegatecalled, it overwrites storage slot 0 (the Safe singleton).
+contract SlotZeroWriter {
+    address internal slot0;
+
+    function transfer(address to, uint256) external {
+        slot0 = to;
+    }
+}
+
 /// Batch A fork tests: policy on owner, module and MultiSend paths; guard removal and recovery.
 contract FengceGuardForkTest is ForkBase {
     ISafe safe;
@@ -50,6 +59,17 @@ contract FengceGuardForkTest is ForkBase {
         );
         assertTrue(_execOp(safe, MSCO, 0, _multiSend(ok), Enum.Operation.DelegateCall));
         assertEq(RECIP.balance, 80);
+    }
+
+    /// Bybit pattern: owners sign a delegatecall to a contract that replaces the Safe singleton. The guard refuses
+    /// every delegatecall except MultiSendCallOnly, so the singleton stays as it was.
+    function test_ownerDelegatecallUpgradeBlocked() public {
+        SlotZeroWriter attacker = new SlotZeroWriter();
+        bytes32 before = vm.load(address(safe), bytes32(0));
+        bytes memory data = abi.encodeWithSignature("transfer(address,uint256)", address(0xBAD), 0);
+        vm.expectRevert(abi.encodeWithSelector(FengceGuard.FengceDelegateCallDenied.selector, address(attacker)));
+        _execOp(safe, address(attacker), 0, data, Enum.Operation.DelegateCall);
+        assertEq(vm.load(address(safe), bytes32(0)), before);
     }
 
     function test_guardRemovalWithoutScheduleBlocked() public {

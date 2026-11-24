@@ -2,11 +2,9 @@
 
 # Fengce
 
-### Spending limits that even the wallet's owners can't quietly skip.
+### The wallet-level enforcement layer for TapeOut.
 
-Other tools only limit an AI agent's key. With Fengce, every transaction from your wallet, whether it comes from you, a
-co-owner or an AI agent, has to pass a TapeOut circuit on X Layer first. If it fails, it doesn't go through. Changing the
-rule takes days, and everyone can see it.
+Your rules run as TapeOut circuits on X Layer, and the wallet itself enforces them, for owners and AI agents alike.
 
 **X Layer Mainnet · Chain ID 196 · v2 live**
 
@@ -24,6 +22,43 @@ Fengce is a wallet enforcement layer, not a new wallet, an agent framework, or a
 | Policy can't be swapped quietly | No: the account changes roles or sessions at once, unless a separate delay module is added | No: changed by the provider's admins, not visible on chain | n/a | [yes](docs/CLAIMS.md#no-quiet-swap) |
 | Other contracts can verify it | No standard check | No | No | [yes](docs/CLAIMS.md#verifiable) |
 | Rule is a TapeOut circuit | No | No | No | [yes](docs/CLAIMS.md#tapeout-circuit) |
+
+## Why Fengce
+
+Each of these passed a check that only looked, or only asked.
+
+| Incident | Loss | What happened | Why the check failed | With Fengce | Evidence |
+|---|---|---|---|---|---|
+| **Binance** (Oct 2026) | ~$6.3B | Attacker took over the internal signing service and drained hot wallets. | Every withdrawal carried a valid signature, so nothing looked wrong. | Plain key wallets can't be restricted on-chain. As Fengce-guarded smart wallets, a per-hour outflow rule would have capped the loss, and the limit couldn't be raised in the same 20 minutes. | [budgets](docs/CLAIMS.md#budgets), [no-quiet-swap](docs/CLAIMS.md#no-quiet-swap) |
+| **Bybit** (Feb 2025) | ~$1.5B | The Safe screen showed a normal transfer while signers approved a contract upgrade. | Signers trusted what the interface showed them. | FengceGuard refuses that kind of call outright; wallet setup changes wait days, in public. | [delegatecall-blocked](docs/CLAIMS.md#delegatecall-blocked), [no-quiet-swap](docs/CLAIMS.md#no-quiet-swap) |
+| **Freysa** (Nov 2024) | $47K | A player talked an AI agent out of its "never send funds" rule. | The only rule lived in the agent's prompt. | The circuit doesn't read prompts. | [no-prompt-input](docs/CLAIMS.md#no-prompt-input) |
+| **AIXBT** (Mar 2025) | ~$106K | Attacker got into the agent's dashboard and queued transfers. | Whoever controls the dashboard controls the agent. | Over-limit transfers revert, and the rule can't be changed for days. | [agent-executor](docs/CLAIMS.md#agent-executor), [no-quiet-swap](docs/CLAIMS.md#no-quiet-swap) |
+
+Sources: [Binance](https://socradar.io/blog/binance-hack-6-3b-hot-wallet-theft/), [Bybit](https://blocksec.com/blog/bybit-incident-a-web2-breach-enables-the-largest-crypto-hack-in-history), [Freysa](https://www.theblock.co/post/328747/human-player-outwits-freysa-ai-agent-in-47000-crypto-challenge), [AIXBT](https://www.theblock.co/post/346911/ai-crypto-bot-aixbt-lost-eth-hack-unauthorized-dashboard-access). Losses and dates are as reported there.
+
+**When an AI agent goes wrong**
+
+| | Prompt rules (agent instructions) | Pocket Universe, Wallet Guard, Rabby, Blockaid | Coinbase CDP, Privy, Turnkey | Fengce |
+|---|---|---|---|---|
+| Agent talked out of its rule (Freysa) | Bypassed | No human to read the warning; it signs | Blocked if the policy was set | Blocked: the circuit doesn't read prompts ([no-prompt-input](docs/CLAIMS.md#no-prompt-input)) |
+| Agent's dashboard hijacked (AIXBT) | Bypassed | Not involved | Blocked unless the attacker also reaches the policy admin | Blocked, and the rule can't change for days ([agent-executor](docs/CLAIMS.md#agent-executor), [no-quiet-swap](docs/CLAIMS.md#no-quiet-swap)) |
+| Rogue co-owner or stolen owner key | n/a | Warning, clicked through | Owner can change the policy | Blocked: owners are bound too ([binds-owners](docs/CLAIMS.md#binds-owners)) |
+| Vendor's servers down or compromised | n/a | n/a | Exposed | Not affected: no vendor in the loop ([enforced-at-execution](docs/CLAIMS.md#enforced-at-execution)) |
+
+**Where Fengce is different**
+
+| | Coinbase CDP, Privy, Turnkey | Hypernative Guardian (Safe Shield) | MetaMask Delegation Toolkit, Zodiac Roles | Fengce |
+|---|---|---|---|---|
+| Who runs the check | The vendor's enclave | Hypernative's service plus a Safe guard | On-chain contract | On-chain, a public TapeOut circuit ([tapeout-circuit](docs/CLAIMS.md#tapeout-circuit)) |
+| Company in the middle | Yes | Yes | No | No ([enforced-at-execution](docs/CLAIMS.md#enforced-at-execution)) |
+| Binds the owners too | Owners control the policy | Policy-dependent | No, delegates only | Yes ([binds-owners](docs/CLAIMS.md#binds-owners)) |
+| Can the rule change quietly | Yes, instantly through the API | Through their dashboard | Owner can change it | No: changes wait days, in public ([no-quiet-swap](docs/CLAIMS.md#no-quiet-swap)) |
+| Other contracts can check it | No | No | No | Yes, isBound ([verifiable](docs/CLAIMS.md#verifiable)) |
+| Works on the wallet you already have | No, their wallet | Safe only | Their account types | Safe, Kernel, Alchemy and others ([wallet-types-8](docs/CLAIMS.md#wallet-types-8)) |
+| Rule format | Their JSON rules | Their policies | Fixed caveat types | Any TapeOut circuit ([tapeout-circuit](docs/CLAIMS.md#tapeout-circuit)) |
+| Chains | Many | Many | Many | X Layer today ([v2 deployment](deployments/xlayer-196-v2.json)) |
+
+The Fengce column links to the evidence for each cell. The other columns summarise each product's public documentation and are not tested here.
 
 ## The problem and the solution
 
