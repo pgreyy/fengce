@@ -11,7 +11,8 @@ interface ICatalogCount {
 }
 
 /// @notice Creates the demo Verdict market on X Layer mainnet: "Will the Fengce Catalog list at least
-/// N policies?", with N = live Catalog.count() + 1, deadline 48 hours out, settle window 1 hour.
+/// N policies?" (labelled "Demo market"), with N = live Catalog.count() + 1, deadline 48 hours out,
+/// checkpoint window 24 hours.
 /// Rule: the Catalog's comparator listing (processor 0xF9bB…0a0F circuit 7, a >= b on 16 bits), with
 /// a = Catalog.count() read at the checkpoint and b = N. Resumable: skips if a market with the same
 /// question already exists in this Verdict. Reads the Verdict address from deployments/verdict-xlayer-196.json.
@@ -27,7 +28,7 @@ contract SeedVerdict is Script {
         require(address(v).code.length > 0, "deploy Verdict first");
 
         uint256 n = ICatalogCount(CATALOG).count() + 1;
-        string memory question = string.concat("Will the Fengce Catalog list at least ", vm.toString(n), " policies?");
+        string memory question = string.concat("Demo market: Will the Fengce Catalog list at least ", vm.toString(n), " policies?");
         for (uint256 i; i < v.marketCount(); i++) {
             if (keccak256(bytes(v.market(i).question)) == keccak256(bytes(question))) {
                 console2.log("Demo market already exists:", i);
@@ -46,7 +47,7 @@ contract SeedVerdict is Script {
         xs[1] = Verdict.Input(address(0), "", Verdict.Decode.Constant, n);
 
         vm.startBroadcast();
-        id = v.createMarket(Verdict.NewMarket(question, CMP_PIN, l, xs, uint64(block.timestamp + 48 hours), 1 hours));
+        id = v.createMarket(Verdict.NewMarket(question, CMP_PIN, l, xs, uint64(block.timestamp + 48 hours), 24 hours));
         vm.stopBroadcast();
         console2.log("Demo market created:", id);
         console2.log(question);

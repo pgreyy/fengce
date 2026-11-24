@@ -42,6 +42,8 @@ export interface Market {
   creator: Address;
   pinId: Hex;
   refClosureHash: Hex;
+  netlistHash: Hex;
+  nIn: number;
   deadline: bigint;
   settleWindow: bigint;
   checkpointBlock: bigint;

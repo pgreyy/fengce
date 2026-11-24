@@ -153,6 +153,16 @@ export const verdictAbi = [
       "internalType": "bytes32"
      },
      {
+      "name": "netlistHash",
+      "type": "bytes32",
+      "internalType": "bytes32"
+     },
+     {
+      "name": "nIn",
+      "type": "uint32",
+      "internalType": "uint32"
+     },
+     {
       "name": "deadline",
       "type": "uint64",
       "internalType": "uint64"

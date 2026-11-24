@@ -73,6 +73,8 @@ contract Verdict is PolicyEngine {
         address creator;
         bytes32 pinId;
         bytes32 refClosureHash; // recorded at creation from PinRegistry
+        bytes32 netlistHash; // the pinned circuit's netlist hash, recorded at creation
+        uint32 nIn; // the pinned circuit's input count, recorded at creation
         uint64 deadline;
         uint64 settleWindow;
         uint64 checkpointBlock;
@@ -149,7 +151,7 @@ contract Verdict is PolicyEngine {
     }
 
     function createMarket(NewMarket calldata p) external returns (uint256 id) {
-        _checkRule(p.pinId, p.layout, p.inputs.length);
+        PinRegistry.CircuitPin memory pin = _checkRule(p.pinId, p.layout, p.inputs.length);
         if (p.deadline <= block.timestamp) revert VerdictBadTimes();
         if (p.settleWindow < MIN_SETTLE_WINDOW || p.settleWindow > MAX_SETTLE_WINDOW) revert VerdictBadTimes();
 
@@ -157,7 +159,9 @@ contract Verdict is PolicyEngine {
         Market storage m = _markets[id];
         m.creator = msg.sender;
         m.pinId = p.pinId;
-        m.refClosureHash = registry.circuitPin(p.pinId).refClosureHash;
+        m.refClosureHash = pin.refClosureHash;
+        m.netlistHash = pin.netlistHash;
+        m.nIn = pin.nIn;
         m.deadline = p.deadline;
         m.settleWindow = p.settleWindow;
         m.question = p.question;
@@ -170,15 +174,21 @@ contract Verdict is PolicyEngine {
         emit MarketInputs(id, p.inputs, _codehashes[id]);
     }
 
-    function _checkRule(bytes32 pinId, Schema.Layout calldata layout, uint256 nInputs) private view {
+    function _checkRule(bytes32 pinId, Schema.Layout calldata layout, uint256 nInputs)
+        private
+        view
+        returns (PinRegistry.CircuitPin memory pin)
+    {
         if (registry.kindOf(pinId) != PinRegistry.Kind.Circuit || !registry.isPinned(pinId)) {
             revert VerdictNotPinned(pinId);
         }
-        (,, uint32 nIn,, bytes32 netlistHash, bytes32 schemaHash) = registry.evalInfo(pinId);
+        pin = registry.circuitPin(pinId);
         Schema.Layout memory l = layout;
-        if (Schema.hash(l) != schemaHash || l.nIn != nIn || l.netlistHash != netlistHash) revert VerdictSchemaMismatch();
+        if (Schema.hash(l) != pin.schemaHash || l.nIn != pin.nIn || l.netlistHash != pin.netlistHash) {
+            revert VerdictSchemaMismatch();
+        }
         Schema.validate(l);
-        uint256 needed;
+        uint256 needed = 0;
         for (uint256 i; i < l.fields.length; i++) {
             if (l.fields[i].kind != Schema.Kind.Flag) needed++;
         }
@@ -186,15 +196,14 @@ contract Verdict is PolicyEngine {
     }
 
     function _storeInputs(uint256 id, Input[] calldata inputs) private {
-        bytes32[] storage hashes = _codehashes[id];
         for (uint256 i; i < inputs.length; i++) {
             Input calldata x = inputs[i];
             if (x.decode == Decode.Constant) {
                 if (x.source != address(0) || x.callData.length != 0) revert VerdictBadInputs();
-                hashes.push(bytes32(0));
+                _codehashes[id].push(bytes32(0));
             } else {
                 if (x.source.code.length == 0 || x.arg >= 64) revert VerdictBadInputs();
-                hashes.push(x.source.codehash);
+                _codehashes[id].push(x.source.codehash);
             }
             _inputs[id].push(x);
         }
@@ -281,8 +290,8 @@ contract Verdict is PolicyEngine {
 
     /// @notice Encodes values with the market's layout, as `settle` does.
     function encode(uint256 id, uint256[] memory values) public view returns (bytes memory) {
-        (,, uint32 nIn,, bytes32 netlistHash,) = registry.evalInfo(_market(id).pinId);
-        return Schema.encode(Schema.Layout(netlistHash, nIn, _fields[id]), values);
+        Market storage m = _market(id);
+        return Schema.encode(Schema.Layout(m.netlistHash, m.nIn, _fields[id]), values);
     }
 
     // ------------------------------------------------------------------ pay out
