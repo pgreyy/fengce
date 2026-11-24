@@ -266,28 +266,34 @@ async function slot(safe: Address, s: bigint): Promise<Address> {
 
 /** A Safe's configuration and on-chain state (no event scan): what the status view shows at once. */
 export async function safeConfig(safe: Address) {
-  const [version, owners, threshold, nonce, modules] = await Promise.all([
-    client.readContract({ address: safe, abi: safeAbi, functionName: "VERSION" }),
-    client.readContract({ address: safe, abi: safeAbi, functionName: "getOwners" }),
-    client.readContract({ address: safe, abi: safeAbi, functionName: "getThreshold" }),
-    client.readContract({ address: safe, abi: safeAbi, functionName: "nonce" }),
-    client.readContract({ address: safe, abi: safeAbi, functionName: "getModulesPaginated", args: ["0x0000000000000000000000000000000000000001", 50n] }),
+  // One round of reads: the Safe, its guard slots and the FengceGuard configuration are requested together (the guard
+  // is almost always the deployed FengceGuard); a second round only when the Safe names a different guard.
+  const g = ADDR.guard as Address;
+  const guardAbi = FengceGuardArtifact.abi as any;
+  const fengceOf = (guard: Address) =>
+    Promise.all([
+      client.readContract({ address: guard, abi: guardAbi, functionName: "configOf", args: [safe] }),
+      client.readContract({ address: guard, abi: guardAbi, functionName: "recoveryReadyAt", args: [safe] }),
+      client.readContract({ address: guard, abi: guardAbi, functionName: "recoveryExpiresAt", args: [safe] }),
+    ])
+      .then(([cfg, readyAt, expiresAt]) => {
+        const [set, pinId, recoveryDelay, recoveryWindow, adminDelay, tick, tickGroup] = cfg as any[];
+        return { set, pinId, recoveryDelay, recoveryWindow, adminDelay, tick, tickGroup, recovery: { readyAt, expiresAt } } as unknown;
+      })
+      .catch(() => null); // not a FengceGuard
+  const [[version, owners, threshold, nonce, modules], [guard, moduleGuard, fallbackHandler], known] = await Promise.all([
+    Promise.all([
+      client.readContract({ address: safe, abi: safeAbi, functionName: "VERSION" }),
+      client.readContract({ address: safe, abi: safeAbi, functionName: "getOwners" }),
+      client.readContract({ address: safe, abi: safeAbi, functionName: "getThreshold" }),
+      client.readContract({ address: safe, abi: safeAbi, functionName: "nonce" }),
+      client.readContract({ address: safe, abi: safeAbi, functionName: "getModulesPaginated", args: ["0x0000000000000000000000000000000000000001", 50n] }),
+    ]),
+    Promise.all([slot(safe, SLOTS.guard), slot(safe, SLOTS.moduleGuard), slot(safe, SLOTS.fallbackHandler)]),
+    fengceOf(g),
   ]);
-  const [guard, moduleGuard, fallbackHandler] = await Promise.all([slot(safe, SLOTS.guard), slot(safe, SLOTS.moduleGuard), slot(safe, SLOTS.fallbackHandler)]);
   let fengce: unknown = null;
-  if (guard !== zeroAddress) {
-    try {
-      const cfg = await client.readContract({ address: guard, abi: FengceGuardArtifact.abi as any, functionName: "configOf", args: [safe] });
-      const [readyAt, expiresAt] = await Promise.all([
-        client.readContract({ address: guard, abi: FengceGuardArtifact.abi as any, functionName: "recoveryReadyAt", args: [safe] }),
-        client.readContract({ address: guard, abi: FengceGuardArtifact.abi as any, functionName: "recoveryExpiresAt", args: [safe] }),
-      ]);
-      const [set, pinId, recoveryDelay, recoveryWindow, adminDelay, tick, tickGroup] = cfg as any[];
-      fengce = { set, pinId, recoveryDelay, recoveryWindow, adminDelay, tick, tickGroup, recovery: { readyAt, expiresAt } };
-    } catch {
-      fengce = null; // the guard is not a FengceGuard
-    }
-  }
+  if (guard !== zeroAddress) fengce = guard.toLowerCase() === g.toLowerCase() ? known : await fengceOf(guard);
   return plain({
     safe: getAddress(safe),
     agentExecutor: AGENT_EXECUTOR,
