@@ -10,6 +10,8 @@ checks, and which claims rest on mainnet evidence.
   salt, init code hash, constructor arguments, runtime code hash, full solc metadata). Built from commit `e260a37`,
   solc 0.8.28, via_ir, 200 runs, EVM cancun. All 18 contracts verified on Sourcify (exact match).
 - The app on TapeOut DeWeb: [deployments/deweb-xlayer-196.json](deployments/deweb-xlayer-196.json) (`6.2.180.tape`, container, files with SHA-256).
+- Verdict V1 (prediction markets): [deployments/verdict-xlayer-196.json](deployments/verdict-xlayer-196.json), `0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55`, verified on
+  Sourcify (exact match); rules in [docs/VERDICT.md](docs/VERDICT.md).
 - Release v1 (previous): [deployments/xlayer-196.json](deployments/xlayer-196.json), [deployments/manifest-xlayer-196.json](deployments/manifest-xlayer-196.json).
 - Event history (installs, Denied, timelocks) from the v2 deploy block: [app/public/events-snapshot.json](app/public/events-snapshot.json).
 - Every README claim with its evidence: [docs/claims.json](docs/claims.json) ([docs/CLAIMS.md](docs/CLAIMS.md)).
@@ -78,8 +80,8 @@ private one through the `XLAYER_RPC_URL` secret). Nothing in the test suite send
 
 ## Experimental or deferred
 
-- Verdict (prediction markets that settle on a pinned circuit) is next and in progress: not deployed. Code in
-  [src/verdict](src/verdict) (tests: test/unit/Verdict.t.sol, test/fork/VerdictFork.t.sol), notes in [docs/VERDICT.md](docs/VERDICT.md).
+- Verdict V1 is live (`0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55`) with one demo market; no independent review, and the first checkpoint picks the
+  block (docs/VERDICT.md). Code in [src/verdict](src/verdict) (tests: test/unit/Verdict.t.sol, test/fork/VerdictFork.t.sol), notes in [docs/VERDICT.md](docs/VERDICT.md).
 - No independent security review. The TapeOut processor factory and circuit beacon are upgradeable and not sealed;
   PinRegistry fails closed (denies) if a pinned circuit's code or REF closure changes.
 - Non-Safe adapters (FengceHook, FengceHook6900, FengceAgentOwner) are deployed on mainnet but exercised only on forks;

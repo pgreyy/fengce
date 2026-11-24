@@ -624,6 +624,35 @@
       ]
     },
     {
+      "id": "verdict-live",
+      "claim": "Verdict V1 is deployed on X Layer mainnet at 0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55, verified on Sourcify (exact match), with one demo market created on-chain.",
+      "status": "mainnet",
+      "network": "X Layer mainnet (196)",
+      "release": "Verdict V1",
+      "evidence": [
+        {
+          "label": "deploy transaction (mainnet)",
+          "url": "https://www.oklink.com/x-layer/tx/0xe52bcd551eb87d4c5b0822d5a8dc241889ec09982039ec30026e1da4ac734741"
+        },
+        {
+          "label": "demo market create transaction (mainnet)",
+          "url": "https://www.oklink.com/x-layer/tx/0xcde0075a0d14ab6bd0604539c5cd6e24d2016d09bd8c8c199ec4051553544b08"
+        },
+        {
+          "label": "Sourcify exact match",
+          "url": "https://repo.sourcify.dev/196/0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55"
+        },
+        {
+          "label": "deployment record",
+          "url": "deployments/verdict-xlayer-196.json"
+        },
+        {
+          "label": "tests: create, bet, checkpoint, settle, claim, refund",
+          "url": "test/fork/VerdictFork.t.sol"
+        }
+      ]
+    },
+    {
       "id": "delegatecall-blocked",
       "claim": "FengceGuard refuses owner delegatecalls to anything but MultiSendCallOnly, so a signed contract upgrade like the Bybit one reverts and the Safe singleton stays unchanged.",
       "status": "fork-tested",

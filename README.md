@@ -91,6 +91,7 @@ built from commit `e260a37`. The previous release ran the same demo: [0.5 allowe
 - **Tests:** 112 pass in [CI for e260a37](https://github.com/pgreyy/fengce/actions/runs/44346520788): 44 unit, 53 core and Safe fork tests, 15 wallet fork tests.
 - **Wallet types:** 8 with a tested adapter: Safe, Safe + Safe7579, Kernel, Nexus, Etherspot, Modular Account v2, EIP-7702 and Coinbase Smart Wallet ([evidence](docs/CLAIMS.md#wallet-types-8)).
 - **Sourcify:** 18/18 v2 contracts verified, exact match ([list](docs/CLAIMS.md#sourcify-18)).
+- **Verdict:** prediction markets on pinned circuits, live at [`0xb258…7c55`](https://www.oklink.com/x-layer/address/0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55), verified on Sourcify, one demo market ([evidence](docs/CLAIMS.md#verdict-live), [docs/VERDICT.md](docs/VERDICT.md)).
 - **Every claim** in this README links to its evidence in [docs/CLAIMS.md](docs/CLAIMS.md) ([claims.json](docs/claims.json)).
 
 ## A 2 minute path (for judges)
@@ -328,7 +329,7 @@ docs            documentation (below)
 - [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md): trust assumptions and limits
 - [docs/POLICY-INTERFACE.md](docs/POLICY-INTERFACE.md): the canonical policy context
 - [docs/ADDRESSES.md](docs/ADDRESSES.md): X Layer addresses Fengce depends on
-- [docs/VERDICT.md](docs/VERDICT.md): Verdict, prediction markets that settle on a pinned circuit (next: in progress, not deployed)
+- [docs/VERDICT.md](docs/VERDICT.md): Verdict, prediction markets that settle on a pinned circuit, live on X Layer mainnet at `0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55` ([evidence](docs/CLAIMS.md#verdict-live))
 - [sdk/README.md](sdk/README.md): SDK and CLI
 - [mcp/README.md](mcp/README.md): MCP server; [skills/fengce](skills/fengce/SKILL.md): OnchainOS skill
 - [AGENTS.md](AGENTS.md): canonical data and checks, for tools and newcomers

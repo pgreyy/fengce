@@ -1,7 +1,11 @@
 # Verdict V1: settlement rules
 
-**Status: next, in progress.** Verdict is not deployed on X Layer mainnet and nothing here is live. The code
-below may change before release.
+**Status: live on X Layer mainnet.** Verdict V1: [`0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55`](https://www.oklink.com/x-layer/address/0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55),
+verified on [Sourcify](https://repo.sourcify.dev/196/0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55) (exact match). Deployment record:
+[deployments/verdict-xlayer-196.json](../deployments/verdict-xlayer-196.json)
+([deploy transaction](https://www.oklink.com/x-layer/tx/0xe52bcd551eb87d4c5b0822d5a8dc241889ec09982039ec30026e1da4ac734741)). Demo market #0, "Demo market: Will the Fengce Catalog list at least 6
+policies?" ([create transaction](https://www.oklink.com/x-layer/tx/0xcde0075a0d14ab6bd0604539c5cd6e24d2016d09bd8c8c199ec4051553544b08)): deadline 48 hours after creation, 24-hour checkpoint window.
+No independent security review.
 
 Code: [src/verdict/Verdict.sol](../src/verdict/Verdict.sol) (imports only `src/core`). Tests:
 [test/unit/Verdict.t.sol](../test/unit/Verdict.t.sol) (no network) and
@@ -63,9 +67,8 @@ deadline, and buttons to bet YES or NO with a browser wallet (USDT0 approval fir
 claim and refund. Its **Re-run** panel shows the recorded inputs and the checkpoint block, encodes the values in the
 browser with an independent copy of the Schema rule, sends them straight to the pinned circuit's `eval` with
 `eth_call`, and shows whether the answer matches the market's on-chain result. It can also re-read each source at
-the checkpoint block, when the RPC serves that block's state. Before Verdict is deployed the page is read-only and
-shows an empty state; it reads the address from `deployments/verdict-xlayer-196.json`, which
-`script/DeployVerdict.s.sol` writes.
+the checkpoint block, when the RPC serves that block's state. It reads the address from `deployments/verdict-xlayer-196.json`, which `script/DeployVerdict.s.sol`
+wrote; without that file the page shows an empty state.
 
 ## EIP-2935 on X Layer (checked 2026-11-24)
 

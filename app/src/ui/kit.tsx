@@ -22,7 +22,7 @@ const NAV: { page: Page; label: string; hash?: string; landing?: boolean }[] = [
   { page: "install", label: "Install" },
   { page: "safe", label: "Safe" },
   { page: "wallets", label: "Wallets", landing: true },
-  { page: "verdict", label: "Verdict" },
+  { page: "verdict", label: "Verdict", landing: true },
   { page: "", label: "Developers", hash: "developers", landing: true },
 ];
 

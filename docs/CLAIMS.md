@@ -37,6 +37,7 @@ property of the code or setup). Test links point at the test function in this re
 | [agent-demo-fork](#agent-demo-fork) | fork-tested | X Layer mainnet fork | v2 |
 | [preflight-own-policy](#preflight-own-policy) | mainnet | X Layer mainnet (196), read-only | v2 |
 | [deweb-hosted](#deweb-hosted) | mainnet | X Layer mainnet (196) | v2 |
+| [verdict-live](#verdict-live) | mainnet | X Layer mainnet (196) | Verdict V1 |
 | [delegatecall-blocked](#delegatecall-blocked) | fork-tested | X Layer mainnet fork | v2 |
 | [no-prompt-input](#no-prompt-input) | documented | n/a | v2 |
 | [incident-sources](#incident-sources) | documented | n/a | n/a |
@@ -334,6 +335,18 @@ Status: **mainnet** · Network: X Layer mainnet (196) · Release: v2
 - [record](../deployments/deweb-xlayer-196.json)
 - [TAP-10 resolution and SHA-256 check](../app/scripts/deweb-check.mts)
 - [gateway](https://6-2-180.tapekit.org/)
+
+## verdict-live
+
+Verdict V1 is deployed on X Layer mainnet at 0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55, verified on Sourcify (exact match), with one demo market created on-chain.
+
+Status: **mainnet** · Network: X Layer mainnet (196) · Release: Verdict V1
+
+- [deploy transaction (mainnet)](https://www.oklink.com/x-layer/tx/0xe52bcd551eb87d4c5b0822d5a8dc241889ec09982039ec30026e1da4ac734741)
+- [demo market create transaction (mainnet)](https://www.oklink.com/x-layer/tx/0xcde0075a0d14ab6bd0604539c5cd6e24d2016d09bd8c8c199ec4051553544b08)
+- [Sourcify exact match](https://repo.sourcify.dev/196/0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55)
+- [deployment record](../deployments/verdict-xlayer-196.json)
+- [tests: create, bet, checkpoint, settle, claim, refund](../test/fork/VerdictFork.t.sol)
 
 ## delegatecall-blocked
 
