@@ -1,16 +1,15 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PRODUCT_NAME, REPO, TAPE_NAME } from "../brand";
 import { DEPLOYMENT } from "../lib/chain";
 import { MAX_BUY_CIRCUIT, COUNTER } from "../okun/engine";
 import { PREPARED } from "../okun/reads";
 import { CodeCard, mount, param, short } from "../okun/ui";
 
-type Tab = "how" | "inc" | "cmp" | "uses" | "agents" | "devs" | "judges";
+type Tab = "how" | "inc" | "cmp" | "agents" | "devs" | "judges";
 const TABS: [Tab, string][] = [
   ["how", "How it works"],
   ["inc", "Real incidents"],
   ["cmp", "Compared"],
-  ["uses", "Use cases"],
   ["agents", "For agents"],
   ["devs", "For developers"],
   ["judges", "For judges"],
@@ -84,6 +83,90 @@ function Ruled({ cols, rows, label }: { cols: string[]; rows: [string, ...[strin
   );
 }
 
+type Incident = (typeof INCIDENTS)[number];
+function IncidentCard({ x, width }: { x: Incident; width?: number | string }) {
+  return (
+    <article style={{ width, flex: width ? "0 0 auto" : undefined, padding: "24px 0", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 10, scrollSnapAlign: "start" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+        <span className="disp" style={{ fontSize: 28 }}>{x.name}</span>
+        <span className="num deny" style={{ fontSize: 24 }}>{x.loss}</span>
+      </div>
+      <span className="mono small">
+        {x.date} · <a href={x.src} target="_blank" rel="noreferrer noopener" style={{ textDecoration: "underline" }}>{x.host}</a>
+      </span>
+      <div><span className="lbl" style={{ display: "block" }}>What happened</span><span>{x.what}</span></div>
+      <div><span className="lbl" style={{ display: "block" }}>Why it worked</span><span>{x.why}</span></div>
+      <div style={{ borderLeft: "2px solid var(--accent)", paddingLeft: 14 }}><span className="lbl accent" style={{ display: "block" }}>With Fengce</span><span>{x.fengce}</span></div>
+    </article>
+  );
+}
+
+/** Real incidents: pinned while the page scrolls, cards move right to left; static grid for reduced motion; swipe on mobile. */
+function Incidents() {
+  const outer = useRef<HTMLDivElement>(null);
+  const pin = useRef<HTMLDivElement>(null);
+  const track = useRef<HTMLDivElement>(null);
+  const [mode, setMode] = useState<"pin" | "grid" | "swipe">("pin");
+  const [dist, setDist] = useState(0);
+  const [x, setX] = useState(0);
+  useEffect(() => {
+    const rm = matchMedia("(prefers-reduced-motion: reduce)");
+    const mob = matchMedia("(max-width: 900px)");
+    const pick = () => setMode(rm.matches ? "grid" : mob.matches ? "swipe" : "pin");
+    pick();
+    rm.addEventListener("change", pick);
+    mob.addEventListener("change", pick);
+    return () => (rm.removeEventListener("change", pick), mob.removeEventListener("change", pick));
+  }, []);
+  useEffect(() => {
+    if (mode !== "pin") return;
+    const measure = () => {
+      const t = track.current;
+      if (t?.parentElement) setDist(Math.max(0, t.scrollWidth - t.parentElement.clientWidth));
+    };
+    const onScroll = () => {
+      const o = outer.current, s = pin.current;
+      if (o && s) setX(Math.max(0, s.getBoundingClientRect().top - o.getBoundingClientRect().top));
+    };
+    measure();
+    onScroll();
+    addEventListener("resize", measure);
+    addEventListener("scroll", onScroll, { passive: true });
+    return () => (removeEventListener("resize", measure), removeEventListener("scroll", onScroll));
+  }, [mode]);
+  const intro = <p className="body" style={{ maxWidth: 720 }}>Four real losses where every transaction looked valid. What failed each time was the rule, not the signature.</p>;
+  if (mode === "grid")
+    return (
+      <>
+        {intro}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", columnGap: 40 }}>
+          {INCIDENTS.map((i) => <IncidentCard key={i.name} x={i} />)}
+        </div>
+      </>
+    );
+  if (mode === "swipe")
+    return (
+      <>
+        {intro}
+        <div className="scroll-x" style={{ display: "flex", gap: 24, scrollSnapType: "x mandatory", WebkitOverflowScrolling: "touch", paddingBottom: 8 }}>
+          {INCIDENTS.map((i) => <IncidentCard key={i.name} x={i} width="min(84vw, 360px)" />)}
+        </div>
+      </>
+    );
+  return (
+    <div ref={outer} style={{ height: `calc(100vh - var(--headH) + ${dist}px)`, position: "relative" }}>
+      <div ref={pin} style={{ position: "sticky", top: "var(--headH)", height: "calc(100vh - var(--headH))", display: "flex", flexDirection: "column", justifyContent: "center", gap: 28 }}>
+        {intro}
+        <div style={{ overflow: "hidden" }}>
+          <div ref={track} style={{ display: "flex", gap: 40, width: "max-content", transform: `translate3d(${-Math.min(x, dist)}px, 0, 0)`, willChange: "transform" }}>
+            {INCIDENTS.map((i) => <IncidentCard key={i.name} x={i} width={440} />)}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Fengce() {
   const [tab, setTab] = useState<Tab>((TABS.find(([k]) => k === param("tab"))?.[0] as Tab) ?? "how");
   const c = DEPLOYMENT.contracts as Record<string, string>;
@@ -142,50 +225,28 @@ function Fengce() {
               ))}
             </div>
           </div>
-        </>
-      )}
-
-      {tab === "inc" && (
-        <>
-          <p className="body" style={{ maxWidth: 720 }}>Four real losses where every transaction looked valid. What failed each time was the rule, not the signature.</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", columnGap: 40, borderTop: "1px solid var(--line)" }}>
-            {INCIDENTS.map((x) => (
-              <article key={x.name} style={{ padding: "24px 0", borderBottom: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
-                  <span className="disp" style={{ fontSize: 28 }}>{x.name}</span>
-                  <span className="num deny" style={{ fontSize: 24 }}>{x.loss}</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <span className="lbl">Use cases</span>
+            <p className="body" style={{ maxWidth: 720 }}>{PRODUCT_NAME} uses Fengce for personal limits. The same engine runs any rule a TapeOut circuit can express.</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", borderTop: "1px solid var(--line)" }}>
+              {USES.map(([t, d], i) => (
+                <div key={t} style={{ padding: "22px 20px 22px 0", borderBottom: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 8 }}>
+                  <span className="lbl">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="disp" style={{ fontSize: 21 }}>{t}</span>
+                  <span className="small">{d}</span>
                 </div>
-                <span className="mono small">
-                  {x.date} · <a href={x.src} target="_blank" rel="noreferrer noopener" style={{ textDecoration: "underline" }}>{x.host}</a>
-                </span>
-                <div><span className="lbl" style={{ display: "block" }}>What happened</span><span>{x.what}</span></div>
-                <div><span className="lbl" style={{ display: "block" }}>Why it worked</span><span>{x.why}</span></div>
-                <div style={{ borderLeft: "2px solid var(--accent)", paddingLeft: 14 }}><span className="lbl accent" style={{ display: "block" }}>With Fengce</span><span>{x.fengce}</span></div>
-              </article>
-            ))}
+              ))}
+            </div>
           </div>
         </>
       )}
+
+      {tab === "inc" && <Incidents />}
 
       {tab === "cmp" && (
         <>
           <p className="body" style={{ maxWidth: 720 }}>Others enforce rules too. Fengce is the one where the rule is a public circuit on chain and loosening it waits 1 day in public.</p>
           <Ruled cols={CMP_COLS} rows={CMP} label="Fengce compared with other enforcement tools" />
-        </>
-      )}
-
-      {tab === "uses" && (
-        <>
-          <p className="body" style={{ maxWidth: 720 }}>{PRODUCT_NAME} uses Fengce for personal limits. The same engine runs any rule a TapeOut circuit can express.</p>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", borderTop: "1px solid var(--line)" }}>
-            {USES.map(([t, d], i) => (
-              <div key={t} style={{ padding: "22px 20px 22px 0", borderBottom: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 8 }}>
-                <span className="lbl">{String(i + 1).padStart(2, "0")}</span>
-                <span className="disp" style={{ fontSize: 21 }}>{t}</span>
-                <span className="small">{d}</span>
-              </div>
-            ))}
-          </div>
         </>
       )}
 
