@@ -2,13 +2,15 @@ import { useEffect, useState } from "react";
 import { LimitsEditor } from "../okun/LimitsEditor";
 import { SafePicker } from "../okun/SafePicker";
 import { readInstalled, type Installed } from "../okun/reads";
-import { mount } from "../okun/ui";
-import { connect, useWallet } from "../okun/wallet";
+import { createSafe } from "../okun/safes";
+import { CopyButton, mount } from "../okun/ui";
+import { chooseSafe, connect, useWallet } from "../okun/wallet";
 
 function Start() {
   const w = useWallet();
   const [installed, setInstalled] = useState<Installed | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const step = !w.account ? 1 : !w.safe ? 2 : 3;
   useEffect(() => {
     setInstalled(null);
@@ -44,12 +46,30 @@ function Start() {
       {step === 3 && (
         <>
           <div className="card" style={{ padding: 20, maxWidth: 560 }}>
-            <div className="kv"><span className="muted">Wallet</span><span className="mono">{w.safe}</span></div>
+            <div className="kv"><span className="muted">Wallet</span><span className="mono" style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>{w.safe}<CopyButton text={w.safe!} label="Copy Safe address" /></span></div>
             <div className="kv"><span className="muted">Type</span><span className="mono">{installed ? `Safe ${installed.version} · ${installed.threshold} of ${installed.owners.length}` : "…"}</span></div>
             <div className="kv">
               <span className="muted">Enforcement</span>
               <span className="mono" style={{ color: installed?.set ? "var(--allow)" : "var(--muted)" }}>{installed ? (installed.set ? "limits installed" : "ready to install") : "…"}</span>
             </div>
+          </div>
+          <div style={{ display: "flex", gap: 22, flexWrap: "wrap", maxWidth: 560 }}>
+            <button
+              type="button"
+              className="alink"
+              disabled={creating}
+              onClick={() => {
+                setErr(null);
+                setCreating(true);
+                createSafe(w.account!).then(
+                  () => setCreating(false),
+                  (e) => (setCreating(false), setErr((e as { shortMessage?: string }).shortMessage ?? (e as Error).message)),
+                );
+              }}
+            >
+              {creating ? "Confirm in your wallet" : "Create a new Safe"}
+            </button>
+            <button type="button" className="alink" onClick={() => chooseSafe(null)}>Use a different Safe</button>
           </div>
           {installed && <LimitsEditor key={`${installed.safe}:${installed.set}`} installed={installed} onDone={setInstalled} />}
         </>

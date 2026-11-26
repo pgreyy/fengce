@@ -1,11 +1,8 @@
 import { useState } from "react";
-import { decodeFunctionResult, getAddress, isAddress, parseAbi, type Address } from "viem";
-import { client } from "../lib/chain";
-import { ENGINE, createSafeCalldata } from "./engine";
+import { getAddress, isAddress, type Address } from "viem";
+import { createSafe } from "./safes";
 import { short } from "./ui";
-import { EXPLORER_TX, chooseSafe, safeInfo, sendFromWallet, useWallet } from "./wallet";
-
-const factoryAbi = parseAbi(["function createProxyWithNonce(address singleton, bytes initializer, uint256 saltNonce) returns (address proxy)"]);
+import { EXPLORER_TX, chooseSafe, safeInfo, useWallet } from "./wallet";
 
 /** Use an existing Safe the connected wallet owns, or create a new 1-of-1 Safe for it. */
 export function SafePicker({ onChosen }: { onChosen?: (safe: Address) => void }) {
@@ -36,15 +33,10 @@ export function SafePicker({ onChosen }: { onChosen?: (safe: Address) => void })
     if (!w.account) return;
     setBusy("create");
     try {
-      const data = createSafeCalldata(w.account, BigInt(Date.now()));
-      const sim = await client.call({ account: w.account, to: ENGINE.safeFactory, data });
-      const safe = decodeFunctionResult({ abi: factoryAbi, functionName: "createProxyWithNonce", data: sim.data! }) as Address;
-      const r = await sendFromWallet(ENGINE.safeFactory, data);
-      if (r.status !== "success") throw new Error("Creating the Safe reverted.");
-      chooseSafe(getAddress(safe));
+      const { safe, hash } = await createSafe(w.account);
       setAddr(safe);
-      setMsg({ ok: true, text: `New Safe ${short(safe)} created (tx ${short(r.hash)}). Send it some USDT0 to trade.` });
-      onChosen?.(getAddress(safe));
+      setMsg({ ok: true, text: `New Safe ${short(safe)} created (tx ${short(hash)}). Send it some USDT0 to trade.` });
+      onChosen?.(safe);
     } catch (e) {
       setMsg({ ok: false, text: (e as { shortMessage?: string }).shortMessage ?? (e as Error).message });
     } finally {

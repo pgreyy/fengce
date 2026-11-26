@@ -138,7 +138,23 @@ export function chooseSafe(safe: Address | null) {
   if (!store.account) return;
   store.safe = safe;
   save(safeKey(store.account), safe);
+  if (safe) rememberSafe(store.account, safe);
   emit();
+}
+
+/** Every Safe this browser has used or created for an owner (newest first). */
+export function rememberedSafes(owner: Address): Address[] {
+  try {
+    const v = JSON.parse(load(`okun-safes:${owner.toLowerCase()}`) ?? "[]") as string[];
+    const cur = load(safeKey(owner));
+    return [...new Set([...(cur ? [cur] : []), ...v].filter((x) => isAddress(x)).map((x) => getAddress(x)))];
+  } catch {
+    return [];
+  }
+}
+function rememberSafe(owner: Address, safe: Address) {
+  const list = [getAddress(safe), ...rememberedSafes(owner).filter((x) => x.toLowerCase() !== safe.toLowerCase())].slice(0, 20);
+  save(`okun-safes:${owner.toLowerCase()}`, JSON.stringify(list));
 }
 
 export function useWallet() {

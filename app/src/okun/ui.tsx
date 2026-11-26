@@ -1,7 +1,8 @@
 import { StrictMode, useEffect, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { PRODUCT_NAME, REPO, TAPE_NAME } from "../brand";
-import { connect, disconnect, useWallet } from "./wallet";
+import { createSafe, useOwnedSafes } from "./safes";
+import { chooseSafe, connect, disconnect, useWallet } from "./wallet";
 import "./styles.css";
 
 // ------------------------------------------------------------------ routes (static pages, relative links: works on DeWeb)
@@ -71,6 +72,35 @@ export function CodeCard({ title, code }: { title: string; code: string }) {
   );
 }
 
+/** Small copy icon; shows "Copied" for 1.5 s. */
+export function CopyButton({ text, label = "Copy address" }: { text: string; label?: string }) {
+  const [done, setDone] = useState(false);
+  return (
+    <button
+      type="button"
+      className="copy-btn"
+      aria-label={label}
+      title={done ? "Copied" : label}
+      onClick={(e) => {
+        e.stopPropagation();
+        navigator.clipboard?.writeText(text).then(() => {
+          setDone(true);
+          setTimeout(() => setDone(false), 1500);
+        });
+      }}
+    >
+      {done ? (
+        <span className="mono" style={{ fontSize: 11 }}>Copied</span>
+      ) : (
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true">
+          <rect x="9" y="9" width="12" height="12" rx="2" />
+          <path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+        </svg>
+      )}
+    </button>
+  );
+}
+
 // ------------------------------------------------------------------ theme (footer icon only)
 function currentTheme(): "dark" | "light" {
   return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
@@ -113,6 +143,8 @@ function WalletButton() {
   const w = useWallet();
   const [open, setOpen] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [creating, setCreating] = useState<string | null>(null);
+  const owned = useOwnedSafes();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
@@ -139,10 +171,42 @@ function WalletButton() {
         <div className="menu" role="menu">
           {w.account ? (
             <>
-              <span className="mono small" style={{ padding: "8px 10px" }}>
-                {w.wallet?.name ?? "Wallet"} · {w.safe ? `Safe ${short(w.safe)}` : "no Safe chosen"}
+              <span className="mono small" style={{ padding: "8px 10px", display: "flex", alignItems: "center", gap: 6 }}>
+                {w.wallet?.name ?? "Wallet"} · {short(w.account)}
+                <CopyButton text={w.account} label="Copy wallet address" />
                 {!w.chainOk && " · switch to X Layer"}
               </span>
+              <span className="lbl" style={{ padding: "6px 10px 2px" }}>Your Safes{owned.loading ? " · reading" : ""}</span>
+              {owned.safes.length === 0 && !owned.loading && <span className="small" style={{ padding: "4px 10px" }}>None found yet</span>}
+              {owned.safes.map((sf) => {
+                const on = sf.toLowerCase() === w.safe?.toLowerCase();
+                return (
+                  <div key={sf} className="menu-row" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <button type="button" role="menuitemradio" aria-checked={on} style={{ flex: 1 }} onClick={() => (chooseSafe(sf), setOpen(false))}>
+                      <span className="mono">{short(sf)}</span>
+                      <span className="lbl" style={{ color: on ? "var(--accent)" : undefined }}>{on ? "In use" : "Switch"}</span>
+                    </button>
+                    <CopyButton text={sf} label="Copy Safe address" />
+                  </div>
+                );
+              })}
+              <button
+                type="button"
+                role="menuitem"
+                disabled={!!creating}
+                onClick={() => {
+                  setErr(null);
+                  setCreating("Confirm in your wallet");
+                  createSafe(w.account!).then(
+                    () => (location.href = href("start")),
+                    (e) => (setCreating(null), setErr((e as { shortMessage?: string }).shortMessage ?? (e as Error).message)),
+                  );
+                }}
+              >
+                {creating ?? "Create a new Safe"}
+              </button>
+              {err && <span className="err" style={{ padding: "6px 10px" }}>{err}</span>}
+              <span style={{ borderTop: "1px solid var(--line)", margin: "4px 0" }} />
               <a role="menuitem" href={href("wallet")}>My wallet</a>
               <a role="menuitem" href={href("limits")}>My limits</a>
               <button type="button" role="menuitem" style={{ color: "var(--deny)" }} onClick={() => (disconnect(), setOpen(false))}>
@@ -189,6 +253,7 @@ function WalletButton() {
 // ------------------------------------------------------------------ shell
 const NAV: { page: Page; label: string }[] = [
   { page: "limits", label: "Limits" },
+  { page: "try", label: "Try" },
   { page: "tilt", label: "Tilt shield" },
   { page: "fengce", label: "Fengce" },
 ];

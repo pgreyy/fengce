@@ -5,7 +5,7 @@ import { DEPLOYMENT, client } from "../lib/chain";
 import { attempts, type Attempt } from "../okun/activity";
 import { ENGINE } from "../okun/engine";
 import { readInstalled, safeHistory, usdt0, type Installed } from "../okun/reads";
-import { href, mount, short } from "../okun/ui";
+import { CopyButton, href, mount, short } from "../okun/ui";
 import { EXPLORER_TX, sendFromWallet, simulateSafeTx, useWallet } from "../okun/wallet";
 
 const regAbi = parseAbi(["function isPinned(bytes32) view returns (bool)"]);
@@ -119,18 +119,19 @@ function Wallet() {
     <main className="pg w" style={{ paddingTop: 64, paddingBottom: 110, display: "flex", flexDirection: "column", gap: 32 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 18 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <span className="lbl">
-            Safe {short(safe)}
+          <span className="lbl" style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            Safe {short(safe)} <CopyButton text={safe} label="Copy Safe address" />
             {since ? ` · bound since block ${Number(since.block).toLocaleString("en-US")}` : ""}
             {demo ? " · demo Safe (connect to see yours)" : ""}
           </span>
           <h1 className="disp" style={{ fontSize: 48 }}>My wallet</h1>
         </div>
-        <div style={{ display: "flex", gap: 22, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 22, flexWrap: "wrap", alignItems: "center" }}>
           {status(bound ? "Bound" : "Not bound", bound ? "var(--allow)" : "var(--muted)")}
           {status(pinned ? "Rules pinned" : pinned === false ? "Pin broken" : "Rules pinned ·", pinned ? "var(--allow)" : pinned === false ? "var(--deny)" : "var(--muted)")}
           {status("Alarm on", "var(--accent)")}
           {status("No partner", "var(--muted)")}
+          <a className="pill accent" href={href("try")}>Try a trade</a>
         </div>
       </div>
       {err && <p className="err">{err}</p>}
@@ -146,7 +147,6 @@ function Wallet() {
       <section id="activity" style={{ minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
             <span className="lbl">Activity</span>
-            <a className="alink" href={href("try")}>Try a trade</a>
           </div>
           <div className="scroll-x">
             <table className="rt" style={{ minWidth: 560 }}>
@@ -185,9 +185,9 @@ function Wallet() {
           </div>
         </section>
       <section>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <span className="lbl">Safeguards</span>
-          <span className="lbl">{short(safe)}</span>
+          <span className="lbl" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>{short(safe)} <CopyButton text={safe} label="Copy Safe address" /></span>
         </div>
         <div className="guards" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)" }}>
           <div className="guard" style={{ padding: "20px 24px 20px 0", display: "flex", flexDirection: "column", gap: 6 }}>
