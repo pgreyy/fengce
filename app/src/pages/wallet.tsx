@@ -101,8 +101,8 @@ function Wallet() {
     }
   }
 
-  const metric = (k: string, v: string, s: string, red = false) => (
-    <div style={{ padding: "18px 18px 18px 0", borderRight: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 6 }}>
+  const metric = (k: string, v: string, s: string, red = false, i = 1, n = 5) => (
+    <div style={{ padding: `20px ${i === n - 1 ? 0 : 24}px 20px ${i === 0 ? 0 : 24}px`, borderRight: i < n - 1 ? "1px solid var(--line)" : undefined, display: "flex", flexDirection: "column", gap: 6 }}>
       <span className="lbl">{k}</span>
       <div className="num" style={{ fontSize: 32, color: red ? "var(--deny)" : undefined }}>{v}</div>
       <span className="mono" style={{ fontSize: 12, color: "var(--muted)" }}>{s}</span>
@@ -135,16 +135,15 @@ function Wallet() {
       </div>
       {err && <p className="err">{err}</p>}
       <div className="scroll-x">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(150px, 1fr))", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)" }}>
-          {metric("Max buy", inst ? usdt0(inst.maxPerBuy) : "…", inst?.okunPolicy === false && inst?.set ? "USDT0 per send (demo policy)" : "USDT0 per buy")}
-          {metric("Quiet hours", "Soon", "next engine release")}
-          {metric("Per hour", inst?.trades ? `${inst.trades.usedThisHour} / ${inst.trades.perHour}` : "Off", inst?.trades ? `swaps this hour · resets ${new Date(inst.trades.resetsAt * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "no hourly limit")}
-          {metric("Tilt shield", "Soon", "next engine release")}
-          {metric("Blocked · 7d", String(blocked7d), "agent refusals + this browser", blocked7d > 0)}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(170px, 1fr))", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)" }}>
+          {metric("Max buy", inst ? usdt0(inst.maxPerBuy) : "…", inst?.okunPolicy === false && inst?.set ? "USDT0 per send (demo policy)" : "USDT0 per buy", false, 0)}
+          {metric("Quiet hours", "Soon", "next engine release", false, 1)}
+          {metric("Per hour", inst?.trades ? `${inst.trades.usedThisHour} / ${inst.trades.perHour}` : "Off", inst?.trades ? `swaps this hour · resets ${new Date(inst.trades.resetsAt * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "no hourly limit", false, 2)}
+          {metric("Tilt shield", "Soon", "next engine release", false, 3)}
+          {metric("Blocked · 7d", String(blocked7d), "agent refusals + this browser", blocked7d > 0, 4)}
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 400px)", gap: 40, alignItems: "start" }} className="wallet-cols">
-        <section style={{ minWidth: 0 }}>
+      <section id="activity" style={{ minWidth: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
             <span className="lbl">Activity</span>
             <a className="alink" href={href("try")}>Try a trade</a>
@@ -185,61 +184,63 @@ function Wallet() {
             </table>
           </div>
         </section>
-        <aside className="panel" style={{ overflow: "hidden" }}>
-          <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--line)", display: "flex", justifyContent: "space-between" }}>
-            <span className="lbl">Safeguards</span>
-            <span className="lbl">{short(safe)}</span>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 14, padding: "18px 20px", borderBottom: "1px solid var(--line)" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+      <section>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+          <span className="lbl">Safeguards</span>
+          <span className="lbl">{short(safe)}</span>
+        </div>
+        <div className="guards" style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)" }}>
+          <div className="guard" style={{ padding: "20px 24px 20px 0", display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
               <span className="lbl">Changes</span>
+              {pending.length === 0 && <a className="alink" href={href("limits")}>Request</a>}
+            </div>
               {pending.length === 0 ? (
-                <>
-                  <span style={{ fontSize: 16 }}>Nothing waiting</span>
-                  <span className="small">A change to your limits waits 1 day and posts an on-chain alert. Removing the guard waits 2 days and needs every owner.</span>
-                </>
+            <>
+            <span style={{ fontSize: 16 }}>Nothing waiting</span>
+              <span className="small">Raising a limit waits 1 day, in public. Removing the guard waits 2 days.</span>
+            </>
               ) : (
-                pending.map((p) => {
-                  const left = Math.max(0, p.readyAt - now);
-                  const hms = `${String(Math.floor(left / 3600)).padStart(2, "0")}:${String(Math.floor((left % 3600) / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`;
-                  return (
-                    <div key={p.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                      <span style={{ fontSize: 16 }}>{describe(p.data)}</span>
-                      <span className="mono" style={{ fontSize: 13, color: "var(--accent)" }}>{left > 0 ? `${hms} left` : "ready to apply"}</span>
-                      {!demo && (
-                        <span style={{ display: "flex", gap: 14 }}>
-                          {left === 0 && (
-                            <button type="button" className="alink accent" disabled={busy} onClick={() => safeTx("Apply", ENGINE.guard, p.data)}>Apply</button>
-                          )}
-                          <button type="button" className="alink" disabled={busy} onClick={() => safeTx("Cancel", ENGINE.guard, encodeFunctionData({ abi: guardAbi, functionName: "cancelAdmin", args: [ENGINE.guard, p.data] }))}>Cancel</button>
-                        </span>
+            pending.map((p) => {
+              const left = Math.max(0, p.readyAt - now);
+              const hms = `${String(Math.floor(left / 3600)).padStart(2, "0")}:${String(Math.floor((left % 3600) / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`;
+              return (
+                <div key={p.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span style={{ fontSize: 16 }}>{describe(p.data)}</span>
+                  <span className="mono" style={{ fontSize: 13, color: "var(--accent)" }}>{left > 0 ? `${hms} left` : "ready to apply"}</span>
+                  {!demo && (
+                    <span style={{ display: "flex", gap: 14 }}>
+                      {left === 0 && (
+                        <button type="button" className="alink accent" disabled={busy} onClick={() => safeTx("Apply", ENGINE.guard, p.data)}>Apply</button>
                       )}
-                    </div>
-                  );
-                })
+                      <button type="button" className="alink" disabled={busy} onClick={() => safeTx("Cancel", ENGINE.guard, encodeFunctionData({ abi: guardAbi, functionName: "cancelAdmin", args: [ENGINE.guard, p.data] }))}>Cancel</button>
+                    </span>
+                  )}
+                </div>
+              );
+            })
               )}
-            </div>
-            {pending.length === 0 && <a className="alink" href={href("limits")}>Request</a>}
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) auto", gap: 14, padding: "18px 20px", borderBottom: "1px solid var(--line)" }}>
-            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+          <div className="guard" style={{ padding: "20px 24px", borderLeft: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
               <span className="lbl">Partner</span>
-              <span style={{ fontSize: 16 }}>Optional · coming soon</span>
-              <span className="small">
-                Someone you trust to co-approve loosening and clear a tripped tilt shield early. It never moves funds. On a Safe with 2 or more owners,
-                the Safe's own approvals already apply.
-              </span>
+              <a className="alink" href={href("tilt")}>Learn more</a>
             </div>
+            <span style={{ fontSize: 16 }}>Optional · coming soon</span>
+            <span className="small">Co-approves loosening and can clear a tripped tilt shield. Never moves funds.</span>
           </div>
-          <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 5 }}>
-            <span className="lbl">Alarm</span>
+          <div className="guard" style={{ padding: "20px 0 20px 24px", borderLeft: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 6 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+              <span className="lbl">Alarm</span>
+              <a className="alink" href="#activity">See activity</a>
+            </div>
             <span style={{ fontSize: 16 }}>On</span>
-            <span className="small">Every scheduled change is posted on chain as an event and shown here, with its countdown.</span>
+            <span className="small">Every scheduled change is posted on chain and shown here, with its countdown.</span>
           </div>
-          {msg && <div className="small" style={{ padding: "0 20px 18px" }}>{msg}</div>}
-        </aside>
-      </div>
-      <style>{`@media (max-width: 900px) { .wallet-cols { grid-template-columns: minmax(0, 1fr) !important; } }`}</style>
+        </div>
+        {msg && <div className="small" style={{ paddingTop: 12 }}>{msg}</div>}
+      </section>
+      <style>{`@media (max-width: 900px) { .guards { grid-template-columns: minmax(0, 1fr) !important; } .guards > .guard { padding: 18px 0 !important; border-left: 0 !important; } .guards > .guard + .guard { border-top: 1px solid var(--line); } }`}</style>
     </main>
   );
 }
