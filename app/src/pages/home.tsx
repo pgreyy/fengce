@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PRODUCT_NAME } from "../brand";
 import { CodeCard, href, mount } from "../okun/ui";
+import { startVinyl } from "../okun/vinyl-hero.js";
 
 /** The max-per-buy circuit as a TapeOut name: circuit . area (2 = X Layer) . processor number. */
 export const NEEDLE = "2.2.0";
@@ -29,47 +30,26 @@ function useScrollProgress(ref: React.RefObject<HTMLElement | null>) {
   return p;
 }
 
-// ------------------------------------------------------------------ vinyl groove band
-function Grooves() {
-  const rows = 7;
-  const groove = (i: number) => {
-    const y = 14 + i * 19;
-    return `M-40 ${y} C 300 ${y - 18}, 700 ${y + 22}, 1060 ${y + 2} S 1500 ${y - 10}, 1640 ${y}`;
-  };
-  const dots = [...Array(18).keys()].map((k) => {
-    const row = k % rows;
-    const deny = [2, 7, 11, 15].includes(k);
-    const dur = 7 + ((k * 37) % 6);
-    return { row, deny, dur, begin: -((k * 1.3) % dur) };
-  });
+// ------------------------------------------------------------------ hero background (vinyl)
+function Vinyl() {
+  const ref = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    const opts = {
+      isDark: () => document.documentElement.getAttribute("data-theme") !== "light",
+      accent: () => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#f0533f",
+    };
+    let stop = startVinyl(c, opts);
+    // re-layout when the theme flips (the grooves are pre-rendered in theme colours)
+    const mo = new MutationObserver(() => (stop(), (stop = startVinyl(c, opts))));
+    mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => (mo.disconnect(), stop());
+  }, []);
   return (
-    <div aria-hidden="true" style={{ borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)", overflow: "hidden", height: 150, position: "relative" }}>
-      <svg viewBox="0 0 1600 150" preserveAspectRatio="xMidYMid slice" width="100%" height="150" style={{ display: "block", position: "absolute", inset: 0 }}>
-        {[...Array(rows).keys()].map((i) => (
-          <path key={i} id={`g${i}`} d={groove(i)} stroke="var(--line)" strokeWidth="1" fill="none" />
-        ))}
-        {dots.map((d, k) => (
-          <circle key={k} r="3" fill={d.deny ? "var(--deny)" : "var(--allow)"} opacity="0">
-            {/* the needle sits at about 67% of the path: denied dots flash and fade there */}
-            <animateMotion dur={`${d.dur}s`} begin={`${d.begin}s`} repeatCount="indefinite">
-              <mpath href={`#g${d.row}`} />
-            </animateMotion>
-            <animate attributeName="opacity" dur={`${d.dur}s`} begin={`${d.begin}s`} repeatCount="indefinite" values={d.deny ? "0;.9;.9;1;0;0" : "0;.9;.9;.9;.9;0"} keyTimes="0;0.04;0.64;0.67;0.72;1" />
-            {d.deny && <animate attributeName="r" dur={`${d.dur}s`} begin={`${d.begin}s`} repeatCount="indefinite" values="3;3;6;3;3" keyTimes="0;0.64;0.67;0.72;1" />}
-          </circle>
-        ))}
-        <path d="M1300 -40 L1072 92" stroke="var(--text)" strokeWidth="2" opacity=".75" />
-        <path d="M1300 -40 L1072 92" stroke="var(--accent)" strokeWidth="5" opacity=".18" />
-        <circle cx="1300" cy="-40" r="22" fill="var(--panel)" stroke="var(--line)" />
-        <rect x="1056" y="84" width="30" height="14" rx="2" fill="var(--accent)" transform="rotate(-30 1071 91)" />
-      </svg>
-      <div className="sheen" />
-      <div style={{ position: "absolute", left: "66.5%", top: 0, bottom: 0, width: 120, transform: "translateX(-60px)", background: "radial-gradient(50% 50% at 50% 60%, rgba(240,83,63,.14), transparent 70%)", pointerEvents: "none" }} />
-      <span className="lbl" style={{ position: "absolute", left: 24, bottom: 10 }}>Each groove is a wallet · each dot a transaction</span>
-      <span className="lbl" style={{ position: "absolute", left: "calc(66.5% + 30px)", top: 12, color: "var(--accent)" }}>The needle is the circuit · {NEEDLE}</span>
-      <span className="lbl" style={{ position: "absolute", right: 24, bottom: 10 }}>
-        <span className="allow">●</span> plays through &nbsp; <span className="deny">●</span> skips · reverted
-      </span>
+    <div aria-hidden="true" style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
+      <canvas ref={ref} style={{ display: "block" }} />
+      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 85%, transparent) 32%, color-mix(in srgb, var(--bg) 0%, transparent) 64%)" }} />
     </div>
   );
 }
@@ -475,8 +455,9 @@ function Powered() {
 function Home() {
   return (
     <main className="pg">
-      <div style={{ minHeight: "calc(100vh - var(--headH))", display: "flex", flexDirection: "column" }}>
-        <section className="w" style={{ flex: "1 1 auto", paddingTop: 48, paddingBottom: 36, display: "flex", alignItems: "flex-end" }}>
+      <div style={{ minHeight: "calc(100vh - var(--headH))", display: "flex", flexDirection: "column", position: "relative" }}>
+        <Vinyl />
+        <section className="w" style={{ flex: "1 1 auto", paddingTop: 48, paddingBottom: 36, display: "flex", alignItems: "flex-end", position: "relative", zIndex: 1 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 560 }}>
             <h1 className="disp" style={{ fontSize: 52 }}>
               Limits your wallet keeps,
@@ -487,12 +468,14 @@ function Home() {
               <p className="body" style={{ color: "var(--text)" }}>Set buy caps, quiet hours and hold locks inside your smart wallet.</p>
               <p className="body">Each limit is a TapeOut circuit on X Layer. It follows your wallet across supported apps and transaction paths.</p>
             </div>
-            <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
               <a className="pill accent big" href={href("start")}>Set my limits</a>
+              <a className="alink" href={href("try")}>Try a trade</a>
             </div>
           </div>
+          <span className="mono hero-cap" style={{ position: "absolute", right: "var(--pad)", bottom: 14, fontSize: 11.5, color: "var(--muted)", opacity: 0.8 }}>each groove a wallet · each dot a transaction · the needle is the circuit</span>
         </section>
-        <Grooves />
+        <div style={{ position: "relative", zIndex: 1, background: "var(--bg)" }}>
         <section className="w strip">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", borderBottom: "1px solid var(--line)" }}>
             <div className="mono" style={{ padding: "16px 8px", fontSize: 13.5, textAlign: "center", borderRight: "1px solid var(--line)" }}>Safe</div>
@@ -505,6 +488,7 @@ function Home() {
             <div className="mono muted" style={{ padding: "16px 8px", fontSize: 13.5, textAlign: "center", borderLeft: "1px solid var(--line)" }}>Coinbase Smart Wallet (agents)</div>
           </div>
         </section>
+        </div>
       </div>
       <Steps />
       <WhoItHelps />
@@ -535,6 +519,7 @@ function Home() {
           .stack { zoom: .78; }
           .strip > div { grid-template-columns: minmax(0, 1fr) !important; }
           .strip > div > div { border: 0 !important; }
+          .hero-cap { display: none; }
         }
       `}</style>
     </main>
