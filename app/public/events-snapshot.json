@@ -8,8 +8,8 @@
   "catalog": "0x26C5437428cdD7e4854614DC5DDEFE2776B51dFe"
  },
  "fromBlock": "76250360",
- "toBlock": "76947413",
- "generatedAt": "2026-11-26T18:08:11.101Z",
+ "toBlock": "76955584",
+ "generatedAt": "2026-11-26T20:24:10.428Z",
  "events": [
   {
    "source": "catalog",
@@ -158,6 +158,87 @@
     "to": "0x779Ded0c9e1022225f8E0630b35a9b54bE713736",
     "value": "0",
     "dataHash": "0x753f04e66f48c192e2bbb1f61525bb6cd62c54a12dba87e54c090cdf921a6ed3"
+   }
+  },
+  {
+   "source": "guard",
+   "event": "Configured",
+   "block": "76948027",
+   "tx": "0xf73d0fbbb2d094b027d7447baa7e30340c64fea6e6c401131123c162f287e319",
+   "logIndex": 10,
+   "safe": "0x5641DA334011832Feec997875781a3D40239465e",
+   "args": {
+    "safe": "0x5641DA334011832Feec997875781a3D40239465e",
+    "pinId": "0xf503c66d7d2a5e35c0dc09c37631ecc68bc871684c478857f4b72ed62afeabda"
+   }
+  },
+  {
+   "source": "guard",
+   "event": "DecoderSet",
+   "block": "76948027",
+   "tx": "0xf73d0fbbb2d094b027d7447baa7e30340c64fea6e6c401131123c162f287e319",
+   "logIndex": 11,
+   "safe": "0x5641DA334011832Feec997875781a3D40239465e",
+   "args": {
+    "safe": "0x5641DA334011832Feec997875781a3D40239465e",
+    "target": "0x4f0C28f5926AFDA16bf2506D5D9e57Ea190f9bcA",
+    "selector": "0x04e45aaf",
+    "decoder": "0x47FDb3C6E91661562243f97Df2f4b0B8EfFAA479"
+   }
+  },
+  {
+   "source": "guard",
+   "event": "DecoderSet",
+   "block": "76948027",
+   "tx": "0xf73d0fbbb2d094b027d7447baa7e30340c64fea6e6c401131123c162f287e319",
+   "logIndex": 12,
+   "safe": "0x5641DA334011832Feec997875781a3D40239465e",
+   "args": {
+    "safe": "0x5641DA334011832Feec997875781a3D40239465e",
+    "target": "0x4f0C28f5926AFDA16bf2506D5D9e57Ea190f9bcA",
+    "selector": "0xb858183f",
+    "decoder": "0x47FDb3C6E91661562243f97Df2f4b0B8EfFAA479"
+   }
+  },
+  {
+   "source": "guard",
+   "event": "DecoderSet",
+   "block": "76948027",
+   "tx": "0xf73d0fbbb2d094b027d7447baa7e30340c64fea6e6c401131123c162f287e319",
+   "logIndex": 13,
+   "safe": "0x5641DA334011832Feec997875781a3D40239465e",
+   "args": {
+    "safe": "0x5641DA334011832Feec997875781a3D40239465e",
+    "target": "0x4f0C28f5926AFDA16bf2506D5D9e57Ea190f9bcA",
+    "selector": "0x5023b4df",
+    "decoder": "0x47FDb3C6E91661562243f97Df2f4b0B8EfFAA479"
+   }
+  },
+  {
+   "source": "guard",
+   "event": "DecoderSet",
+   "block": "76948027",
+   "tx": "0xf73d0fbbb2d094b027d7447baa7e30340c64fea6e6c401131123c162f287e319",
+   "logIndex": 14,
+   "safe": "0x5641DA334011832Feec997875781a3D40239465e",
+   "args": {
+    "safe": "0x5641DA334011832Feec997875781a3D40239465e",
+    "target": "0x4f0C28f5926AFDA16bf2506D5D9e57Ea190f9bcA",
+    "selector": "0x09b81346",
+    "decoder": "0x47FDb3C6E91661562243f97Df2f4b0B8EfFAA479"
+   }
+  },
+  {
+   "source": "guard",
+   "event": "TickConfigured",
+   "block": "76948027",
+   "tx": "0xf73d0fbbb2d094b027d7447baa7e30340c64fea6e6c401131123c162f287e319",
+   "logIndex": 18,
+   "safe": "0x5641DA334011832Feec997875781a3D40239465e",
+   "args": {
+    "safe": "0x5641DA334011832Feec997875781a3D40239465e",
+    "tick": "0xFEb6FD15F8724bfC69a119C0448f480a7D7e5370",
+    "groupId": "0x28153aea28fbad03266a44d540485a1220a2285f4834ebab570af756890c98d6"
    }
   }
  ]
