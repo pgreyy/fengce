@@ -22,7 +22,8 @@ read on Safe accounts; on other accounts it checks the outcome and the account's
 
 ## Wallet types with a tested adapter (8)
 
-The app's "wallet types" figure counts these: every wallet in the matrix whose adapter has a passing test.
+Every wallet in the matrix whose adapter has a passing test. Enforcement is permanent only on Safe; the others are enforced but
+their hooks can be removed, and two are agent-only.
 Alchemy MultiOwnerLightAccount v2 (agent-only, not tested) and the three not-integrated wallets are not counted. Claim:
 [wallet-types-8](CLAIMS.md#wallet-types-8).
 

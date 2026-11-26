@@ -37,7 +37,6 @@ property of the code or setup). Test links point at the test function in this re
 | [agent-demo-fork](#agent-demo-fork) | fork-tested | X Layer mainnet fork | v2 |
 | [preflight-own-policy](#preflight-own-policy) | mainnet | X Layer mainnet (196), read-only | v2 |
 | [deweb-hosted](#deweb-hosted) | mainnet | X Layer mainnet (196) | v2 |
-| [verdict-live](#verdict-live) | mainnet | X Layer mainnet (196) | Verdict V1 |
 | [delegatecall-blocked](#delegatecall-blocked) | fork-tested | X Layer mainnet fork | v2 |
 | [no-prompt-input](#no-prompt-input) | documented | n/a | v2 |
 | [incident-sources](#incident-sources) | documented | n/a | n/a |
@@ -129,7 +128,7 @@ Status: **mainnet** · Network: X Layer mainnet (196) · Release: v2
 - [setGuard](https://www.oklink.com/x-layer/tx/0x020f676574b4120184690ca528f09cfe98d020c4a1344d9536a9100da6d507b6)
 - [setModuleGuard](https://www.oklink.com/x-layer/tx/0xae4ceb7298936b5f8608ff4344044ff8765cb790f8b1dc11f415ad8b697264ef)
 - [addAgent](https://www.oklink.com/x-layer/tx/0xb83e3f771c21034dcdf2bdddc5e4784eca24164ddef432e152fefd1a3c989d60)
-- [live status page](https://getfengce.vercel.app/protect/?step=3&wallet=safe&address=0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707)
+- [live status page](https://getokun.vercel.app/wallet/)
 
 ## v1-demo
 
@@ -336,18 +335,6 @@ Status: **mainnet** · Network: X Layer mainnet (196) · Release: v2
 - [TAP-10 resolution and SHA-256 check](../app/scripts/deweb-check.mts)
 - [gateway](https://6-2-180.tapekit.org/)
 
-## verdict-live
-
-Verdict V1 is deployed on X Layer mainnet at 0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55, verified on Sourcify (exact match), with one demo market created on-chain.
-
-Status: **mainnet** · Network: X Layer mainnet (196) · Release: Verdict V1
-
-- [deploy transaction (mainnet)](https://www.oklink.com/x-layer/tx/0xe52bcd551eb87d4c5b0822d5a8dc241889ec09982039ec30026e1da4ac734741)
-- [demo market create transaction (mainnet)](https://www.oklink.com/x-layer/tx/0xcde0075a0d14ab6bd0604539c5cd6e24d2016d09bd8c8c199ec4051553544b08)
-- [Sourcify exact match](https://repo.sourcify.dev/196/0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55)
-- [deployment record](../deployments/verdict-xlayer-196.json)
-- [tests: create, bet, checkpoint, settle, claim, refund](../test/fork/VerdictFork.t.sol)
-
 ## delegatecall-blocked
 
 FengceGuard refuses owner delegatecalls to anything but MultiSendCallOnly, so a signed contract upgrade like the Bybit one reverts and the Safe singleton stays unchanged.
@@ -380,7 +367,7 @@ Status: **documented** · Network: n/a · Release: n/a
 
 ## wallet-types-8
 
-8 wallet types have an adapter with a passing test: Safe, Safe + Safe7579, Kernel, Nexus, Etherspot, Modular Account v2, EIP-7702 (SemiModularAccount7702) and Coinbase Smart Wallet.
+Adapters have a passing test on 8 wallet types: Safe, Safe + Safe7579, Kernel, Nexus, Etherspot and Modular Account v2 (enforced; permanent only on Safe), and EIP-7702 (SemiModularAccount7702) and Coinbase Smart Wallet (agents only).
 
 Status: **fork-tested** · Network: X Layer mainnet fork (Safe also on X Layer mainnet) · Release: v2
 

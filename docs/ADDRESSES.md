@@ -77,7 +77,7 @@ Safe7579 adapter (canonical address) and ZeroDev Kernel v3 factory. Fengce deplo
 
 ## Verdict checks (2026-11-18, read-only)
 
-These checks prepared Verdict, now live at `0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55` (docs/VERDICT.md).
+Research notes for an earlier experiment; not part of the app.
 
 ### Comparator circuit for "value >= threshold"
 

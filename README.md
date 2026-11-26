@@ -8,22 +8,22 @@ Your rules run as TapeOut circuits on X Layer, and the wallet itself enforces th
 
 <a id="demo-video"></a>**Demo video:** DEMO_VIDEO_LINK
 
-**X Layer Mainnet · Chain ID 196 · v2 live**
+**X Layer Mainnet · Chain ID 196 · v2 live** · [Okun](https://getokun.vercel.app) is the consumer app built on Fengce
 
-[Live app](https://getfengce.vercel.app) · [On TapeOut DeWeb: 6.2.180.tape](https://6-2-180.tapekit.org/) · [Try it](docs/TRY-IT.md) · [Demo video](#demo-video) · [Docs](docs/INTEGRATION.md) · [SDK on npm](https://www.npmjs.com/package/@fengce/sdk) · [Sourcify](https://repo.sourcify.dev/196/0x9D2A482fFA86fa3193F85c451A44576E2f1C8E6e)
+[Okun, the app](https://getokun.vercel.app) · [Engine page](https://getokun.vercel.app/fengce/) · [On TapeOut DeWeb: 6.2.180.tape](https://6-2-180.tapekit.org/) · [Try it](docs/TRY-IT.md) · [Demo video](#demo-video) · [Docs](docs/INTEGRATION.md) · [SDK on npm](https://www.npmjs.com/package/@fengce/sdk) · [Sourcify](https://repo.sourcify.dev/196/0x9D2A482fFA86fa3193F85c451A44576E2f1C8E6e)
 <!-- demo video: replace DEMO_VIDEO_LINK above (and #demo-video in the link row) with the video URL -->
 
 </div>
 
 ### Judges start here (60 seconds)
 
-1. Open the live site: [getfengce.vercel.app](https://getfengce.vercel.app). Everything is read from X Layer by your browser.
+1. Open the app: [getokun.vercel.app](https://getokun.vercel.app). Everything is read from X Layer by your browser.
 2. See the wallet decide on mainnet: an agent's 1.5 USDT0 transfer **DENIED**
    ([0x9b70…4a1b](https://www.oklink.com/x-layer/tx/0x9b70d386a2782e269ab1d3b1df6de767534a5b5b7904998abd92a651d2584a1b)),
    then 0.5 USDT0 **ALLOWED** ([0x7a70…ccab](https://www.oklink.com/x-layer/tx/0x7a70f5c9713fd9236ecdd81287bcf775253d2cbea19c857524bb1047acfcccab)).
-3. Open the Verdict demo market: [market #0](https://getfengce.vercel.app/verdict/?id=0) on
-   [`0xb258…7c55`](https://www.oklink.com/x-layer/address/0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55); once it is checkpointed
-   (after the deadline), its Re-run panel re-checks the settlement in your browser.
+3. Set a limit on your own Safe on [/start](https://getokun.vercel.app/start/): max per buy and trades per hour, tested against
+   the real circuit, installed with one signature. Then on [/try](https://getokun.vercel.app/try/) a swap under the cap goes
+   through and one over it is refused, with the reason.
 4. The same app, stored on X Layer and checked file by file: [6.2.180.tape](https://6-2-180.tapekit.org/).
 5. Install it on your own Safe in a few minutes: [docs/TRY-IT.md](docs/TRY-IT.md). The full write-up:
    [docs/SUBMISSION.md](docs/SUBMISSION.md).
@@ -99,23 +99,21 @@ AgentExecutor). The agent tried 1.5 USDT0 first, then 0.5:
 | 1.5 USDT0 (over the cap) | **Denied**, recorded as `Denied` with `FengceDenied(safe, USDT0)`; nothing moved | [0x9b70…4a1b](https://www.oklink.com/x-layer/tx/0x9b70d386a2782e269ab1d3b1df6de767534a5b5b7904998abd92a651d2584a1b) |
 | 0.5 USDT0 (within the cap) | **Allowed**; the Safe went from 1.5 to 1.0 USDT0 | [0x7a70…ccab](https://www.oklink.com/x-layer/tx/0x7a70f5c9713fd9236ecdd81287bcf775253d2cbea19c857524bb1047acfcccab) |
 
-Policy: [Stablecoin Transfer Limit](https://getfengce.vercel.app/policy/?processor=0x839bdD6fa7A66416A609A735e11DE5411B98574e&id=2) (pin
+Policy: [Stablecoin Transfer Limit](https://getokun.vercel.app/fengce/?tab=judges) (pin
 `0x6661c56a…`, [pin transaction](https://www.oklink.com/x-layer/tx/0x7edc0878f7bdb77f1c7b1a2fa7dec42ebec4adf68ee756d1d56e6b0ce543f7eb)). Release: [v2 addresses](deployments/xlayer-196-v2.json),
 built from commit `e260a37`. The previous release ran the same demo: [0.5 allowed](https://www.oklink.com/x-layer/tx/0x6797257c0ea35fe0ec7b2d80f3bd29275a172e52286f9dbff96fc98e81f05e38), [1.5 denied](https://www.oklink.com/x-layer/tx/0xbfe43e982f563f9e3dc1a4641e259b04ace0635dfab769c59ec7532492e24760).
 
 - **Tests:** 112 pass in [CI for e260a37](https://github.com/pgreyy/fengce/actions/runs/44346520788): 44 unit, 53 core and Safe fork tests, 15 wallet fork tests.
-- **Wallet types:** 8 with a tested adapter: Safe, Safe + Safe7579, Kernel, Nexus, Etherspot, Modular Account v2, EIP-7702 and Coinbase Smart Wallet ([evidence](docs/CLAIMS.md#wallet-types-8)).
+- **Wallets:** enforced and permanent on Safe; enforced but not permanent on ERC-7579 and ERC-6900 accounts. Adapters are tested on 8 wallet types, two of them for agents only ([evidence](docs/CLAIMS.md#wallet-types-8)).
 - **Sourcify:** 18/18 v2 contracts verified, exact match ([list](docs/CLAIMS.md#sourcify-18)).
-- **Verdict:** prediction markets on pinned circuits, live at [`0xb258…7c55`](https://www.oklink.com/x-layer/address/0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55), verified on Sourcify, one demo market ([evidence](docs/CLAIMS.md#verdict-live), [docs/VERDICT.md](docs/VERDICT.md)).
 - **Every claim** in this README links to its evidence in [docs/CLAIMS.md](docs/CLAIMS.md) ([claims.json](docs/claims.json)).
 
 ## A 2 minute path (for judges)
 
-1. Open [getfengce.vercel.app](https://getfengce.vercel.app). Everything is read from X Layer by your browser; nothing to connect.
-2. **Catalog**: five listed policies with tier, gas and installs.
-3. **Try it**: open *Numeric Transaction Limit* in the Catalog and its **Try it** tab, then press Run. Watch the 114-gate
-   circuit evaluate level by level and end on ALLOWED or DENIED, with the facts and input bits on the left.
-4. **Protect → Check a wallet**: the demo Safe's guards, timelocks and the Denied agent call.
+1. Open [getokun.vercel.app](https://getokun.vercel.app). Everything is read from X Layer by your browser.
+2. **Limits**: pick max per buy, move the test amount, and see the real circuit answer ALLOWED or REFUSED (an `eth_call`).
+3. **My wallet**: with no wallet connected it shows the demo Safe, read live: bound, rules pinned, its cap from the guard's storage.
+4. **Fengce**: the engine page, with incidents, comparisons and every address for judges.
 5. Open the two transactions above on the explorer.
 
 ## How it works
@@ -156,8 +154,8 @@ flowchart LR
 
 ## Integration quickstarts
 
-**Website.** On [Protect](https://getfengce.vercel.app/protect/), choose the wallet, then Install: run the preflight for a Safe (existing approvals) and
-import the Safe Transaction Builder JSON. Other wallet types show the exact install calls.
+**Website.** On [Okun](https://getokun.vercel.app/start/), connect a wallet, choose or create a 1-of-1 Safe, set max per buy and trades
+per hour, and install with one signature (one Safe transaction batching the guard, its configuration, the swap decoder and the counter).
 
 **SDK** ([@fengce/sdk on npm](https://www.npmjs.com/package/@fengce/sdk), [sdk/README.md](sdk/README.md)):
 
@@ -168,7 +166,7 @@ npm install @fengce/sdk
 ```ts
 import { preSign, buildInstall } from "@fengce/sdk";
 
-const verdict = await preSign(client, { processor, circuitId, schema }, safe, { to, value, data }); // "allow" | "deny", before signing
+const decision = await preSign(client, { processor, circuitId, schema }, safe, { to, value, data }); // "allow" | "deny", before signing
 const { calls } = await buildInstall(client, { safe, guard, pinId, schema, recoveryDelay: 172_800n, recoveryWindow: 172_800n, adminDelay: 86_400n });
 ```
 
@@ -191,8 +189,8 @@ contract Vault is BoundOnlyBase {
 ## For AI agents
 
 - **MCP server** ([mcp/](mcp/README.md)): `list_policies`, `get_policy`, `quote_policy`, `simulate_transaction`,
-  `preflight_transaction`, `build_install_payload`. Read-only and unsigned; set up in one line for Claude Code, Claude
-  Desktop or any MCP client ([proof](docs/CLAIMS.md#mcp-read-only)).
+  `preflight_transaction`, `build_install_payload`. Read-only and unsigned; build `mcp/` from the repo, then add it to Claude Code, Claude
+  Desktop or any MCP client with one command ([proof](docs/CLAIMS.md#mcp-read-only)).
 - **Preflight API**: `POST https://getfengce.vercel.app/api/preflight` checks a transaction against the policy installed on a Safe
   ([proof](docs/CLAIMS.md#preflight-own-policy), [API](docs/API.md)).
 - **OnchainOS skill** ([skills/fengce](skills/fengce/SKILL.md)), in the okx/plugin-store format: check with Fengce before
@@ -205,8 +203,9 @@ not split, reroute or retry it.
 
 ## Wallet compatibility
 
-8 wallet types have an adapter with a passing test ([list with tests](docs/WALLETS.md#wallet-types-with-a-tested-adapter-8)); the table also lists
-wallets that are untested or not integrated.
+Enforced and permanent on Safe; enforced but not permanent on ERC-7579 and ERC-6900 accounts, whose hooks some wallets let you
+remove. Adapters are tested on 8 wallet types, two of them for agents only ([list with tests](docs/WALLETS.md#wallet-types-with-a-tested-adapter-8)); the table
+also lists wallets that are untested or not integrated.
 
 **Mainnet**: adapter on X Layer mainnet and used there in real transactions. **Fork-tested**: adapter on mainnet, behaviour
 proven on a fork of live mainnet state. **Agent-only**: agents are checked, owners are not. **Partial**: pre-execution checks
@@ -335,7 +334,7 @@ docs            documentation (below)
 
 ## Docs
 
-- [docs/TRY-IT.md](docs/TRY-IT.md): try it with a fresh Safe (for outside testers)
+- [docs/TRY-IT.md](docs/TRY-IT.md): try Okun with a fresh Safe (for outside testers)
 - [docs/INTEGRATION.md](docs/INTEGRATION.md): pin a circuit, write a schema, install, operate and recover
 - [docs/WALLETS.md](docs/WALLETS.md) and [docs/wallets.json](docs/wallets.json): wallet compatibility
 - [docs/CLAIMS.md](docs/CLAIMS.md) and [docs/claims.json](docs/claims.json): every claim with its evidence
@@ -344,7 +343,6 @@ docs            documentation (below)
 - [docs/THREAT-MODEL.md](docs/THREAT-MODEL.md): trust assumptions and limits
 - [docs/POLICY-INTERFACE.md](docs/POLICY-INTERFACE.md): the canonical policy context
 - [docs/ADDRESSES.md](docs/ADDRESSES.md): X Layer addresses Fengce depends on
-- [docs/VERDICT.md](docs/VERDICT.md): Verdict, prediction markets that settle on a pinned circuit, live on X Layer mainnet at `0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55` ([evidence](docs/CLAIMS.md#verdict-live))
 - [sdk/README.md](sdk/README.md): SDK and CLI
 - [mcp/README.md](mcp/README.md): MCP server; [skills/fengce](skills/fengce/SKILL.md): OnchainOS skill
 - [AGENTS.md](AGENTS.md): canonical data and checks, for tools and newcomers

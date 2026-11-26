@@ -4,8 +4,7 @@
 
 - `readCatalog` reads every Catalog entry in parallel (one round of calls; a batching transport sends them together)
   instead of one call after another. Same result, in listing order.
-- README: the app's simulator is now the **Try it** tab of each policy page in the Catalog; the wording says so.
-- README: links to the app pages (Catalog, Protect, Verdict) and to this changelog.
+- README: links to the app (Okun, getokun.vercel.app) and its engine page, and to this changelog.
 
 ## 0.1.0
 

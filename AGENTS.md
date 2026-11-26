@@ -10,8 +10,6 @@ checks, and which claims rest on mainnet evidence.
   salt, init code hash, constructor arguments, runtime code hash, full solc metadata). Built from commit `e260a37`,
   solc 0.8.28, via_ir, 200 runs, EVM cancun. All 18 contracts verified on Sourcify (exact match).
 - The app on TapeOut DeWeb: [deployments/deweb-xlayer-196.json](deployments/deweb-xlayer-196.json) (`6.2.180.tape`, container, files with SHA-256).
-- Verdict V1 (prediction markets): [deployments/verdict-xlayer-196.json](deployments/verdict-xlayer-196.json), `0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55`, verified on
-  Sourcify (exact match); rules in [docs/VERDICT.md](docs/VERDICT.md).
 - Release v1 (previous): [deployments/xlayer-196.json](deployments/xlayer-196.json), [deployments/manifest-xlayer-196.json](deployments/manifest-xlayer-196.json).
 - Event history (installs, Denied, timelocks) from the v2 deploy block: [app/public/events-snapshot.json](app/public/events-snapshot.json).
 - Hackathon write-up: [docs/SUBMISSION.md](docs/SUBMISSION.md).
@@ -50,15 +48,20 @@ Demo Safe `0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707`, demo agent `0x81DeB61C44
 - SDK: [sdk/README.md](sdk/README.md) (schemas, Quote, install calldata, local evaluation and `evaluateTrace`).
 - HTTP API: [docs/API.md](docs/API.md), [docs/openapi.yaml](docs/openapi.yaml).
 - MCP server for agents: [mcp/README.md](mcp/README.md); OnchainOS skill: [skills/fengce/SKILL.md](skills/fengce/SKILL.md).
-- App: [app/](app) (static pages reading X Layer from the browser): Catalog (policy pages with a Try it tab), Protect
-  (choose a wallet, install, check a wallet), Verdict. The old /simulator, /install, /safe and /wallets URLs redirect there.
+- App: [app/](app), the Okun consumer app (static pages reading X Layer from the browser): home, /start (connect, choose a
+  Safe, set limits), /limits, /wallet (installed limits read back from chain), /try (real swaps and sends through the Safe),
+  /tilt, /fengce (the engine page). Old URLs redirect. One-signature install: app/src/okun/engine.ts, mirrored by
+  script/OkunLib.sol and checked byte for byte by test/fork/OkunInstall.t.sol.
+- Okun limits: max per buy (deployed NAND circuit #2 on processor 0x839b, new pin) and trades per hour (counter circuit
+  circuits/trade-counter.json on processor #180 through Tick). script/PrepareOkun.s.sol tapes out and pins them and writes
+  deployments/okun-xlayer-196.json.
 
 ## Running the checks
 
 ```sh
 git submodule update --init --recursive
 forge build
-forge test --match-path 'test/unit/*.t.sol'                              # unit tests, no network (44 for the v2 release; Verdict adds 19)
+forge test --match-path 'test/unit/*.t.sol'                              # unit tests, no network (44 for the v2 release, plus later additions)
 forge test --match-path 'test/{PinNand,Fengce*,AgentExecutor}.t.sol'      # fork tests against X Layer mainnet state
 forge test --match-path 'test/fork/*.t.sol'
 forge test --match-path 'test/wallets/*.t.sol'                           # also reads wallet code from the public Base RPC
@@ -82,8 +85,6 @@ private one through the `XLAYER_RPC_URL` secret). Nothing in the test suite send
 
 ## Experimental or deferred
 
-- Verdict V1 is live (`0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55`) with one demo market; no independent review, and the first checkpoint picks the
-  block (docs/VERDICT.md). Code in [src/verdict](src/verdict) (tests: test/unit/Verdict.t.sol, test/fork/VerdictFork.t.sol), notes in [docs/VERDICT.md](docs/VERDICT.md).
 - No independent security review. The TapeOut processor factory is upgradeable and not sealed. The circuit beacon's
   `owner()` returned the zero address at block 76,924,400, so its owner-only `upgradeTo` cannot be called; pins record its implementation
   and code hash anyway, and PinRegistry fails closed (denies) if a pinned circuit's code, beacon implementation or
