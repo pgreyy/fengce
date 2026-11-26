@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getAddress, isAddress, parseAbi, parseUnits, type Address, type Hex } from "viem";
 import { DEPLOYMENT, client } from "../lib/chain";
+import { ActivityTable, useActivity } from "../okun/ActivityTable";
 import { record } from "../okun/activity";
 import { TOKENS, multiSend, sendCall, swapCalls } from "../okun/engine";
 import { readInstalled, usdt0, type Installed } from "../okun/reads";
@@ -52,6 +53,9 @@ function Try() {
   const [bal, setBal] = useState<Record<string, bigint> | null>(null);
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState<{ ok: boolean; reason: string; tx?: Hex; canRecord?: { data: Hex } } | null>(null);
+  const [seen, setSeen] = useState(0);
+  useEffect(() => void (res && setSeen((x) => x + 1)), [res]);
+  const recent = useActivity(safe ?? DEMO, 10, seen);
 
   useEffect(() => {
     readInstalled(safe ?? DEMO).then(setInst, () => setInst(null));
@@ -219,6 +223,13 @@ function Try() {
           </span>
         </aside>
       </div>
+      <section style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+          <span className="lbl">Recent{!safe ? " · demo Safe" : ""}</span>
+          <a className="alink" href={href("wallet", undefined, "activity")}>All activity</a>
+        </div>
+        <ActivityTable rows={recent.rows} err={recent.err} max={8} empty="No trades yet on this Safe." />
+      </section>
       <style>{`@media (max-width: 900px) { .try-cols { grid-template-columns: minmax(0, 1fr) !important; } }`}</style>
     </main>
   );

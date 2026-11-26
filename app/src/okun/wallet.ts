@@ -236,7 +236,7 @@ export function reasonOf(data: Hex | undefined, message?: string): { code: strin
   return { code: "REVERT", text: message?.split("\n")[0] ?? "reverted" };
 }
 
-function revertData(e: unknown): Hex | undefined {
+export function revertData(e: unknown): Hex | undefined {
   let c: any = e;
   for (let i = 0; i < 8 && c; i++) {
     if (typeof c.data === "string" && c.data.startsWith("0x")) return c.data as Hex;

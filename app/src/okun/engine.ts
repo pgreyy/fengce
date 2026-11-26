@@ -104,6 +104,9 @@ const routerAbi = parseAbi([
   "function exactInputSingle(ExactInputSingleParams params) payable returns (uint256 amountOut)",
 ]);
 
+/** ABIs used to read transactions back (Activity). */
+export const ABIS = { safe: safeAbi, multiSend: multiSendAbi, erc20: erc20Abi, router: routerAbi };
+
 /** The guard's configure() input for "max per buy". */
 export function configureInput(limits: Limits, prepared: Prepared) {
   const s = maxBuySchema();

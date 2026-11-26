@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { decodeFunctionData, encodeFunctionData, getAddress, parseAbi, type Address, type Hex } from "viem";
 import { FengceGuardArtifact } from "@fengce/sdk";
 import { DEPLOYMENT, client } from "../lib/chain";
+import { ActivityTable, useActivity } from "../okun/ActivityTable";
 import { attempts, type Attempt } from "../okun/activity";
 import { ENGINE } from "../okun/engine";
 import { readInstalled, safeHistory, usdt0, type Installed } from "../okun/reads";
@@ -11,22 +12,6 @@ import { EXPLORER_TX, sendFromWallet, simulateSafeTx, useWallet } from "../okun/
 const regAbi = parseAbi(["function isPinned(bytes32) view returns (bool)"]);
 const guardAbi = FengceGuardArtifact.abi as any;
 const DEMO = getAddress(DEPLOYMENT.demoSafe) as Address;
-
-interface Row {
-  time: number;
-  action: string;
-  app: string;
-  amount: string;
-  ok: boolean | null;
-  result: string;
-  tx?: Hex;
-}
-
-const fmtTime = (t: number) => {
-  const d = new Date(t * 1000);
-  const days = (Date.now() - d.getTime()) / 86_400_000;
-  return days < 1 ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : d.toLocaleDateString([], { day: "numeric", month: "short" });
-};
 
 /** What a scheduled configure() would set, in words. */
 function describe(data: Hex): string {
@@ -54,7 +39,9 @@ function Wallet() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [now, setNow] = useState(Math.floor(Date.now() / 1000));
+  const [bump, setBump] = useState(0);
   const reload = () => {
+    setBump((x) => x + 1);
     readInstalled(safe).then(
       (i) => {
         setInst(i);
@@ -70,19 +57,13 @@ function Wallet() {
     return () => clearInterval(t);
   }, []);
 
+  const act = useActivity(safe, 25, bump);
   const local: Attempt[] = attempts(safe);
-  const rows: Row[] = [
-    ...local.map((a) => ({ time: Math.floor(a.time / 1000), action: a.action, app: a.app, amount: a.amount, ok: a.ok, result: a.ok ? "Allowed" : `Blocked · ${a.reason}`, tx: a.tx })),
-    ...(hist?.ev.agentEvents ?? []).filter((e) => e.event === "AgentExecuted").map((e) => ({ time: 0, block: e.block, action: "Agent pays", app: `Agent ${short(String(e.args.agent))}`, amount: "–", ok: true, result: "Allowed", tx: e.tx })),
-    ...(hist?.ev.deniedAgentCalls ?? []).map((e) => ({ time: 0, block: e.block, action: "Agent pays", app: `Agent ${short(String(e.args.agent))}`, amount: "–", ok: false, result: "Blocked · over the limit", tx: e.tx })),
-    ...(hist?.ev.events ?? []).filter((e) => e.event === "Configured").map((e) => ({ time: 0, block: e.block, action: "Limits installed", app: "Fengce", amount: "–", ok: null, result: "Bound", tx: e.tx })),
-    ...(hist?.scheduled ?? []).map((s) => ({ time: s.readyAt - Number(inst?.adminDelay ?? 86_400n), action: describe(s.data), app: "Change request", amount: "–", ok: null, result: s.done ? "Done" : "Waiting 1 day", tx: s.tx })),
-  ].sort((a, b) => b.time - a.time);
-
   const pending = (hist?.scheduled ?? []).filter((s) => !s.done);
   const bound = !!inst && inst.set && inst.guardOn && inst.moduleGuardOn;
   const since = hist?.ev.events.find((e) => e.event === "Configured");
-  const blocked7d = local.filter((a) => !a.ok && a.time > Date.now() - 7 * 86_400_000).length + (hist?.ev.deniedAgentCalls.length ?? 0);
+  const weekAgo = Date.now() / 1000 - 7 * 86_400;
+  const blocked7d = act.rows ? act.rows.filter((r) => r.ok === false && (r.time ?? 0) > weekAgo).length : local.filter((a) => !a.ok && a.time > weekAgo * 1000).length;
 
   async function safeTx(label: string, to: Address, data: Hex) {
     setMsg(null);
@@ -140,49 +121,16 @@ function Wallet() {
           {metric("Quiet hours", "Soon", "next engine release", false, 1)}
           {metric("Per hour", inst?.trades ? `${inst.trades.usedThisHour} / ${inst.trades.perHour}` : "Off", inst?.trades ? `swaps this hour · resets ${new Date(inst.trades.resetsAt * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "no hourly limit", false, 2)}
           {metric("Tilt shield", "Soon", "next engine release", false, 3)}
-          {metric("Blocked · 7d", String(blocked7d), "agent refusals + this browser", blocked7d > 0, 4)}
+          {metric("Blocked · 7d", String(blocked7d), "refusals in Activity", blocked7d > 0, 4)}
         </div>
       </div>
       <section id="activity" style={{ minWidth: 0 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
-            <span className="lbl">Activity</span>
-          </div>
-          <div className="scroll-x">
-            <table className="rt stk" style={{ minWidth: 560 }}>
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>Action</th>
-                  <th>App</th>
-                  <th className="r">Amount</th>
-                  <th className="r">Result</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.length === 0 && (
-                  <tr>
-                    <td colSpan={5} className="muted">{hist ? "Nothing yet. Try a trade to see your limits work." : "Reading X Layer…"}</td>
-                  </tr>
-                )}
-                {rows.map((r, i) => (
-                  <tr key={i}>
-                    <td data-label="Time" className="mono muted" style={{ fontSize: 13 }}>{r.time ? fmtTime(r.time) : "on chain"}</td>
-                    <td data-label="Action">{r.action}</td>
-                    <td data-label="App" className="muted">{r.app}</td>
-                    <td data-label="Amount" className="r num">{r.amount}</td>
-                    <td data-label="Result" className="r mono" style={{ fontSize: 13.5, color: r.ok === null ? "var(--muted)" : r.ok ? "var(--allow)" : "var(--deny)" }}>
-                      {r.tx ? (
-                        <a href={EXPLORER_TX(r.tx)} target="_blank" rel="noreferrer noopener">{r.result}</a>
-                      ) : (
-                        r.result
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10, gap: 12, flexWrap: "wrap" }}>
+          <span className="lbl">Activity</span>
+          <span className="mono muted" style={{ fontSize: 12 }}>read from X Layer · newest first</span>
+        </div>
+        <ActivityTable rows={act.rows} err={act.err} empty="Nothing yet. Try a trade to see your limits work." />
+      </section>
       <section>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <span className="lbl">Safeguards</span>
