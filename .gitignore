@@ -25,3 +25,6 @@ sdk/dist/
 sdk/LICENSE
 .vercel
 .env*
+
+# Design handoff (local source of truth for the Okun rebuild; not published)
+design/
