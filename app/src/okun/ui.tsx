@@ -6,7 +6,7 @@ import { chooseSafe, connect, disconnect, useWallet } from "./wallet";
 import "./styles.css";
 
 // ------------------------------------------------------------------ routes (static pages, relative links: works on DeWeb)
-export type Page = "" | "start" | "limits" | "wallet" | "tilt" | "try" | "fengce";
+export type Page = "" | "start" | "limits" | "wallet" | "tilt" | "try" | "agents" | "docs" | "install" | "onboard";
 let DEPTH = 0;
 export function href(page: Page, q?: Record<string, string>, hash?: string) {
   const base = DEPTH === 0 ? "./" : "../";
@@ -27,21 +27,17 @@ export function Knot({ size = 24, stroke = 1.6, ring = "currentColor" }: { size?
     </svg>
   );
 }
-/** logo/okun-wordmark.svg: monoline "okun"; the u-n stem is the accent. Width is explicit so it never stretches. */
+/** The wordmark: "fengce" set in Space Grotesk. */
 export function Wordmark({ height = 26 }: { height?: number }) {
-  const width = Math.round((height * 53) / 24);
   return (
-    <svg width={width} height={height} viewBox="0 0 53 24" fill="none" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" role="img" aria-label={PRODUCT_NAME} style={{ display: "block", flex: "0 0 auto" }}>
-      <circle cx="8" cy="14" r="6.6" stroke="currentColor" />
-      <path d="M19 1.5 V21 M19 15.4 L26.2 7 M21.9 12.3 L26.6 21" stroke="currentColor" />
-      <path d="M28.8 7 V15 A5.6 5.6 0 0 0 40 15 V13 A5.6 5.6 0 0 1 51.2 13 V21" stroke="currentColor" />
-      <path d="M40 11.2 V16.8" stroke="var(--accent)" />
-    </svg>
+    <span aria-label={PRODUCT_NAME} style={{ fontFamily: "var(--fd)", fontSize: Math.round(height * 0.81), letterSpacing: "-0.02em", lineHeight: 1, color: "currentColor" }}>
+      fengce
+    </span>
   );
 }
 export function Lockup({ knot = 24, word = 26 }: { knot?: number; word?: number }) {
   return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 9 }}>
       <Knot size={knot} />
       <Wordmark height={word} />
     </span>
@@ -117,7 +113,7 @@ function ThemeButton() {
       onClick={() => {
         document.documentElement.setAttribute("data-theme", next);
         try {
-          localStorage.setItem("okun-theme", next);
+          localStorage.setItem("fengce-theme", next);
         } catch {
           /* storage blocked */
         }
@@ -254,8 +250,8 @@ function WalletButton() {
           {short(w.account)}
         </button>
       ) : (
-        <button type="button" className="pill accent hpill" aria-expanded={open} onClick={() => setOpen(!open)}>
-          <span className="long">Connect wallet</span>
+        <button type="button" className="pill line hpill" aria-expanded={open} onClick={() => setOpen(!open)}>
+          <span className="long">Connect</span>
           <span className="short">Connect</span>
         </button>
       )}
@@ -302,7 +298,8 @@ const NAV: { page: Page; label: string }[] = [
   { page: "limits", label: "Limits" },
   { page: "try", label: "Try" },
   { page: "tilt", label: "Tilt-shield" },
-  { page: "fengce", label: "Fengce" },
+  { page: "agents", label: "Agents" },
+  { page: "docs", label: "Docs" },
 ];
 
 function Header({ page }: { page: Page }) {
@@ -329,34 +326,28 @@ function Header({ page }: { page: Page }) {
 }
 
 function Footer() {
+  const col = (title: string, links: [string, string, boolean?][]) => (
+    <div className="foot-col">
+      <span className="lbl" style={{ marginBottom: 4 }}>{title}</span>
+      {links.map(([label, to, ext]) => (
+        <a key={label} href={to} {...(ext ? { target: "_blank", rel: "noreferrer noopener" } : {})}>{label}</a>
+      ))}
+    </div>
+  );
   return (
     <footer className="foot">
       <div className="w foot-in">
         <div className="foot-col foot-brand" style={{ gap: 12 }}>
           <Lockup knot={22} word={22} />
-          <span style={{ fontSize: 15, color: "var(--muted)" }}>Wallet limits as TapeOut circuits on X Layer.</span>
+          <span style={{ fontSize: 14.5, color: "var(--muted)", maxWidth: 300 }}>Limits your wallet keeps, even on you. Built on TapeOut circuits on X Layer.</span>
           <div className="foot-pw">
-            <a className="powered" href={href("fengce")}>
-              <span className="muted">Powered by</span> <span className="accent">Fengce</span>
-            </a>
+            <span className="mono muted" style={{ fontSize: 12 }}>{TAPE_NAME}</span>
             <ThemeButton />
           </div>
         </div>
-        <div className="foot-col">
-          <span className="lbl" style={{ marginBottom: 4 }}>Product</span>
-          <a href={href("limits")}>Limits</a>
-          <a href={href("tilt")}>Tilt-shield</a>
-        </div>
-        <div className="foot-col">
-          <span className="lbl" style={{ marginBottom: 4 }}>Fengce</span>
-          <a href={href("fengce")}>How it works</a>
-          <a href={REPO} target="_blank" rel="noreferrer noopener">GitHub</a>
-        </div>
-        <div className="foot-col">
-          <span className="lbl" style={{ marginBottom: 4 }}>Network</span>
-          <span className="v">X Layer 196</span>
-          <span className="v">{TAPE_NAME}</span>
-        </div>
+        {col("Product", [["Limits", href("limits")], ["Try", href("try")], ["Tilt-shield", href("tilt")], ["Wallet", href("wallet")]])}
+        {col("Build", [["Docs", href("docs")], ["Agents", href("agents")], ["Catalog", href("limits", { tab: "add" })], ["GitHub", REPO, true]])}
+        {col("Proof", [["Contracts", href("docs", { tab: "contracts" })], ["Circuits", href("docs", { tab: "circuits" })], ["Incidents", href("docs", { tab: "inc" })], ["For judges", href("docs", { tab: "judges" })]])}
       </div>
     </footer>
   );

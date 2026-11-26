@@ -31,7 +31,7 @@ function Tilt() {
   return (
     <main className="pg w" style={{ paddingTop: 64, paddingBottom: 110, display: "flex", flexDirection: "column", gap: 40 }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 720 }}>
-        <span className="lbl">Tilt shield</span>
+        <span className="lbl">Tilt-shield</span>
         <h1 className="disp" style={{ fontSize: 52 }}>Stops the revenge trade</h1>
         <p className="body" style={{ color: "var(--text)" }}>"Tilt" is when a bad run pushes you into faster, bigger buys to win it back.</p>
         <p className="body">The shield watches how fast and how big you buy. When it trips, your wallet only sells or pays you back until the cooldown ends.</p>
@@ -93,7 +93,7 @@ function Tilt() {
             </div>
           </div>
           <span className="small">Watch-only for the first 14 days: you see what it would have stopped before it can block. Turning it off waits 1 day.</span>
-          <button type="button" className="pill accent big" disabled title="The tilt shield ships with the next Fengce guard">Turn on tilt shield</button>
+          <button type="button" className="pill accent big" disabled title="The Tilt-shield ships with the next Fengce guard">Turn on Tilt-shield</button>
           <span className="small">Coming with the next engine release, with partners and per-agent caps.</span>
         </aside>
       </div>

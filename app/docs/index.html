@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+    <title>Docs · Fengce</title>
+    <meta name="description" content="How Fengce works: contracts, pinned circuits, incidents, comparisons, developer docs and evidence for judges." />
+    <meta property="og:title" content="Docs · Fengce" />
+    <meta property="og:description" content="How Fengce works: contracts, pinned circuits, incidents, comparisons, developer docs and evidence for judges." />
+    <script>
+      /* Theme before first paint: the saved choice, else dark. */
+      (function () {
+        try { var t = localStorage.getItem("fengce-theme") || localStorage.getItem("okun-theme"); if (t === "light") document.documentElement.setAttribute("data-theme", "light"); } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="../src/pages/docs.tsx"></script>
+  </body>
+</html>

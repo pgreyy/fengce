@@ -1,4 +1,4 @@
-// Okun on Fengce: the transactions the app asks a Safe owner to sign, built as pure functions so the same bytes are
+// Fengce limits: the transactions the app asks a Safe owner to sign, built as pure functions so the same bytes are
 // checked by the fork test (test/fork/OkunInstall.t.sol reads test/vectors/okun-install.json, written from here).
 import { concat, encodeFunctionData, encodePacked, getAddress, keccak256, padHex, parseAbi, size, type Address, type Hex } from "viem";
 import { FengceGuardArtifact, TickArtifact, schemaHash, toLayout, type SchemaFile } from "@fengce/sdk";

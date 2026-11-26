@@ -1,49 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { PRODUCT_NAME } from "../brand";
-import { CodeCard, href, mount } from "../okun/ui";
+import { getAddress, type Address, type Hex } from "viem";
+import { safeActivity, type ActivityRow } from "../okun/chainActivity";
+import { MAX_BUY_CIRCUIT, TOKENS, multiSend, swapCalls } from "../okun/engine";
+import { PinnedIncidents } from "../okun/incidents";
+import { readInstalled } from "../okun/reads";
+import { CodeCard, href, mount, short } from "../okun/ui";
 import { startVinyl } from "../okun/vinyl-hero.js";
+import { EXPLORER_TX, safeInfo, simulateSafeTx } from "../okun/wallet";
 
-/** The max-per-buy circuit as a TapeOut name: circuit . area (2 = X Layer) . processor number. */
-export const NEEDLE = "2.2.0";
-const still = () => typeof navigator !== "undefined" && (navigator.webdriver || matchMedia("(prefers-reduced-motion: reduce)").matches);
+/** The Safe of the mainnet acceptance test: its real allowed swap and a live check of an over-limit one. */
+const LIVE_SAFE = getAddress("0x5641DA334011832Feec997875781a3D40239465e") as Address;
 
-function useMedia(q: string) {
-  const [m, setM] = useState(() => typeof matchMedia !== "undefined" && matchMedia(q).matches);
-  useEffect(() => {
-    const mq = matchMedia(q);
-    const on = () => setM(mq.matches);
-    on();
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
-  }, [q]);
-  return m;
-}
-
-/** 0..1 progress of a tall section scrolled past its sticky inner area. */
-function useScrollProgress(ref: React.RefObject<HTMLElement | null>) {
-  const [p, setP] = useState(0);
-  useEffect(() => {
-    let raf = 0;
-    const on = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const el = ref.current;
-        if (!el) return;
-        const r = el.getBoundingClientRect();
-        const total = Math.max(1, r.height - innerHeight);
-        setP(Math.round(Math.max(0, Math.min(1, -r.top / total)) * 1000) / 1000);
-      });
-    };
-    on();
-    addEventListener("scroll", on, { passive: true });
-    addEventListener("resize", on);
-    return () => (removeEventListener("scroll", on), removeEventListener("resize", on), cancelAnimationFrame(raf));
-  }, [ref]);
-  return p;
-}
-
-// ------------------------------------------------------------------ hero background (vinyl)
-function Vinyl() {
+// ------------------------------------------------------------------ vinyl background (hero and closer)
+function Vinyl({ veil }: { veil: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const c = ref.current;
@@ -53,7 +22,6 @@ function Vinyl() {
       accent: () => getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#f0533f",
     };
     let stop = startVinyl(c, opts);
-    // re-layout when the theme flips (the grooves are pre-rendered in theme colours)
     const mo = new MutationObserver(() => (stop(), (stop = startVinyl(c, opts))));
     mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
     return () => (mo.disconnect(), stop());
@@ -61,438 +29,378 @@ function Vinyl() {
   return (
     <div aria-hidden="true" style={{ position: "absolute", inset: 0, zIndex: 0, overflow: "hidden", pointerEvents: "none" }}>
       <canvas ref={ref} style={{ display: "block" }} />
-      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(90deg, var(--bg) 0%, color-mix(in srgb, var(--bg) 85%, transparent) 32%, color-mix(in srgb, var(--bg) 0%, transparent) 64%)" }} />
+      <div style={{ position: "absolute", inset: 0, background: veil }} />
     </div>
   );
 }
+const mix = (pct: number) => `color-mix(in srgb, var(--bg) ${pct}%, transparent)`;
 
-// ------------------------------------------------------------------ isometric building model (prototype geometry)
-const S = 15, OX = 262, OY = 250;
-const iso = (x: number, y: number, z: number): [number, number] => [OX + (x - y) * 0.866 * S, OY + (x + y) * 0.5 * S - z * S];
-const poly = (pts: [number, number, number][]) => "M" + pts.map((q) => iso(...q).map((v) => v.toFixed(1)).join(" ")).join(" L") + " Z";
-const BLOCKS = [
-  { id: 3, x: 0, y: 0, w: 19, d: 13, z: 0, h: 0.7 }, // X Layer slab
-  { id: 0, x: 1, y: 6, w: 6.5, d: 6, z: 0.7, h: 2.8 }, // Safe, floor 1
-  { id: 0, x: 1, y: 6, w: 6.5, d: 6, z: 3.7, h: 2.8 }, // Safe, floor 2
-  { id: 1, x: 8, y: 5, w: 4, d: 4, z: 0.7, h: 3.4 }, // limits
-  { id: 1, x: 8.6, y: 5.6, w: 2.8, d: 2.8, z: 4.1, h: 1.6 },
-  { id: 2, x: 13, y: 1, w: 4.6, d: 5.4, z: 0.7, h: 4.8 }, // circuit tower
-  { id: 2, x: 13, y: 1, w: 4.6, d: 5.4, z: 5.7, h: 5.6 },
-];
-const ISO_GRID = (() => {
-  let g = "";
-  for (let k = -6; k <= 26; k += 2) {
-    const [a1, a2, b1, b2] = [iso(k, -8, 0), iso(k, 26, 0), iso(-8, k, 0), iso(26, k, 0)];
-    g += `M${a1[0].toFixed(1)} ${a1[1].toFixed(1)} L${a2[0].toFixed(1)} ${a2[1].toFixed(1)} M${b1[0].toFixed(1)} ${b1[1].toFixed(1)} L${b2[0].toFixed(1)} ${b2[1].toFixed(1)} `;
-  }
-  return g;
-})();
-const ANCHORS = [iso(4.25, 9, 6.5), iso(10, 7, 5.7), iso(15.3, 3.7, 11.3), iso(19, 0, 0.7)];
-const LABELS = ["YOUR SAFE · 2 FLOORS", "2 LIMITS", "CIRCUITS · PINNED", "X LAYER 196"];
-const TAGS = [iso(4, 14.6, 0), iso(10, 14.6, 0), iso(15.5, 14.6, 0), iso(18.5, 9, 0)];
-const INFO = [
-  ["01", "1 owner · nothing moves", "Works with Safe today,", "7579 and 6900 through Fengce"],
-  ["02", "2 limits · changes wait 1 day", "Max per buy and", "trades per clock hour"],
-  ["03", "pinned on X Layer", "Taped out on TapeOut,", "re-run by anyone"],
-  ["04", "chain 196", "Every change public,", "verified on Sourcify"],
-];
-const LY = 104;
-
-function IsoModel({ active }: { active: number }) {
-  const faces: { d: string; fill: string; stroke: string; sw: number }[] = [];
-  let hatch = "";
-  [...BLOCKS]
-    .sort((p, q) => p.x + p.y + p.z * 0.01 - (q.x + q.y + q.z * 0.01))
-    .forEach((b) => {
-      const on = b.id === active;
-      const { x, y, w, d, z, h } = b;
-      const st = on ? "var(--accent)" : "var(--text)";
-      const sw = on ? 1.3 : 1;
-      faces.push({ d: poly([[x, y + d, z], [x + w, y + d, z], [x + w, y + d, z + h], [x, y + d, z + h]]), fill: on ? "rgba(240,83,63,.06)" : "var(--panel)", stroke: st, sw });
-      faces.push({ d: poly([[x + w, y, z], [x + w, y + d, z], [x + w, y + d, z + h], [x + w, y, z + h]]), fill: on ? "rgba(240,83,63,.14)" : "var(--panel)", stroke: st, sw });
-      faces.push({ d: poly([[x, y, z + h], [x + w, y, z + h], [x + w, y + d, z + h], [x, y + d, z + h]]), fill: on ? "rgba(240,83,63,.10)" : "var(--panel)", stroke: st, sw });
-      const lines = on ? Math.max(3, Math.round(h * 2.4)) : 0;
-      for (let li = 1; li < lines; li++) {
-        const zz = z + (h * li) / lines;
-        const [p1, p2, p3] = [iso(x, y + d, zz), iso(x + w, y + d, zz), iso(x + w, y, zz)];
-        hatch += `M${p1[0].toFixed(1)} ${p1[1].toFixed(1)} L${p2[0].toFixed(1)} ${p2[1].toFixed(1)} L${p3[0].toFixed(1)} ${p3[1].toFixed(1)} `;
-      }
-      if (on && b.id === 3) {
-        for (let hx = 1; hx < 19; hx++) {
-          const [q1, q2] = [iso(hx, 13, 0), iso(hx, 13, 0.7)];
-          hatch += `M${q1[0].toFixed(1)} ${q1[1].toFixed(1)} L${q2[0].toFixed(1)} ${q2[1].toFixed(1)} `;
-        }
-      }
-    });
-  const a = ANCHORS[active];
-  const lr = a[0] > 470 ? -1 : 1; // flip the label left near the right edge
-  const lead = `M${a[0].toFixed(1)} ${a[1].toFixed(1)} V${LY} H${(a[0] + 36 * lr).toFixed(1)}`;
-  const info = INFO[active];
+// ------------------------------------------------------------------ hero
+function Hero() {
   return (
-    <div style={{ position: "relative", width: "100%", maxWidth: 600, aspectRatio: "0.86", maxHeight: "calc(100vh - var(--headH) - 48px)" }}>
-      <svg viewBox="0 0 600 700" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style={{ position: "absolute", inset: 0 }} role="img" aria-label="Isometric model of your Safe, limits, circuit and X Layer, with the current layer highlighted">
-        <path d={ISO_GRID} stroke="var(--line)" strokeWidth="1" fill="none" opacity=".9" />
-        {faces.map((f, k) => (
-          <path key={k} d={f.d} fill={f.fill} stroke={f.stroke} strokeWidth={f.sw} style={{ transition: "fill .5s, stroke .5s" }} />
-        ))}
-        <path d={hatch} stroke="var(--accent)" strokeWidth=".8" fill="none" opacity=".85" />
-        <path d={lead} stroke="var(--text)" strokeWidth="1" fill="none" opacity=".8" />
-        <circle cx={a[0]} cy={a[1]} r="3" fill="var(--accent)" />
-      </svg>
-      <span style={{ position: "absolute", ...(lr > 0 ? { left: `${((a[0] + 44) / 6).toFixed(2)}%` } : { right: `${((600 - a[0] + 44) / 6).toFixed(2)}%` }), top: `${((LY - 9) / 7).toFixed(2)}%`, fontSize: 13.75, fontWeight: 500, letterSpacing: ".04em", whiteSpace: "nowrap", transition: "left .5s, top .5s" }}>
-        {LABELS[active]}
-      </span>
-      {TAGS.map((t, i) => {
-        const on = i === active;
-        return (
-          <span key={i} className="mono" style={{ position: "absolute", left: `calc(${(t[0] / 6).toFixed(2)}% - 12px)`, top: `${((t[1] - 4) / 7).toFixed(2)}%`, width: 24, height: 24, borderRadius: 6, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13.75, background: on ? "var(--accent)" : "var(--panel)", border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`, color: on ? "#fff" : "var(--muted)" }}>
-            {i + 1}
-          </span>
-        );
-      })}
-      <div style={{ position: "absolute", left: 26, bottom: 24, display: "flex", flexDirection: "column", gap: 2, pointerEvents: "none" }}>
-        <span style={{ fontSize: 16 }}>Layer</span>
-        <span className="num" style={{ fontWeight: 300, fontSize: 77, lineHeight: 1 }}>{info[0]}</span>
-        <span className="small" style={{ marginTop: 10 }}>{info[1]}</span>
-      </div>
-      <div style={{ position: "absolute", right: 26, bottom: 24, display: "flex", flexDirection: "column", alignItems: "flex-end", pointerEvents: "none" }}>
-        <span className="small">{info[2]}</span>
-        <span className="small">{info[3]}</span>
+    <div className="hero">
+      <Vinyl veil={`linear-gradient(90deg, ${mix(94)} 0%, ${mix(70)} 42%, ${mix(0)} 70%)`} />
+      <div className="w hero-in">
+        <span className="lbl">On-chain limits for Safe and agent wallets · X Layer</span>
+        <h1 className="hero-h1">
+          Limits your wallet keeps, <em>even on you.</em>
+        </h1>
+        <p className="hero-sub">Set a max per buy and trades per hour once. Your Safe refuses anything outside them, in every app and for every agent, because the check lives in the wallet, not in an app.</p>
+        <div className="hero-cta">
+          <a className="pill accent big" href={href("start")}>Set my limits</a>
+          <a className="pill line big" href={href("try")}>Test a limit</a>
+        </div>
+        <div className="works">
+          <span>Works inside</span>
+          <b>Safe{"{Wallet}"}</b>
+          <span aria-hidden="true">·</span>
+          <b>OKX Agentic Wallet</b>
+          <span aria-hidden="true">·</span>
+          <b>any app that routes through your Safe</b>
+        </div>
       </div>
     </div>
   );
 }
 
-const STEPS = [
-  { kicker: "Your wallet", title: "Keep it", body: "The Safe you already use. Nothing moves, and your keys stay yours.", cta: null },
-  { kicker: "Your limits", title: "Choose", body: "Max per buy and trades per hour today. Quiet hours and hold locks next. Your numbers.", cta: "Set my limits" },
-  { kicker: "The circuit", title: "Enforce", body: "Each limit is a TapeOut circuit, pinned on X Layer. The wallet obeys its answer.", cta: "See the circuit" },
-  { kicker: "X Layer", title: "Prove", body: "Every block and every change is public. Loosening waits 1 day.", cta: "How Fengce works" },
-];
-
-const STEP_HREF = [null, href("start"), href("fengce", { tab: "judges" }), href("fengce")];
-
-/** Under 1024px: a plain vertical stepper with the layered stack as a small static diagram above it. */
-function StepsMobile() {
-  return (
-    <section className="w" style={{ borderTop: "1px solid var(--line)", paddingTop: 48, paddingBottom: 48, display: "flex", flexDirection: "column", gap: 28 }}>
-      <div style={{ display: "flex", justifyContent: "center" }}>
-        <Stack scale={0.66} />
-      </div>
-      <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column" }}>
-        {STEPS.map((s, i) => (
-          <li key={s.kicker} style={{ display: "grid", gridTemplateColumns: "36px minmax(0, 1fr)", gap: 12, padding: "20px 0", borderTop: "1px solid var(--line)" }}>
-            <span className="num" style={{ fontSize: 20, color: "var(--accent)" }}>{String(i + 1).padStart(2, "0")}</span>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <span className="lbl">{s.kicker}</span>
-              <span className="disp" style={{ fontSize: 26 }}>{s.title}</span>
-              <span className="body" style={{ fontSize: 16 }}>{s.body}</span>
-              {s.cta && STEP_HREF[i] && <a className="alink" href={STEP_HREF[i]!} style={{ alignSelf: "flex-start", marginTop: 4 }}>{s.cta}</a>}
-            </div>
-          </li>
-        ))}
-      </ol>
-    </section>
-  );
+// ------------------------------------------------------------------ live strip (real data from the acceptance Safe)
+interface Live {
+  allowed: ActivityRow | null;
+  stopped: { amount: string; reason: string; tx: Hex | null } | null;
+  cap: number | null;
+}
+function useLive(): Live | null {
+  const [v, setV] = useState<Live | null>(null);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const [rows, inst, info] = await Promise.all([
+        safeActivity(LIVE_SAFE, 10, false).catch(() => [] as ActivityRow[]),
+        readInstalled(LIVE_SAFE).catch(() => null),
+        safeInfo(LIVE_SAFE).catch(() => null),
+      ]);
+      const cap = inst?.maxPerBuy != null ? Number(inst.maxPerBuy) / 1e6 : null;
+      const allowed = rows.find((r) => r.ok === true && r.type.startsWith("Swap")) ?? null;
+      const onChain = rows.find((r) => r.ok === false && r.type.startsWith("Swap"));
+      let stopped: Live["stopped"] = onChain ? { amount: onChain.amount, reason: onChain.reason, tx: onChain.tx } : null;
+      if (!stopped && cap !== null && info) {
+        // no over-limit swap is recorded on chain for this Safe: run one against the live guard (eth_call, not sent)
+        const amt = BigInt(Math.round((cap + 1) * 1e6));
+        const sim = await simulateSafeTx(info.owners[0], LIVE_SAFE, multiSend(swapCalls(LIVE_SAFE, TOKENS.USDT0.address, TOKENS.WOKB.address, amt, 0n, 500)));
+        stopped = sim.ok ? null : { amount: `${cap + 1} USDT0`, reason: sim.reason.text, tx: null };
+      }
+      if (alive) setV({ allowed, stopped, cap });
+    })().catch(() => alive && setV({ allowed: null, stopped: null, cap: null }));
+    return () => void (alive = false);
+  }, []);
+  return v;
 }
 
-function Steps() {
-  const small = useMedia("(max-width: 1023px)");
-  return small ? <StepsMobile /> : <StepsSticky />;
-}
-
-function StepsSticky() {
-  const ref = useRef<HTMLElement>(null);
-  const p = useScrollProgress(ref);
-  const active = Math.min(3, Math.floor(p * 4));
-  const ctaHref = STEP_HREF[active];
+function LiveStrip() {
+  const v = useLive();
+  const wait = <span className="muted">reading X Layer…</span>;
   return (
-    <section ref={ref} className="steps-sec" style={{ borderTop: "1px solid var(--line)", height: "340vh", position: "relative" }}>
-      <div className="steps-in" style={{ position: "sticky", top: "var(--headH)", height: "calc(100vh - var(--headH))", maxWidth: 1340, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-        <div style={{ padding: "0 48px", display: "flex", flexDirection: "column", justifyContent: "center", borderRight: "1px solid var(--line)" }}>
-          <div style={{ position: "relative" }}>
-            <div aria-hidden="true" style={{ position: "absolute", left: 0, top: 22, bottom: 22, width: 1, background: "var(--line)" }}>
-              <div style={{ width: 1, height: `${Math.min(100, p * 100)}%`, background: "var(--accent)" }} />
-            </div>
-            {STEPS.map((s, i) => {
-              const on = i === active;
-              return (
-                <button
-                  key={s.kicker}
-                  type="button"
-                  onClick={() => {
-                    const el = ref.current;
-                    if (!el) return;
-                    const r = el.getBoundingClientRect();
-                    scrollTo({ top: scrollY + r.top + ((i + 0.5) / 4) * Math.max(1, r.height - innerHeight), behavior: "smooth" });
-                  }}
-                  style={{ position: "relative", display: "flex", flexDirection: "column", gap: 10, textAlign: "left", background: "none", border: 0, padding: "18px 0 18px 26px", width: "100%" }}
-                >
-                  <span style={{ position: "absolute", left: -4, top: 23, width: 9, height: 9, borderRadius: 999, background: on ? "var(--accent)" : "var(--bg)", border: `1px solid ${on ? "var(--accent)" : "var(--line)"}` }} />
-                  <span className="lbl" style={{ color: on ? "var(--text)" : "var(--muted)" }}>{String(i + 1).padStart(2, "0")} &nbsp;{s.kicker}</span>
-                  {on && (
+    <section className="sec">
+      <div className="w">
+        <span className="lbl">Live on X Layer mainnet</span>
+        <h2 className="h2">One allowed. One stopped. Same Safe, same limits.</h2>
+        <div className="receipt">
+          <div>
+            <span className="lbl">{v?.allowed ? `Swap ${v.allowed.amount}` : "Swap within the cap"}</span>
+            <div className="v"><span className="tag g">ALLOWED</span></div>
+            <span className="small mono">
+              {!v ? wait : v.allowed?.tx ? <a href={EXPLORER_TX(v.allowed.tx)} target="_blank" rel="noreferrer noopener" style={{ textDecoration: "underline" }}>tx {short(v.allowed.tx)}</a> : "no swap found"}
+            </span>
+          </div>
+          <div>
+            <span className="lbl">{v?.stopped ? `Swap ${v.stopped.amount} → OKB` : "Swap over the cap"}</span>
+            <div className="v"><span className="tag r">REFUSED</span></div>
+            <span className="small">
+              {!v ? (
+                wait
+              ) : v.stopped ? (
+                <>
+                  {v.stopped.reason}
+                  {v.stopped.tx ? (
                     <>
-                      <span className="disp" style={{ fontSize: 34 }}>{s.title}</span>
-                      <span className="body" style={{ maxWidth: 340 }}>{s.body}</span>
+                      {" · "}
+                      <a className="mono" href={EXPLORER_TX(v.stopped.tx)} target="_blank" rel="noreferrer noopener" style={{ textDecoration: "underline" }}>tx {short(v.stopped.tx)}</a>
                     </>
+                  ) : (
+                    " · checked against the guard just now (eth_call, not sent)"
                   )}
-                </button>
-              );
-            })}
+                </>
+              ) : (
+                "could not run the check just now"
+              )}
+            </span>
           </div>
-          <div style={{ paddingLeft: 26, marginTop: 18, minHeight: 34 }}>
-            {STEPS[active].cta && ctaHref && <a className="pill accent" href={ctaHref}>{STEPS[active].cta}</a>}
+          <div>
+            <span className="lbl">Checked by</span>
+            <div className="v num">FengceGuard</div>
+            <span className="small">on Safe {short(LIVE_SAFE)}{v?.cap != null ? ` · max per buy ${v.cap} USDT0` : ""}</span>
           </div>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <IsoModel active={active} />
+          <div>
+            <span className="lbl">Rule ran on</span>
+            <div className="v num">TapeOut circuit #{String(MAX_BUY_CIRCUIT.id)}</div>
+            <span className="small">pinned code, readable on chain</span>
+          </div>
         </div>
       </div>
     </section>
   );
 }
 
-// ------------------------------------------------------------------ who it helps
-const USES = [
-  {
-    title: "Traders",
-    body: "Cap your buys and limit trades per hour on your own wallet.",
-    f: ["Follows your wallet across supported apps and transaction paths", "Raising a limit waits 1 day", "Optional partner approval, coming soon"],
-    go: href("limits"),
-    card: { h1: "YOUR SAFE", h2: "0x0BB9…0707", tag: "LIMITS ACTIVE", k0: "Max per buy", big: "50 USDT0", a1: "Per hour", b1: "5", a2: "Changes", b2: "wait 1 day", rows: [["Buy", "Uniswap", "+45.00", true], ["Buy", "Uniswap", "BLOCKED", false], ["Approve", "over cap", "BLOCKED", false], ["Buy", "Uniswap", "+12.50", true]] as [string, string, string, boolean][] },
-    apiTitle: "limits",
-    api: '{\n  "safe": "0x0bb9…0707",\n  "maxPerBuy": "50 USDT0",\n  "tradesPerHour": 5,\n  "changeDelay": "1 day"\n}',
-  },
-  {
-    title: "AI agents",
-    body: "Give your agent a wallet it can't overspend, even if it's tricked or buggy. The agent signs; the wallet decides.",
-    f: ["Per-agent caps, next engine release", "Agents check before signing (MCP, SDK)", "An agent can never loosen its own limits"],
-    go: href("fengce", { tab: "agents" }),
-    card: { h1: "AGENT", h2: "AGENTEXECUTOR", tag: "BOUND", k0: "Limit", big: "1 USDT0", a1: "Checks", b1: "every call", a2: "Loosen", b2: "owners only", rows: [["Pay", "0.5 USDT0", "ALLOWED", true], ["Pay", "1.5 USDT0", "DENIED", false]] as [string, string, string, boolean][] },
-    apiTitle: "mcp",
-    api: '{\n  "tool": "preflight_transaction",\n  "enforced": true,\n  "decision": "deny",\n  "reason": "FengceDenied(…)"\n}',
-  },
-  {
-    title: "Shared wallets",
-    body: "Teams, couples and clubs on one Safe. Every owner keeps the same limits, and loosening needs the Safe's own approvals plus a public wait.",
-    f: ["Works with your existing Safe threshold", "Loosening waits 1 day, visible to every owner", "Every scheduled change is an on-chain event"],
-    go: href("wallet"),
-    card: { h1: "TEAM SAFE", h2: "2 OF 3 OWNERS", tag: "LIMITS ACTIVE", k0: "Max per payment", big: "2,000 USDT0", a1: "Owners", b1: "3", a2: "Pending", b2: "1", rows: [["Pay", "payroll", "-1,200.00", true], ["Pay", "over cap", "BLOCKED", false], ["Raise cap", "scheduled", "23:59 left", true]] as [string, string, string, boolean][] },
-    apiTitle: "change",
-    api: '{\n  "change": "raise max per buy to 5,000",\n  "approvals": "Safe threshold",\n  "liveAt": "+1 day"\n}',
-  },
-  {
-    title: "Apps and wallets",
-    body: "Offer your users a safe mode without building one. Check a wallet's limits from your contract, or show them before your user signs.",
-    f: ["SDK on npm (@fengce/sdk)", "isBound from any contract", "Roadmap: native wallet integrations"],
-    go: href("fengce", { tab: "devs" }),
-    card: { h1: "ISBOUND", h2: "0x0BB9…0707", tag: "TRUE", k0: "Rule", big: "pinned", a1: "Notice", b1: "1 day", a2: "Guard", b2: "FengceGuard", rows: [["DEX", "check", "TRUE", true], ["Lender", "check", "TRUE", true], ["Agent platform", "check", "TRUE", true]] as [string, string, string, boolean][] },
-    apiTitle: "solidity",
-    api: 'require(\n  binding.isBound(user, POLICY, 1 days),\n  "wallet not bound"\n);',
-  },
+// ------------------------------------------------------------------ wallets
+function Wallets() {
+  return (
+    <section className="sec" id="wallets">
+      <div className="w">
+        <span className="lbl">Bring your own wallet</span>
+        <h2 className="h2">Nothing new to download.</h2>
+        <div className="grid2" style={{ marginTop: 34 }}>
+          <a className="card2" href={href("install")}>
+            <span className="lbl">For people and teams</span>
+            <span className="card2-t">Safe{"{Wallet}"}</span>
+            <span className="body" style={{ fontSize: 16 }}>Install the guard from the Safe app in one batch. From then on every swap and send from that Safe is checked, whichever app sent it.</span>
+            <span className="mono small">app.safe.global → Transaction Builder → load fengce-install.json → sign</span>
+          </a>
+          <a className="card2" href={href("agents")}>
+            <span className="lbl">For AI agents</span>
+            <span className="card2-t">OKX Agentic Wallet</span>
+            <span className="body" style={{ fontSize: 16 }}>Your agent keeps its own key but acts through a Fengce-bound Safe. If it is tricked into overspending, the chain says no and returns a reason code the agent can read.</span>
+            <span className="mono small">onchainos wallet contract-call → AgentExecutor → Safe → guard</span>
+          </a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ------------------------------------------------------------------ eight rules
+const RULES: { name: string; short: string; status: "LIVE" | "GUARD V3" | "CATALOG"; long: string; example: string; to: string }[] = [
+  { name: "Max per buy", short: "Any single swap or send above it is refused.", status: "LIVE", long: "You set 30 USDT0. A 31 USDT0 swap from any app is refused with MAX_PER_BUY before it moves a cent.", example: "30 USDT0", to: href("limits", { rule: "cap" }) },
+  { name: "Trades per hour", short: "Counts swaps each UTC clock hour.", status: "LIVE", long: "Set 5 per hour. The 6th swap in the same clock hour is refused; the counter resets on the hour. Sends don't count.", example: "5 / hour", to: href("limits", { rule: "rate" }) },
+  { name: "Quiet hours", short: "No trading in the hours you choose.", status: "GUARD V3", long: "Pick a window like 01:00 to 07:00 UTC. Swaps inside it are refused with QUIET_HOURS. Sends still work.", example: "01:00 to 07:00", to: href("limits", { rule: "quiet" }) },
+  { name: "Hold lock", short: "No selling a token within N hours of buying it.", status: "GUARD V3", long: "Buy a token and it can't be sold for the hours you set. Stops panic-selling the dip you just bought.", example: "24 hours", to: href("limits", { rule: "hold" }) },
+  { name: "Tilt-shield", short: "4 buys in 30 minutes, or one buy 3× your usual, pauses buying.", status: "GUARD V3", long: "When the pattern trips, buying pauses for your cooldown. Sells and sends still go through.", example: "Pause 6 hours", to: href("tilt") },
+  { name: "Agent cap", short: "A separate budget per agent key, with reason codes.", status: "GUARD V3", long: "Each agent key gets its own daily budget. Over it, the agent gets AGENT_CAP back and can tell you why.", example: "50 USDT0 / day", to: href("agents") },
+  { name: "Partner approval", short: "Optional. A partner can speed up loosening; silence falls back after 7 days.", status: "GUARD V3", long: "Name a friend. They can approve a looser limit early. If they never answer, it unlocks after 7 days anyway.", example: "Optional", to: href("limits", { rule: "partner" }) },
+  { name: "Add a circuit", short: "Install a rule from the catalog, or build your own.", status: "CATALOG", long: "Pick a pinned TapeOut circuit from the Fengce catalog, or build one. Designers earn 80% of install fees.", example: "Catalog", to: href("limits", { tab: "add" }) },
 ];
 
-function WhoItHelps() {
-  const [idx, setIdx] = useState(0);
-  const [api, setApi] = useState(false);
-  const u = USES[idx];
+function Rules() {
+  const [on, setOn] = useState(0);
+  const r = RULES[on];
   return (
-    <section style={{ borderTop: "1px solid var(--line)" }}>
-      <div className="who" style={{ maxWidth: 1340, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
-        <div style={{ padding: "64px 40px", borderRight: "1px solid var(--line)", display: "flex", flexDirection: "column" }}>
-          <h2 className="disp" style={{ fontSize: 42, marginBottom: 14 }}>Who it helps</h2>
-          <p className="body" style={{ marginBottom: 22 }}>
-            {PRODUCT_NAME} puts your limits inside your smart wallet. Every transaction is checked against them before money moves, whichever app or agent sends it.
+    <section className="sec">
+      <div className="w">
+        <span className="lbl">What you can set</span>
+        <h2 className="h2">Eight rules. Tighten instantly, loosen slowly.</h2>
+        <div className="g4" role="tablist" aria-label="Rules">
+          {RULES.map((x, i) => (
+            <button key={x.name} type="button" role="tab" aria-selected={i === on} className={`rule-btn${i === on ? " on" : ""}`} onClick={() => setOn(i)}>
+              <span className="rule-t">{x.name}</span>
+              <span className="rule-d">{x.short}</span>
+              <span className="rule-s" style={x.status === "LIVE" ? { color: "var(--allow)" } : undefined}>{x.status}</span>
+            </button>
+          ))}
+        </div>
+        <div className="rdet" role="tabpanel">
+          <div>
+            <span className="lbl">
+              {r.name} · {r.status}
+            </span>
+            <p style={{ fontSize: 16, lineHeight: 1.55, margin: "10px 0 0" }}>{r.long}</p>
+          </div>
+          <div>
+            <span className="lbl">Example setting</span>
+            <div className="num" style={{ fontSize: 24, marginTop: 8 }}>{r.example}</div>
+          </div>
+          <a className="pill accent big" href={r.to}>Set this</a>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ------------------------------------------------------------------ layer stack
+function Holds() {
+  const plates: [string, string, boolean?][] = [
+    ["You · apps · agents", "ASK"],
+    ["Your Safe", "HOLDS FUNDS"],
+    ["Fengce guard", "DECIDES", true],
+    ["TapeOut circuits (pinned)", "RULE LOGIC"],
+    ["X Layer", "ENFORCES"],
+  ];
+  return (
+    <section className="sec">
+      <div className="w stack2">
+        <div>
+          <span className="lbl">How it holds</span>
+          <h2 className="h2">The rule sits below every app.</h2>
+          <p className="body" style={{ marginTop: 18, maxWidth: 480 }}>
+            Apps and agents only ask. Your Safe sends every transaction through the guard, the guard asks a pinned TapeOut circuit, and X Layer keeps the answer. Removing the guard takes 2 days, so a stolen session or a bad moment can't switch it off.
           </p>
-          {USES.map((x, i) => (
-            <div key={x.title} style={{ borderTop: "1px solid var(--line)", padding: "16px 0" }}>
-              <button type="button" onClick={() => setIdx(i)} aria-expanded={i === idx} style={{ background: "none", border: 0, padding: 0, textAlign: "left", width: "100%", fontFamily: "var(--fd)", fontSize: 23, letterSpacing: "-0.01em", color: i === idx ? "var(--text)" : "var(--muted)" }}>
-                {x.title}
-              </button>
-              {i === idx && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 10 }}>
-                  <p className="body">{x.body}</p>
-                  {x.f.map((f) => (
-                    <span key={f} style={{ fontSize: 15.5, display: "flex", gap: 8, alignItems: "center" }}>
-                      <span className="chk">✓</span>
-                      {f}
-                    </span>
-                  ))}
-                  <a className="pill line" href={x.go} style={{ alignSelf: "flex-start", marginTop: 6 }}>Learn more</a>
-                </div>
-              )}
+          <div style={{ display: "flex", gap: 30, marginTop: 26, flexWrap: "wrap" }}>
+            {[
+              ["0s", "to tighten · guard v3"],
+              ["1 day", "to loosen"],
+              ["2 days", "to remove"],
+            ].map(([a, b]) => (
+              <div key={b}>
+                <div className="num" style={{ fontSize: 28 }}>{a}</div>
+                <div className="lbl">{b}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="plates">
+          {plates.map(([a, n, hl]) => (
+            <div key={a} className={`plate${hl ? " hl" : ""}`}>
+              <span>{a}</span>
+              <span className="lbl" style={hl ? { color: "var(--accent)" } : undefined}>{n}</span>
             </div>
           ))}
         </div>
-        <div style={{ padding: "48px 32px", display: "flex", alignItems: "center", justifyContent: "center", minHeight: 560 }}>
-          <div style={{ width: "100%", maxWidth: 340, display: "flex", flexDirection: "column", alignItems: "center", gap: 18 }}>
-            {!api ? (
-              <div className="card" style={{ width: "100%", padding: 16, display: "flex", flexDirection: "column", gap: 10, boxShadow: "0 30px 60px -25px rgba(0,0,0,.6)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-                  <div className="mono" style={{ fontSize: 13, lineHeight: 1.4 }}>
-                    <div>{u.card.h1}</div>
-                    <div className="muted">{u.card.h2}</div>
-                  </div>
-                  <span className="mono allow" style={{ fontSize: 12.5, textAlign: "right" }}>{u.card.tag}</span>
-                </div>
-                <span className="small">{u.card.k0}</span>
-                <span className="num" style={{ fontSize: 34, textAlign: "right" }}>{u.card.big}</span>
-                <div className="card-kv" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderTop: "1px solid var(--line)" }}>
-                  <div style={{ padding: "10px 0", display: "flex", justifyContent: "space-between", fontSize: 14, borderBottom: "1px solid var(--line)" }}><span className="muted">{u.card.a1}</span><span className="mono">{u.card.b1}</span></div>
-                  <div style={{ padding: "10px 0 10px 10px", display: "flex", justifyContent: "space-between", fontSize: 14, borderBottom: "1px solid var(--line)" }}><span className="muted">{u.card.a2}</span><span className="mono">{u.card.b2}</span></div>
-                </div>
-                <span className="small">Example activity</span>
-                {u.card.rows.map(([a, b, c, ok], i) => (
-                  <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: 14 }}>
-                    <span>{a} <span className="muted">{b}</span></span>
-                    <span className="mono" style={{ color: ok ? (c.startsWith("+") || c === "ALLOWED" || c === "TRUE" ? "var(--allow)" : "var(--text)") : "var(--deny)" }}>{c}</span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ width: "100%" }}>
-                <CodeCard title={u.apiTitle} code={u.api} />
-              </div>
-            )}
-            <button type="button" className="ui-api" onClick={() => setApi(!api)} aria-label="Switch between UI and API view" style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 10px", borderRadius: 999, border: "1px solid var(--line)", background: "var(--surface)" }}>
-              <span className="mono" style={{ fontSize: 11.5, letterSpacing: ".08em" }}>UI</span>
-              <span style={{ width: 28, height: 14, borderRadius: 999, background: "var(--raised)", border: "1px solid var(--line)", position: "relative", display: "inline-block" }}>
-                <span style={{ position: "absolute", top: 1, left: api ? 15 : 1, width: 10, height: 10, borderRadius: 999, background: "var(--accent)", transition: "left .2s" }} />
-              </span>
-              <span className="mono" style={{ fontSize: 11.5, letterSpacing: ".08em" }}>API</span>
-            </button>
-          </div>
-        </div>
       </div>
     </section>
   );
 }
 
-// ------------------------------------------------------------------ what you can set: scatter to grid
-const CARDS: [string, string, string, string, boolean][] = [
-  ["01 · Max per buy", "50 USDT0", "No single buy over your number", href("limits"), false],
-  ["02 · Quiet hours", "01–06", "No trades in the hours you pick · soon", href("limits"), true],
-  ["03 · Trades per hour", "5", "Slows a losing streak", href("limits"), false],
-  ["04 · Hold lock", "30 days", "A token can't leave early · soon", href("limits"), true],
-  ["05 · Tilt shield", "Armed", "Sells-only after 4 buys in 30 min · soon", href("tilt"), true],
-  ["06 · Agent cap", "100 / day", "Your bot can't overspend · soon", href("fengce", { tab: "agents" }), false],
-  ["07 · Partner", "Optional", "Someone you trust co-approves · soon", href("wallet"), true],
-  ["08 · Pinned", NEEDLE, "The exact circuit, locked to your wallet", href("fengce", { tab: "judges" }), false],
-];
-const SCAT: [number, number, number][] = [[1, 6, -9], [76, 3, 7], [5, 63, 6], [79, 60, -6], [27, 76, -4], [52, 72, 8], [-3, 33, -12], [83, 31, 10]];
-
-function Scatter() {
-  const ref = useRef<HTMLElement>(null);
-  const p = useScrollProgress(ref);
-  let e = Math.max(0, Math.min(1, (p - 0.12) / 0.6));
-  e = e < 0.5 ? 2 * e * e : 1 - (-2 * e + 2) ** 2 / 2;
-  if (still()) e = 1;
-  const lerp = (a: number, b: number) => a + (b - a) * e;
-  return (
-    <section ref={ref} className="scatter" style={{ borderTop: "1px solid var(--line)", height: "260vh", position: "relative" }}>
-      <div style={{ position: "sticky", top: "var(--headH)", height: "calc(100vh - var(--headH))", overflow: "hidden" }}>
-        <div style={{ position: "relative", maxWidth: 1240, height: "100%", margin: "0 auto" }}>
-          <div style={{ position: "absolute", left: "50%", width: 640, maxWidth: "90%", transform: "translateX(-50%)", top: `${lerp(38, 6)}%`, textAlign: "center", display: "flex", flexDirection: "column", gap: 14, alignItems: "center", zIndex: e < 0.5 ? 2 : 0 }}>
-            <h2 className="disp" style={{ fontSize: 46 }}>What you can set</h2>
-            <p className="body">Pick a limit, set your number, sign once. Your wallet keeps it across supported apps.</p>
-          </div>
-          {CARDS.map(([tag, val, desc, go, cream], i) => {
-            const col = i % 4, row = Math.floor(i / 4);
-            const [sx, sy, sr] = SCAT[i];
-            return (
-              <a
-                key={tag}
-                href={go}
-                className="gcard"
-                style={{ position: "absolute", left: `${lerp(sx, col * 25.6).toFixed(2)}%`, top: `${lerp(sy, 36 + row * 31).toFixed(2)}%`, width: "23.4%", height: "27%", transform: `rotate(${lerp(sr, 0).toFixed(2)}deg) scale(${lerp(0.9, 1).toFixed(3)})`, display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 8, padding: "18px 20px", borderRadius: 12, boxShadow: "0 18px 40px -18px rgba(0,0,0,.55)", border: `1px solid ${cream ? "transparent" : "var(--line)"}`, background: cream ? "var(--cream)" : "var(--surface)", color: cream ? "#141414" : "var(--text)" }}
-              >
-                <span className="lbl" style={cream ? { color: "rgba(20,20,20,.55)" } : undefined}>{tag}</span>
-                <span className="num" style={{ fontSize: 32 }}>{val}</span>
-                <span style={{ fontSize: 14.5, lineHeight: 1.4, color: cream ? "rgba(20,20,20,.62)" : "var(--muted)" }}>{desc}</span>
-              </a>
-            );
-          })}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// ------------------------------------------------------------------ powered by Fengce
-function Stack({ scale = 1 }: { scale?: number }) {
-  const plates = [
-    { label: "You · apps · agents", sub: "send the transaction", style: "dash" },
-    { label: PRODUCT_NAME, sub: "your limits", style: "raised" },
-    { label: "Fengce", sub: "pin · check · timelock", style: "accent" },
-    { label: "TapeOut", sub: "circuits", style: "plain" },
-    { label: "X Layer", sub: "chain 196", style: "plain" },
+// ------------------------------------------------------------------ compared
+function Compared() {
+  const rows: [string, string, string, string][] = [
+    ["Holds if you use another app", "no", "yes", "yes"],
+    ["Holds if the service is bypassed", "no", "yes", "yes"],
+    ["Trades per hour", "varies", "no", "yes"],
+    ["Quiet hours, hold lock, Tilt-shield", "varies", "no", "guard v3"],
+    ["Per-agent caps with reason codes", "varies", "no", "guard v3"],
+    ["Loosening is delayed", "no", "no", "1 day"],
+    ["Rule code pinned and readable on chain", "no", "yes", "yes"],
   ];
-  const plate = (y: number) => `M140 ${y} L250 ${y + 32} L140 ${y + 64} L30 ${y + 32} Z`;
+  const cls = (v: string) => (v === "yes" || v === "1 day" ? "allow" : "muted");
   return (
-    <div style={{ width: 440 * scale, height: 360 * scale, marginTop: scale === 1 ? 18 : 0, flex: "0 0 auto" }}>
-    <div className="stack" style={{ position: "relative", width: 440, height: 360, transform: scale === 1 ? undefined : `scale(${scale})`, transformOrigin: "0 0" }}>
-      <svg viewBox="0 0 280 360" width="280" height="360" style={{ position: "absolute", left: 0, top: 0 }} aria-hidden="true">
-        <defs>
-          <pattern id="pbh" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
-            <line x1="0" y1="0" x2="0" y2="6" stroke="var(--accent)" strokeWidth="1" opacity=".55" />
-          </pattern>
-        </defs>
-        {[...plates].reverse().map((pl, ri) => {
-          const i = plates.length - 1 - ri;
-          const y = 8 + i * 66;
-          return (
-            <g key={pl.label}>
-              <path
-                d={plate(y)}
-                fill={pl.style === "accent" ? "url(#pbh)" : pl.style === "raised" ? "var(--raised)" : pl.style === "dash" ? "transparent" : "var(--panel)"}
-                stroke={pl.style === "accent" ? "var(--accent)" : "var(--muted)"}
-                strokeWidth="1"
-                strokeDasharray={pl.style === "dash" ? "4 4" : undefined}
-              />
-              {pl.style === "dash" && [100, 140, 180].map((x, k) => <circle key={x} cx={x} cy={y + 32} r="4" fill={k === 1 ? "var(--accent)" : "var(--muted)"} />)}
-            </g>
-          );
-        })}
-      </svg>
-      {plates.map((pl, i) => (
-        <div key={pl.label} className="stack-lab" style={{ position: "absolute", left: 264, top: 8 + i * 66 + 32 - 20, height: 40, display: "flex", flexDirection: "column", justifyContent: "center", gap: 2, whiteSpace: "nowrap" }}>
-          <span style={{ fontSize: 16, lineHeight: 1.2, color: pl.style === "accent" ? "var(--accent)" : "var(--text)" }}>{pl.label}</span>
-          <span className="small" style={{ lineHeight: 1.2 }}>{pl.sub}</span>
+    <section className="sec">
+      <div className="w">
+        <span className="lbl">Compared</span>
+        <h2 className="h2">Limits in an app vs limits in the wallet.</h2>
+        <div className="scroll-x" style={{ marginTop: 30 }}>
+          <table className="rt stk cmp">
+            <thead>
+              <tr>
+                <th />
+                <th>App or wallet-service limits</th>
+                <th>Safe allowance module</th>
+                <th style={{ color: "var(--accent)" }}>Fengce</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(([k, a, b, f]) => (
+                <tr key={k}>
+                  <td className="rowhead">{k}</td>
+                  <td data-label="App limits" className={`mono ${cls(a)}`}>{a}</td>
+                  <td data-label="Allowance module" className={`mono ${cls(b)}`}>{b}</td>
+                  <td data-label="Fengce" className={`mono f ${cls(f)}`}>{f}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <a className="alink" href={href("docs", { tab: "cmp" })} style={{ display: "inline-block", marginTop: 18 }}>Full comparison</a>
+      </div>
+    </section>
+  );
+}
+
+// ------------------------------------------------------------------ developers
+function Developers() {
+  return (
+    <section className="sec" id="dev">
+      <div className="w grid2">
+        <div>
+          <span className="lbl">For developers and agents</span>
+          <h2 className="h2">Check a trade before you send it.</h2>
+          <p className="body" style={{ maxWidth: 460, marginTop: 16 }}>One call tells your app or agent whether a Safe will allow a transaction, and why not. Install the agent skill, or use the SDK.</p>
+          <div style={{ display: "flex", gap: 12, marginTop: 22, flexWrap: "wrap" }}>
+            <a className="pill line big" href={href("docs", { tab: "devs" })}>Docs</a>
+            <a className="pill line big" href="https://github.com/pgreyy/fengce" target="_blank" rel="noreferrer noopener">GitHub</a>
+          </div>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
+          <CodeCard title="agent skill" code={"npx skills add pgreyy/fengce --skill fengce"} />
+          <CodeCard title="sdk" code={'const r = await fengce.check(safe, tx)\n// { allowed: false, reason: "MAX_PER_BUY", limit: 30 }'} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ------------------------------------------------------------------ closer with the decision feed (an example)
+const FEED: [string, string, "g" | "r"][] = [
+  ["swap 1 USDT0 → OKB", "ALLOWED", "g"],
+  ["swap 31 USDT0 → OKB", "MAX_PER_BUY", "r"],
+  ["send 5 USDT0", "ALLOWED", "g"],
+  ["agent buy 80 USDT0", "AGENT_CAP", "r"],
+  ["swap at 03:10 UTC", "QUIET_HOURS", "r"],
+  ["swap 12 USDT0 → OKB", "ALLOWED", "g"],
+  ["4th buy in 30 min", "TILT_SHIELD", "r"],
+  ["loosen max to 60", "WAITS 1 DAY", "r"],
+];
+function Feed() {
+  const [rows, setRows] = useState(() => {
+    const t = new Date().toISOString().slice(11, 16);
+    return FEED.slice(0, 5)
+      .reverse()
+      .map((e, k) => ({ e, t, k }));
+  });
+  useEffect(() => {
+    if (navigator.webdriver || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    let i = 5,
+      k = 5;
+    const id = setInterval(() => {
+      const e = FEED[i++ % FEED.length];
+      setRows((r) => [{ e, t: new Date().toISOString().slice(11, 16), k: k++ }, ...r].slice(0, 5));
+    }, 2200);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div className="feed">
+      <div className="fh">
+        <span className="lbl">Example · Safe {short(LIVE_SAFE)}</span>
+        <span className="lbl" style={{ color: "var(--allow)" }}>● guard on</span>
+      </div>
+      {rows.map(({ e, t, k }) => (
+        <div key={k} className="fr">
+          <span className="num muted" style={{ fontSize: 12 }}>{t}</span>
+          <span>{e[0]}</span>
+          <span className={`tag ${e[2]}`}>{e[1]}</span>
         </div>
       ))}
-    </div>
+      <div className="fnote small">Example feed. Quiet hours, agent caps and Tilt-shield answer like this once guard v3 is live.</div>
     </div>
   );
 }
 
-function Powered() {
-  const narrow = useMedia("(max-width: 480px)");
-  const cells = [
-    ["01", "Your wallet, or your agent's", "Installs on the Safe you or your AI agent already use. No new wallet, no moving funds."],
-    ["02", "Rules are circuits", "Each limit is a TapeOut circuit on X Layer that anyone can re-run and check."],
-    ["03", "Pinned so it can't be swapped", "The exact circuit and everything it depends on are fingerprinted. If any of it changes, the check fails safe."],
-    ["04", "Changes wait in public", "A change to your limits waits 1 day, posted on chain. Removing the guard waits 2 days."],
-  ];
+function Closer() {
   return (
-    <section style={{ borderTop: "1px solid var(--line)" }}>
-      <div className="w powered-grid" style={{ paddingTop: 72, paddingBottom: 72, display: "grid", gridTemplateColumns: "minmax(440px, 1fr) minmax(0, 1.6fr)", gap: 56, alignItems: "start" }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <h2 className="disp" style={{ fontSize: 46 }}>
-            Powered by <em>Fengce</em>
-          </h2>
-          <p className="body">A limit only helps if it's still the same rule tomorrow. Fengce is the engine that makes sure it is.</p>
-          <a className="alink" href={href("fengce")} style={{ alignSelf: "flex-start" }}>How Fengce works</a>
-          <Stack scale={narrow ? 0.8 : 1} />
+    <section className="closewrap">
+      <Vinyl veil={`linear-gradient(90deg, ${mix(92)} 0%, ${mix(55)} 45%, ${mix(15)} 100%)`} />
+      <div className="w closer">
+        <div style={{ position: "relative" }}>
+          <span className="lbl">Start on your own Safe</span>
+          <div className="ch">
+            Set it once.
+            <br />
+            <em>It holds.</em>
+          </div>
+          <p className="body" style={{ maxWidth: 380, marginTop: 18 }}>One signature installs your limits. After that, every app and agent gets the same answer.</p>
+          <div className="hero-cta">
+            <a className="pill accent big" href={href("start")}>Set my limits</a>
+            <a className="pill line big" href={href("try")}>Test a limit</a>
+          </div>
         </div>
-        <div className="powered-pts" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", borderTop: "1px solid var(--line)" }}>
-          {cells.map(([n, t, d], i) => (
-            <div key={n} style={{ padding: i % 2 ? "20px 0 20px 20px" : "20px 20px 20px 0", borderBottom: i < 2 ? "1px solid var(--line)" : undefined, borderLeft: i % 2 ? "1px solid var(--line)" : undefined, display: "flex", flexDirection: "column", gap: 6 }}>
-              <span className="lbl">{n}</span>
-              <span style={{ fontSize: 18 }}>{t}</span>
-              <span className="small">{d}</span>
-            </div>
-          ))}
-        </div>
+        <Feed />
       </div>
     </section>
   );
@@ -500,88 +408,23 @@ function Powered() {
 
 function Home() {
   return (
-    <main className="pg">
-      <div style={{ minHeight: "calc(100vh - var(--headH))", display: "flex", flexDirection: "column", position: "relative" }}>
-        <Vinyl />
-        <section className="w" style={{ flex: "1 1 auto", paddingTop: 48, paddingBottom: 36, display: "flex", alignItems: "flex-end", position: "relative", zIndex: 1 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 560 }}>
-            <h1 className="disp hero-h1" style={{ fontSize: 52 }}>
-              Limits your wallet keeps,
-              <br />
-              <em>even on you</em>
-            </h1>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <p className="body hero-b" style={{ color: "var(--text)" }}>Set buy caps, quiet hours and hold locks inside your smart wallet.</p>
-              <p className="body hero-b">Each limit is a TapeOut circuit on X Layer. It follows your wallet across supported apps and transaction paths.</p>
-            </div>
-            <div className="hero-cta" style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
-              <a className="pill accent big" href={href("start")}>Set my limits</a>
-              <a className="alink" href={href("try")}>Try a trade</a>
-            </div>
-          </div>
-          <span className="mono hero-cap" style={{ position: "absolute", right: "var(--pad)", bottom: 14, fontSize: 11.5, color: "var(--muted)", opacity: 0.8 }}>each groove a wallet · each dot a transaction · the needle is the circuit</span>
-        </section>
-        <div style={{ position: "relative", zIndex: 1, background: "var(--bg)" }}>
-        <section className="w strip-m" aria-label="Wallets">
-          <span className="lbl">Works with</span>
-          <div className="mono" style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", fontSize: 12 }}>
-            {["Safe", "Kernel", "Alchemy MA v2", "Safe7579", "Nexus", "Etherspot", "Coinbase Smart Wallet (agents)"].map((n, i) => (
-              <span key={n} style={{ whiteSpace: "nowrap", color: i ? "var(--muted)" : "var(--text)" }}>{n}</span>
-            ))}
-          </div>
-        </section>
-        <section className="w strip">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", borderBottom: "1px solid var(--line)" }}>
-            <div className="mono" style={{ padding: "16px 8px", fontSize: 13.5, textAlign: "center", borderRight: "1px solid var(--line)" }}>Safe</div>
-            <div className="lbl" style={{ padding: "16px 8px", textAlign: "center", color: "var(--text)" }}>{PRODUCT_NAME} installs on Safe · Fengce also enforces on</div>
-            <div className="mono" style={{ padding: "16px 8px", fontSize: 13.5, textAlign: "center", borderLeft: "1px solid var(--line)" }}>Kernel</div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))" }}>
-            <div className="mono muted" style={{ padding: "16px 8px", fontSize: 13.5, textAlign: "center", borderRight: "1px solid var(--line)" }}>Alchemy MA v2</div>
-            <div className="mono muted" style={{ padding: "16px 8px", fontSize: 13.5, textAlign: "center" }}>Safe7579 · Nexus · Etherspot</div>
-            <div className="mono muted" style={{ padding: "16px 8px", fontSize: 13.5, textAlign: "center", borderLeft: "1px solid var(--line)" }}>Coinbase Smart Wallet (agents)</div>
-          </div>
-        </section>
-        </div>
-      </div>
-      <Steps />
-      <WhoItHelps />
-      <Scatter />
-      <Powered />
-      <section style={{ borderTop: "1px solid var(--line)" }}>
-        <div className="w" style={{ paddingTop: 110, paddingBottom: 110, display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 22 }}>
-          <h2 className="disp" style={{ fontSize: 40, maxWidth: 520 }}>Set your limits in one signature.</h2>
-          <a className="pill accent big" href={href("start")}>Get started</a>
-        </div>
-      </section>
-      <style>{`
-        .sheen { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(100deg, transparent 0%, rgba(255,255,255,.05) 45%, rgba(255,255,255,.09) 50%, rgba(255,255,255,.05) 55%, transparent 100%); width: 40%; animation: sheen 9s ease-in-out infinite; }
-        @keyframes sheen { 0% { transform: translateX(-60%); } 100% { transform: translateX(260%); } }
-        .gcard { transition: left .18s linear, top .18s linear, transform .18s linear; }
-        @media (max-width: 900px) {
-          .who { grid-template-columns: minmax(0, 1fr) !important; }
-          .who > div:first-child { padding: 48px 16px !important; border-right: 0 !important; }
-          .scatter { height: auto !important; }
-          .scatter > div { position: static !important; height: auto !important; overflow: visible !important; }
-          .scatter > div > div { height: auto !important; display: flex; flex-direction: column; gap: 12px; padding: 48px 16px; }
-          .scatter > div > div > div { position: static !important; transform: none !important; max-width: 100% !important; width: 100% !important; }
-          .scatter .gcard { position: static !important; width: 100% !important; height: auto !important; min-height: 140px; transform: none !important; }
-          .powered-grid { grid-template-columns: minmax(0, 1fr) !important; }
-          .hero-cap { display: none; }
+    <main className="pg home">
+      <Hero />
+      <LiveStrip />
+      <Wallets />
+      <Rules />
+      <Holds />
+      <PinnedIncidents
+        head={
+          <>
+            <span className="lbl">Real incidents</span>
+            <h2 className="h2">Where a wallet-level rule would have stood.</h2>
+          </>
         }
-        .strip-m { display: none; }
-        @media (max-width: 767px) {
-          .hero-h1 { font-size: 40px !important; }
-          .hero-b { font-size: 16px !important; }
-          .hero-cta { flex-wrap: nowrap !important; gap: 18px !important; }
-          .strip { display: none; }
-          .strip-m { display: flex; flex-direction: column; gap: 8px; padding-top: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--line); border-top: 1px solid var(--line); }
-          .powered-pts { grid-template-columns: minmax(0, 1fr) !important; }
-          .card-kv { grid-template-columns: minmax(0, 1fr) !important; }
-          .card-kv > div { padding: 10px 0 !important; gap: 12px; }
-          .powered-pts > div { padding: 18px 0 !important; border-left: 0 !important; border-bottom: 1px solid var(--line) !important; }
-        }
-      `}</style>
+      />
+      <Compared />
+      <Developers />
+      <Closer />
     </main>
   );
 }

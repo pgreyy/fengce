@@ -204,7 +204,7 @@ function Try() {
               </span>
               {res.canRecord && (
                 <button type="button" className="alink" disabled={busy} onClick={() => go(true, res.canRecord!.data)} title="Sends the transaction anyway with a fixed gas limit, so the refusal is recorded on X Layer as a reverted transaction (costs gas).">
-                  Record this refusal on chain
+                  Record this on chain
                 </button>
               )}
             </div>
@@ -216,7 +216,7 @@ function Try() {
           <div className="kv"><span>Trades per clock hour (UTC)</span><span className="mono muted">{!inst ? "…" : inst.trades ? `${inst.trades.usedThisHour} of ${inst.trades.perHour} used` : "off"}</span></div>
           <div className="kv"><span>Quiet hours</span><span className="mono muted">coming soon</span></div>
           <div className="kv"><span>Hold lock on send</span><span className="mono muted">coming soon</span></div>
-          <div className="kv"><span>Tilt shield safe mode</span><span className="mono muted">coming soon</span></div>
+          <div className="kv"><span>Tilt-shield safe mode</span><span className="mono muted">coming soon</span></div>
           <span className="small" style={{ marginTop: 14 }}>
             This page builds the transaction; your Safe's guard decides. The same checks run when you use another app through this Safe, because they live
             in the wallet, not here. Refused attempts are simulated first and cost nothing unless you record them on chain.

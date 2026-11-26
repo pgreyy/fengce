@@ -13,7 +13,7 @@ const TEMPLATES: { key: Tpl; name: string; live: boolean }[] = [
   { key: "quiet", name: "Quiet hours", live: false },
   { key: "rate", name: "Trades per clock hour (UTC)", live: true },
   { key: "hold", name: "Hold lock", live: false },
-  { key: "tilt", name: "Tilt shield", live: false },
+  { key: "tilt", name: "Tilt-shield", live: false },
 ];
 const evalAbi = parseAbi(["function eval(uint256 id, bytes input) view returns (bytes)"]);
 
@@ -120,7 +120,7 @@ export function LimitsEditor({ installed, onDone }: { installed: Installed | nul
     });
 
   const blocker = !PREPARED
-    ? "The Okun circuits are not pinned on X Layer yet (owner step: script/PrepareOkun.s.sol). Testing works; signing opens once they are."
+    ? "The limit circuits are not pinned on X Layer yet. Testing works; signing opens once they are."
     : !w.account
       ? "Connect your wallet to sign."
       : !safe
@@ -130,7 +130,7 @@ export function LimitsEditor({ installed, onDone }: { installed: Installed | nul
           : installed && installed.threshold > 1
             ? `This Safe needs ${installed.threshold} owner signatures. One-signature install is for 1-of-1 Safes; use the Safe app for this one.`
             : installed && installed.guardOn && !installed.okunPolicy && alreadySet
-              ? "This Safe already runs a Fengce policy that is not an Okun limit."
+              ? "This Safe already runs a Fengce policy that the Limits page did not set."
               : null;
 
   return (

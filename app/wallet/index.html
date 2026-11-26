@@ -4,14 +4,14 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
-    <title>Okun · My wallet</title>
-    <meta name="description" content="Your Safe's installed limits, read back from X Layer." />
-    <meta property="og:title" content="Okun · My wallet" />
-    <meta property="og:description" content="Your Safe's installed limits, read back from X Layer." />
+    <title>My wallet · Fengce</title>
+    <meta name="description" content="Your Safe's installed limits and activity, read from X Layer." />
+    <meta property="og:title" content="My wallet · Fengce" />
+    <meta property="og:description" content="Your Safe's installed limits and activity, read from X Layer." />
     <script>
       /* Theme before first paint: the saved choice, else dark. */
       (function () {
-        try { if (localStorage.getItem("okun-theme") === "light") document.documentElement.setAttribute("data-theme", "light"); } catch (e) {}
+        try { var t = localStorage.getItem("fengce-theme") || localStorage.getItem("okun-theme"); if (t === "light") document.documentElement.setAttribute("data-theme", "light"); } catch (e) {}
       })();
     </script>
   </head>

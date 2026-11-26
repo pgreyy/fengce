@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fengce · moved</title>
+    <meta name="robots" content="noindex" />
+    <noscript><meta http-equiv="refresh" content="0; url=../docs/" /></noscript>
+    <script>
+      /* The engine page is now Docs (and Agents). Old tabs keep working. Client-side, so it works on TapeOut DeWeb too. */
+      (function () {
+        var t = new URLSearchParams(location.search).get("tab");
+        if (t === "agents") return location.replace("../agents/" + location.hash);
+        var map = { how: "how", uses: "how", inc: "inc", cmp: "cmp", devs: "devs", judges: "judges" };
+        location.replace("../docs/" + (t && map[t] ? "?tab=" + map[t] : "") + location.hash);
+      })();
+    </script>
+  </head>
+  <body style="background:#141414;color:#EDEDE8;font-family:system-ui,sans-serif;padding:24px">
+    <p>This page moved. <a style="color:#F0533F" href="../docs/">Continue</a>.</p>
+  </body>
+</html>

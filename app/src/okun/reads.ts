@@ -48,9 +48,9 @@ export interface Installed {
   moduleGuardOn: boolean;
   set: boolean;
   pinId: Hex | null;
-  /** Okun's max per buy (or the cap of an earlier AmountGt policy), USDT0 base units */
+  /** The max per buy (or the cap of an earlier AmountGt policy), USDT0 base units */
   maxPerBuy: bigint | null;
-  /** true when the pin is Okun's max-per-buy pin */
+  /** true when the pin is the Limits page's max-per-buy pin */
   okunPolicy: boolean;
   adminDelay: bigint;
   recoveryDelay: bigint;

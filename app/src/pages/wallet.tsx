@@ -120,8 +120,8 @@ function Wallet() {
           {metric("Max buy", inst ? usdt0(inst.maxPerBuy) : "…", inst?.okunPolicy === false && inst?.set ? "USDT0 per send (demo policy)" : "USDT0 per buy", false, 0)}
           {metric("Quiet hours", "Soon", "next engine release", false, 1)}
           {metric("Per hour", inst?.trades ? `${inst.trades.usedThisHour} / ${inst.trades.perHour}` : "Off", inst?.trades ? `swaps this hour · resets ${new Date(inst.trades.resetsAt * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "no hourly limit", false, 2)}
-          {metric("Tilt shield", "Soon", "next engine release", false, 3)}
-          {metric("Blocked · 7d", String(blocked7d), "refusals in Activity", blocked7d > 0, 4)}
+          {metric("Tilt-shield", "Soon", "next engine release", false, 3)}
+          {metric("Blocked · 7d", String(blocked7d), "refused in Activity", blocked7d > 0, 4)}
         </div>
       </div>
       <section id="activity" style={{ minWidth: 0 }}>
@@ -174,7 +174,7 @@ function Wallet() {
               <a className="alink" href={href("tilt")}>Learn more</a>
             </div>
             <span style={{ fontSize: 16 }}>Optional · coming soon</span>
-            <span className="small">Co-approves loosening and can clear a tripped tilt shield. Never moves funds.</span>
+            <span className="small">Co-approves loosening and can clear a tripped Tilt-shield. Never moves funds.</span>
           </div>
           <div className="guard" style={{ padding: "20px 0 20px 24px", borderLeft: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 6 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
