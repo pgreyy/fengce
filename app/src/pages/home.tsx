@@ -74,66 +74,98 @@ function Grooves() {
   );
 }
 
-// ------------------------------------------------------------------ isometric building model
-const ISO = { x: 300, y: 560, k: 0.5 };
-/** Projects (x, y, z) in model units to SVG: x right-down, y left-down, z up. */
-const P = (x: number, y: number, z: number) => [ISO.x + (x - y) * 0.866 * 52, ISO.y + (x + y) * ISO.k * 52 - z * 52] as const;
-function box(x0: number, y0: number, z0: number, w: number, d: number, h: number) {
-  const pt = (x: number, y: number, z: number) => P(x, y, z).map((n) => n.toFixed(1)).join(" ");
-  const top = `M${pt(x0, y0, z0 + h)} L${pt(x0 + w, y0, z0 + h)} L${pt(x0 + w, y0 + d, z0 + h)} L${pt(x0, y0 + d, z0 + h)} Z`;
-  const left = `M${pt(x0, y0 + d, z0)} L${pt(x0 + w, y0 + d, z0)} L${pt(x0 + w, y0 + d, z0 + h)} L${pt(x0, y0 + d, z0 + h)} Z`;
-  const right = `M${pt(x0 + w, y0, z0)} L${pt(x0 + w, y0 + d, z0)} L${pt(x0 + w, y0 + d, z0 + h)} L${pt(x0 + w, y0, z0 + h)} Z`;
-  return { top, left, right, anchor: P(x0 + w / 2, y0 + d / 2, z0 + h) };
-}
-const PARTS = [
-  { n: "01", name: "Your Safe", l1: "The wallet you already use.", l2: "Nothing moves.", boxes: [box(-1.6, -1.6, 0.35, 2.6, 2.6, 0.9), box(-1.6, -1.6, 1.25, 2.6, 2.6, 0.9)] },
-  { n: "02", name: "Your limits", l1: "Max per buy, trades per hour.", l2: "Your numbers.", boxes: [box(1.3, -1.6, 0.35, 1.6, 1.6, 0.8)] },
-  { n: "03", name: "The circuit", l1: "A TapeOut circuit, pinned.", l2: "The wallet obeys its answer.", boxes: [box(1.6, 0.6, 0.35, 0.9, 0.9, 2.6)] },
-  { n: "04", name: "X Layer", l1: "Every block is public.", l2: "Changes wait 1 day.", boxes: [box(-2.4, -2.4, 0, 5.6, 5.0, 0.35)] },
+// ------------------------------------------------------------------ isometric building model (prototype geometry)
+const S = 15, OX = 262, OY = 250;
+const iso = (x: number, y: number, z: number): [number, number] => [OX + (x - y) * 0.866 * S, OY + (x + y) * 0.5 * S - z * S];
+const poly = (pts: [number, number, number][]) => "M" + pts.map((q) => iso(...q).map((v) => v.toFixed(1)).join(" ")).join(" L") + " Z";
+const BLOCKS = [
+  { id: 3, x: 0, y: 0, w: 19, d: 13, z: 0, h: 0.7 }, // X Layer slab
+  { id: 0, x: 1, y: 6, w: 6.5, d: 6, z: 0.7, h: 2.8 }, // Safe, floor 1
+  { id: 0, x: 1, y: 6, w: 6.5, d: 6, z: 3.7, h: 2.8 }, // Safe, floor 2
+  { id: 1, x: 8, y: 5, w: 4, d: 4, z: 0.7, h: 3.4 }, // limits
+  { id: 1, x: 8.6, y: 5.6, w: 2.8, d: 2.8, z: 4.1, h: 1.6 },
+  { id: 2, x: 13, y: 1, w: 4.6, d: 5.4, z: 0.7, h: 4.8 }, // circuit tower
+  { id: 2, x: 13, y: 1, w: 4.6, d: 5.4, z: 5.7, h: 5.6 },
 ];
+const ISO_GRID = (() => {
+  let g = "";
+  for (let k = -6; k <= 26; k += 2) {
+    const [a1, a2, b1, b2] = [iso(k, -8, 0), iso(k, 26, 0), iso(-8, k, 0), iso(26, k, 0)];
+    g += `M${a1[0].toFixed(1)} ${a1[1].toFixed(1)} L${a2[0].toFixed(1)} ${a2[1].toFixed(1)} M${b1[0].toFixed(1)} ${b1[1].toFixed(1)} L${b2[0].toFixed(1)} ${b2[1].toFixed(1)} `;
+  }
+  return g;
+})();
+const ANCHORS = [iso(4.25, 9, 6.5), iso(10, 7, 5.7), iso(15.3, 3.7, 11.3), iso(19, 0, 0.7)];
+const LABELS = ["YOUR SAFE · 2 FLOORS", "2 LIMITS", "CIRCUITS · PINNED", "X LAYER 196"];
+const TAGS = [iso(4, 14.6, 0), iso(10, 14.6, 0), iso(15.5, 14.6, 0), iso(18.5, 9, 0)];
+const INFO = [
+  ["01", "1 owner · nothing moves", "Works with Safe today,", "7579 and 6900 through Fengce"],
+  ["02", "2 limits · changes wait 1 day", "Max per buy and", "trades per clock hour"],
+  ["03", "pinned on X Layer", "Taped out on TapeOut,", "re-run by anyone"],
+  ["04", "chain 196", "Every change public,", "verified on Sourcify"],
+];
+const LY = 104;
 
 function IsoModel({ active }: { active: number }) {
-  const order = [3, 0, 1, 2];
-  const a = PARTS[active].boxes[PARTS[active].boxes.length - 1].anchor;
-  const lead = `M${a[0].toFixed(1)} ${a[1].toFixed(1)} V ${(a[1] - 70).toFixed(1)} H ${a[0] < 300 ? 60 : 540}`;
+  const faces: { d: string; fill: string; stroke: string; sw: number }[] = [];
+  let hatch = "";
+  [...BLOCKS]
+    .sort((p, q) => p.x + p.y + p.z * 0.01 - (q.x + q.y + q.z * 0.01))
+    .forEach((b) => {
+      const on = b.id === active;
+      const { x, y, w, d, z, h } = b;
+      const st = on ? "var(--accent)" : "var(--text)";
+      const sw = on ? 1.3 : 1;
+      faces.push({ d: poly([[x, y + d, z], [x + w, y + d, z], [x + w, y + d, z + h], [x, y + d, z + h]]), fill: on ? "rgba(240,83,63,.06)" : "var(--panel)", stroke: st, sw });
+      faces.push({ d: poly([[x + w, y, z], [x + w, y + d, z], [x + w, y + d, z + h], [x + w, y, z + h]]), fill: on ? "rgba(240,83,63,.14)" : "var(--panel)", stroke: st, sw });
+      faces.push({ d: poly([[x, y, z + h], [x + w, y, z + h], [x + w, y + d, z + h], [x, y + d, z + h]]), fill: on ? "rgba(240,83,63,.10)" : "var(--panel)", stroke: st, sw });
+      const lines = on ? Math.max(3, Math.round(h * 2.4)) : 0;
+      for (let li = 1; li < lines; li++) {
+        const zz = z + (h * li) / lines;
+        const [p1, p2, p3] = [iso(x, y + d, zz), iso(x + w, y + d, zz), iso(x + w, y, zz)];
+        hatch += `M${p1[0].toFixed(1)} ${p1[1].toFixed(1)} L${p2[0].toFixed(1)} ${p2[1].toFixed(1)} L${p3[0].toFixed(1)} ${p3[1].toFixed(1)} `;
+      }
+      if (on && b.id === 3) {
+        for (let hx = 1; hx < 19; hx++) {
+          const [q1, q2] = [iso(hx, 13, 0), iso(hx, 13, 0.7)];
+          hatch += `M${q1[0].toFixed(1)} ${q1[1].toFixed(1)} L${q2[0].toFixed(1)} ${q2[1].toFixed(1)} `;
+        }
+      }
+    });
+  const a = ANCHORS[active];
+  const lr = a[0] > 470 ? -1 : 1; // flip the label left near the right edge
+  const lead = `M${a[0].toFixed(1)} ${a[1].toFixed(1)} V${LY} H${(a[0] + 36 * lr).toFixed(1)}`;
+  const info = INFO[active];
   return (
     <div style={{ position: "relative", width: "100%", maxWidth: 600, aspectRatio: "0.86", maxHeight: "calc(100vh - var(--headH) - 48px)" }}>
-      <svg viewBox="0 0 600 700" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style={{ position: "absolute", inset: 0 }} role="img" aria-label="Isometric model: X Layer, your Safe, your limits and the circuit, with the current layer highlighted">
-        <defs>
-          <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
-            <line x1="0" y1="0" x2="0" y2="6" stroke="var(--accent)" strokeWidth="1" opacity=".75" />
-          </pattern>
-        </defs>
-        {order.map((i) =>
-          PARTS[i].boxes.map((b, j) => {
-            const on = i === active;
-            const stroke = on ? "var(--accent)" : "var(--muted)";
-            return (
-              <g key={`${i}-${j}`} style={{ transition: "opacity .5s" }} opacity={on ? 1 : 0.85}>
-                <path d={b.left} fill={on ? "url(#hatch)" : "var(--surface)"} stroke={stroke} strokeWidth="1" />
-                <path d={b.right} fill={on ? "url(#hatch)" : "var(--raised)"} stroke={stroke} strokeWidth="1" />
-                <path d={b.top} fill={on ? "var(--accent)" : "var(--panel)"} fillOpacity={on ? 0.22 : 1} stroke={stroke} strokeWidth="1" />
-              </g>
-            );
-          }),
-        )}
+      <svg viewBox="0 0 600 700" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" style={{ position: "absolute", inset: 0 }} role="img" aria-label="Isometric model of your Safe, limits, circuit and X Layer, with the current layer highlighted">
+        <path d={ISO_GRID} stroke="var(--line)" strokeWidth="1" fill="none" opacity=".9" />
+        {faces.map((f, k) => (
+          <path key={k} d={f.d} fill={f.fill} stroke={f.stroke} strokeWidth={f.sw} style={{ transition: "fill .5s, stroke .5s" }} />
+        ))}
+        <path d={hatch} stroke="var(--accent)" strokeWidth=".8" fill="none" opacity=".85" />
         <path d={lead} stroke="var(--text)" strokeWidth="1" fill="none" opacity=".8" />
         <circle cx={a[0]} cy={a[1]} r="3" fill="var(--accent)" />
       </svg>
-      <span className="lbl" style={{ position: "absolute", top: `${((a[1] - 70 - 22) / 700) * 100}%`, left: a[0] < 300 ? "10%" : undefined, right: a[0] < 300 ? undefined : "10%", color: "var(--text)" }}>{PARTS[active].name}</span>
-      {PARTS.map((p, i) => {
-        const b = p.boxes[p.boxes.length - 1].anchor;
+      <span style={{ position: "absolute", ...(lr > 0 ? { left: `${((a[0] + 44) / 6).toFixed(2)}%` } : { right: `${((600 - a[0] + 44) / 6).toFixed(2)}%` }), top: `${((LY - 9) / 7).toFixed(2)}%`, fontSize: 13.75, fontWeight: 500, letterSpacing: ".04em", whiteSpace: "nowrap", transition: "left .5s, top .5s" }}>
+        {LABELS[active]}
+      </span>
+      {TAGS.map((t, i) => {
+        const on = i === active;
         return (
-          <span key={p.n} className="mono" style={{ position: "absolute", left: `${(b[0] / 600) * 100}%`, top: `${((b[1] + 18) / 700) * 100}%`, transform: "translate(-50%, 0)", fontSize: 11, padding: "2px 6px", borderRadius: 4, border: "1px solid var(--line)", background: i === active ? "var(--accent)" : "var(--surface)", color: i === active ? "var(--accentText)" : "var(--muted)" }}>
-            {p.n}
+          <span key={i} className="mono" style={{ position: "absolute", left: `calc(${(t[0] / 6).toFixed(2)}% - 12px)`, top: `${((t[1] - 4) / 7).toFixed(2)}%`, width: 24, height: 24, borderRadius: 6, display: "inline-flex", alignItems: "center", justifyContent: "center", fontSize: 13.75, background: on ? "var(--accent)" : "var(--panel)", border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`, color: on ? "#fff" : "var(--muted)" }}>
+            {i + 1}
           </span>
         );
       })}
-      <div style={{ position: "absolute", left: 26, top: 24, display: "flex", flexDirection: "column", gap: 2, pointerEvents: "none" }}>
+      <div style={{ position: "absolute", left: 26, bottom: 24, display: "flex", flexDirection: "column", gap: 2, pointerEvents: "none" }}>
         <span style={{ fontSize: 16 }}>Layer</span>
-        <span className="num" style={{ fontWeight: 300, fontSize: 77, lineHeight: 1 }}>{PARTS[active].n}</span>
-        <span className="small" style={{ marginTop: 10 }}>{PARTS[active].l1}</span>
-        <span className="small">{PARTS[active].l2}</span>
+        <span className="num" style={{ fontWeight: 300, fontSize: 77, lineHeight: 1 }}>{info[0]}</span>
+        <span className="small" style={{ marginTop: 10 }}>{info[1]}</span>
+      </div>
+      <div style={{ position: "absolute", right: 26, bottom: 24, display: "flex", flexDirection: "column", alignItems: "flex-end", pointerEvents: "none" }}>
+        <span className="small">{info[2]}</span>
+        <span className="small">{info[3]}</span>
       </div>
     </div>
   );
@@ -374,7 +406,7 @@ function Stack() {
   ];
   const plate = (y: number) => `M140 ${y} L250 ${y + 32} L140 ${y + 64} L30 ${y + 32} Z`;
   return (
-    <div className="stack" style={{ position: "relative", width: 500, maxWidth: "100%", height: 360, marginTop: 18 }}>
+    <div className="stack" style={{ position: "relative", width: 440, height: 360, marginTop: 18 }}>
       <svg viewBox="0 0 280 360" width="280" height="360" style={{ position: "absolute", left: 0, top: 0 }} aria-hidden="true">
         <defs>
           <pattern id="pbh" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
@@ -399,9 +431,9 @@ function Stack() {
         })}
       </svg>
       {plates.map((pl, i) => (
-        <div key={pl.label} className="stack-lab" style={{ position: "absolute", left: 270, top: 8 + i * 66 + 22, display: "flex", gap: 10, alignItems: "baseline", whiteSpace: "nowrap" }}>
-          <span style={{ fontSize: 16, color: pl.style === "accent" ? "var(--accent)" : "var(--text)" }}>{pl.label}</span>
-          <span className="small">{pl.sub}</span>
+        <div key={pl.label} className="stack-lab" style={{ position: "absolute", left: 264, top: 8 + i * 66 + 32 - 20, height: 40, display: "flex", flexDirection: "column", justifyContent: "center", gap: 2, whiteSpace: "nowrap" }}>
+          <span style={{ fontSize: 16, lineHeight: 1.2, color: pl.style === "accent" ? "var(--accent)" : "var(--text)" }}>{pl.label}</span>
+          <span className="small" style={{ lineHeight: 1.2 }}>{pl.sub}</span>
         </div>
       ))}
     </div>
@@ -417,7 +449,7 @@ function Powered() {
   ];
   return (
     <section style={{ borderTop: "1px solid var(--line)" }}>
-      <div className="w powered-grid" style={{ paddingTop: 72, paddingBottom: 72, display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.6fr)", gap: 48, alignItems: "start" }}>
+      <div className="w powered-grid" style={{ paddingTop: 72, paddingBottom: 72, display: "grid", gridTemplateColumns: "minmax(440px, 1fr) minmax(0, 1.6fr)", gap: 56, alignItems: "start" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <h2 className="disp" style={{ fontSize: 46 }}>
             Powered by <em>Fengce</em>
@@ -500,8 +532,7 @@ function Home() {
           .scatter > div > div > div { position: static !important; transform: none !important; max-width: 100% !important; width: 100% !important; }
           .scatter .gcard { position: static !important; width: 100% !important; height: auto !important; min-height: 140px; transform: none !important; }
           .powered-grid { grid-template-columns: minmax(0, 1fr) !important; }
-          .stack { zoom: .72; }
-          .stack-lab { flex-direction: column; gap: 0 !important; margin-top: -10px; }
+          .stack { zoom: .78; }
           .strip > div { grid-template-columns: minmax(0, 1fr) !important; }
           .strip > div > div { border: 0 !important; }
         }
