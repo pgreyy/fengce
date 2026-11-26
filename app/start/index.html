@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+    <title>Okun · Get started</title>
+    <meta name="description" content="Connect, choose your Safe, set your limits and sign once." />
+    <meta property="og:title" content="Okun · Get started" />
+    <meta property="og:description" content="Connect, choose your Safe, set your limits and sign once." />
+    <script>
+      /* Theme before first paint: the saved choice, else dark. */
+      (function () {
+        try { if (localStorage.getItem("okun-theme") === "light") document.documentElement.setAttribute("data-theme", "light"); } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="../src/pages/start.tsx"></script>
+  </body>
+</html>

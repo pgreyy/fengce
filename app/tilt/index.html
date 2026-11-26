@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+    <title>Okun · Tilt shield</title>
+    <meta name="description" content="Stops the revenge trade: sells-only after a burst of buys." />
+    <meta property="og:title" content="Okun · Tilt shield" />
+    <meta property="og:description" content="Stops the revenge trade: sells-only after a burst of buys." />
+    <script>
+      /* Theme before first paint: the saved choice, else dark. */
+      (function () {
+        try { if (localStorage.getItem("okun-theme") === "light") document.documentElement.setAttribute("data-theme", "light"); } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="../src/pages/tilt.tsx"></script>
+  </body>
+</html>

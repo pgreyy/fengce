@@ -42,6 +42,9 @@ writeFileSync(
     {
       version: 3,
       routes: [
+        // The old name: every page goes to the engine page of the new site; the HTTP API keeps working (vercel.json has
+        // the same rule for git-based deploys; this prebuilt output does not read vercel.json).
+        { src: "^/(?!api/).*$", has: [{ type: "host", value: "getfengce.vercel.app" }], status: 308, headers: { Location: "https://getokun.vercel.app/fengce/" } },
         { src: "^/api/circuit/([^/]+)/([^/]+)/?$", dest: "/api/circuit?processor=$1&id=$2" },
         { src: "^/api/safe/([^/]+)/?$", dest: "/api/safe?address=$1" },
         { handle: "filesystem" },

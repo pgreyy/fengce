@@ -3,20 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Fengce · moved</title>
+    <title>Okun · moved</title>
     <meta name="robots" content="noindex" />
-    <noscript><meta http-equiv="refresh" content="0; url=../protect/?step=2" /></noscript>
+    <noscript><meta http-equiv="refresh" content="0; url=../start/" /></noscript>
     <script>
-      /* Install is now step 2 of Protect. moved. Client-side redirect (works on any static host, including TapeOut DeWeb); the query is kept. */
-      (function () {
-        var q = new URLSearchParams(location.search);
-        q.set("step", "2");
-        var target = "protect/?" + q.toString();
-        location.replace("../" + target + location.hash);
-      })();
+      /* Install is now Get started. Client-side redirect, so it works on any static host including TapeOut DeWeb. */
+      location.replace("../start/" + location.hash);
     </script>
   </head>
-  <body style="background:#0A0B0F;color:#ECEEF3;font-family:system-ui,sans-serif;padding:24px">
-    <p>This page moved. <a style="color:#5B7CFF" href="../protect/?step=2">Continue</a>.</p>
+  <body style="background:#141414;color:#EDEDE8;font-family:system-ui,sans-serif;padding:24px">
+    <p>This page moved. <a style="color:#F0533F" href="../start/">Continue</a>.</p>
   </body>
 </html>

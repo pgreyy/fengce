@@ -3,21 +3,15 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Fengce · moved</title>
+    <title>Okun · moved</title>
     <meta name="robots" content="noindex" />
-    <noscript><meta http-equiv="refresh" content="0; url=../protect/?step=3&wallet=safe" /></noscript>
+    <noscript><meta http-equiv="refresh" content="0; url=../wallet/" /></noscript>
     <script>
-      /* The Safe status page is now step 3 of Protect. moved. Client-side redirect (works on any static host, including TapeOut DeWeb); the query is kept. */
-      (function () {
-        var q = new URLSearchParams(location.search);
-        q.set("step", "3");
-        q.set("wallet", "safe");
-        var target = "protect/?" + q.toString();
-        location.replace("../" + target + location.hash);
-      })();
+      /* The Safe status page is now My wallet. Client-side redirect, so it works on any static host including TapeOut DeWeb. */
+      location.replace("../wallet/" + location.hash);
     </script>
   </head>
-  <body style="background:#0A0B0F;color:#ECEEF3;font-family:system-ui,sans-serif;padding:24px">
-    <p>This page moved. <a style="color:#5B7CFF" href="../protect/?step=3&wallet=safe">Continue</a>.</p>
+  <body style="background:#141414;color:#EDEDE8;font-family:system-ui,sans-serif;padding:24px">
+    <p>This page moved. <a style="color:#F0533F" href="../wallet/">Continue</a>.</p>
   </body>
 </html>
