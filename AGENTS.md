@@ -48,11 +48,11 @@ Demo Safe `0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707`, demo agent `0x81DeB61C44
 - SDK: [sdk/README.md](sdk/README.md) (schemas, Quote, install calldata, local evaluation and `evaluateTrace`).
 - HTTP API: [docs/API.md](docs/API.md), [docs/openapi.yaml](docs/openapi.yaml).
 - MCP server for agents: [mcp/README.md](mcp/README.md); OnchainOS skill: [skills/fengce/SKILL.md](skills/fengce/SKILL.md).
-- App: [app/](app), the Okun consumer app (static pages reading X Layer from the browser): home, /start (connect, choose a
+- App: [app/](app), the Fengce app (static pages reading X Layer from the browser): home, /start (connect, choose a
   Safe, set limits), /limits, /wallet (installed limits read back from chain), /try (real swaps and sends through the Safe),
-  /tilt, /fengce (the engine page). Old URLs redirect. One-signature install: app/src/okun/engine.ts, mirrored by
+  /tilt, /agents, /docs (contracts, circuits, incidents, judges). Old URLs redirect (/fengce goes to /docs). One-signature install: app/src/okun/engine.ts, mirrored by
   script/OkunLib.sol and checked byte for byte by test/fork/OkunInstall.t.sol.
-- Okun limits: max per buy (deployed NAND circuit #2 on processor 0x839b, new pin) and trades per hour (counter circuit
+- Limits: max per buy (deployed NAND circuit #2 on processor 0x839b, new pin) and trades per hour (counter circuit
   circuits/trade-counter.json on processor #180 through Tick). script/PrepareOkun.s.sol tapes out and pins them and writes
   deployments/okun-xlayer-196.json.
 

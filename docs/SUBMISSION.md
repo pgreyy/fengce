@@ -1,11 +1,11 @@
-# Okun, powered by Fengce: hackathon submission
+# Fengce: hackathon submission
 
 ## Limits your wallet keeps, even on you
 
 Set buy caps and trade limits inside your smart wallet. Each limit is a TapeOut circuit on X Layer. It follows your wallet
 across supported apps and transaction paths.
 
-App: [getokun.vercel.app](https://getokun.vercel.app) · engine page: [/fengce](https://getokun.vercel.app/fengce/) · also
+App: [getfengce.vercel.app](https://getfengce.vercel.app) · engine page: [/fengce](https://getfengce.vercel.app/docs/) · also
 served from X Layer itself as [6.2.180.tape](https://6-2-180.tapekit.org/) · code: [github.com/pgreyy/fengce](https://github.com/pgreyy/fengce)
 
 ## The problem
@@ -22,14 +22,14 @@ Sources and losses as reported: [README, Why Fengce](../README.md#why-fengce).
 
 ## What's built
 
-- **Okun, the app.** Connect a browser wallet, choose or create a 1-of-1 Safe, set **max per buy** and **trades per hour**,
+- **Fengce, the app.** Connect a browser wallet, choose or create a 1-of-1 Safe, set **max per buy** and **trades per hour**,
   test them against the real circuit, and install with **one signature**. My wallet reads the installed limits back from
   chain; Try it runs real swaps and sends through the Safe and shows why a refusal happened.
 - **Fengce, the engine (18 contracts on X Layer mainnet).** `FengceGuard` makes a Safe run every transaction (owners,
   modules, agents, batches) through a pinned TapeOut circuit before it executes; changes wait 1 day, removal waits 2 days
   with every owner. `PinRegistry` fingerprints the circuit, every processor it depends on and the code behind them. `Tick`
   keeps state for stateful circuits. `FengceBinding` lets other contracts check that a wallet is bound (`isBound`).
-- **Two Okun limits as TapeOut circuits.** Max per buy reuses a deployed NAND circuit with a new pin (amount over the cap
+- **Two limits as TapeOut circuits.** Max per buy reuses a deployed NAND circuit with a new pin (amount over the cap
   and paying USDT0). Trades per hour is a new counter circuit (100 NAND + 4 LATCH), checked on all 2,048 input and state
   combinations, run by Tick and reset each clock hour.
 - **Adapters for other wallets.** ERC-7579 and ERC-6900 accounts are enforced through hooks (not permanent); Coinbase Smart
@@ -71,7 +71,7 @@ Full tables: [README, Why Fengce](../README.md#why-fengce).
 
 ## Links
 
-- App: [getokun.vercel.app](https://getokun.vercel.app) · on X Layer: [6.2.180.tape](https://6-2-180.tapekit.org/)
+- App: [getfengce.vercel.app](https://getfengce.vercel.app) · on X Layer: [6.2.180.tape](https://6-2-180.tapekit.org/)
 - Try it yourself: [TRY-IT.md](TRY-IT.md) · integration: [INTEGRATION.md](INTEGRATION.md) · API: [API.md](API.md)
 - Wallets and guarantees: [WALLETS.md](WALLETS.md) · threat model: [THREAT-MODEL.md](THREAT-MODEL.md)
 - SDK: [@fengce/sdk](https://www.npmjs.com/package/@fengce/sdk) · MCP: [mcp/README.md](../mcp/README.md)

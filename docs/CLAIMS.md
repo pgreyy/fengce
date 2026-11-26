@@ -128,7 +128,7 @@ Status: **mainnet** · Network: X Layer mainnet (196) · Release: v2
 - [setGuard](https://www.oklink.com/x-layer/tx/0x020f676574b4120184690ca528f09cfe98d020c4a1344d9536a9100da6d507b6)
 - [setModuleGuard](https://www.oklink.com/x-layer/tx/0xae4ceb7298936b5f8608ff4344044ff8765cb790f8b1dc11f415ad8b697264ef)
 - [addAgent](https://www.oklink.com/x-layer/tx/0xb83e3f771c21034dcdf2bdddc5e4784eca24164ddef432e152fefd1a3c989d60)
-- [live status page](https://getokun.vercel.app/wallet/)
+- [live status page](https://getfengce.vercel.app/wallet/)
 
 ## v1-demo
 
