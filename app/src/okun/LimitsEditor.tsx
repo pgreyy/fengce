@@ -26,10 +26,51 @@ async function testOnChain(amount: number, cap: number): Promise<{ allow: boolea
   return { allow, reason: allow ? "within your limits" : `over your max per buy of ${cap} USDT0` };
 }
 
+/** Any amount above 0 with up to 2 decimals (USDT0 has 6; limits are set in cents). */
+export function parseAmount(v: string): number | null {
+  if (!/^\d+(\.\d{1,2})?$/.test(v.trim())) return null;
+  const n = Number(v);
+  return n > 0 ? n : null;
+}
+
+/** Typed amount with a coarse slider beside it; the typed value is the source of truth. */
+function AmountField({ id, value, onChange, max, label }: { id: string; value: number; onChange: (n: number) => void; max: number; label: string }) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => {
+    if (parseAmount(text) !== value) setText(String(value));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+  const bad = parseAmount(text) === null;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+        <input
+          id={id}
+          aria-label={label}
+          aria-invalid={bad}
+          className="field num"
+          inputMode="decimal"
+          value={text}
+          onChange={(e) => {
+            const v = e.target.value.replace(/[^0-9.]/g, "");
+            setText(v);
+            const n = parseAmount(v);
+            if (n !== null) onChange(n);
+          }}
+          style={{ width: 140, fontSize: 18 }}
+        />
+        <span className="mono muted" style={{ fontSize: 13 }}>USDT0</span>
+        <input type="range" aria-label={`${label} (slider)`} min={1} max={max} step={1} value={Math.min(max, Math.max(1, Math.round(value)))} onChange={(e) => onChange(Number(e.target.value))} style={{ flex: "1 1 160px" }} />
+      </div>
+      {bad && <span className="err" style={{ fontSize: 13 }}>Enter an amount above 0, with at most 2 decimals.</span>}
+    </div>
+  );
+}
+
 export function LimitsEditor({ installed, onDone }: { installed: Installed | null; onDone?: (i: Installed) => void }) {
   const w = useWallet();
   const [tpl, setTpl] = useState<Tpl>("cap");
-  const [cap, setCap] = useState(installed?.maxPerBuy ? Number(installed.maxPerBuy) / 1e6 : 50);
+  const [cap, setCap] = useState(installed?.maxPerBuy ? Math.round(Number(installed.maxPerBuy) / 1e4) / 100 : 50);
   const [perHour, setPerHour] = useState(installed?.trades?.perHour || 5);
   const [rateOn, setRateOn] = useState(true);
   const [testAmt, setTestAmt] = useState(80);
@@ -119,7 +160,7 @@ export function LimitsEditor({ installed, onDone }: { installed: Installed | nul
               <label htmlFor="cap" style={{ fontSize: 17 }}>
                 No single buy or send over <span className="num">{cap} USDT0</span>
               </label>
-              <input id="cap" type="range" min={10} max={500} step={10} value={cap} onChange={(e) => setCap(Number(e.target.value))} />
+              <AmountField id="cap" label="Max per buy" value={cap} onChange={setCap} max={500} />
               <span className="small">Counts what you pay in USDT0, on any app, through swaps, sends and approvals. Other tokens are not capped by this limit.</span>
             </>
           )}
@@ -153,7 +194,7 @@ export function LimitsEditor({ installed, onDone }: { installed: Installed | nul
           <label htmlFor="test" style={{ fontSize: 17 }}>
             A buy of <span className="num">{testAmt} USDT0</span>
           </label>
-          <input id="test" type="range" min={0} max={600} step={10} value={testAmt} onChange={(e) => setTestAmt(Number(e.target.value))} />
+          <AmountField id="test" label="Test amount" value={testAmt} onChange={setTestAmt} max={600} />
           <button type="button" className="chip" disabled style={{ alignSelf: "flex-start", opacity: 0.5 }} title="Quiet hours arrive with the next engine release">
             Pretend it's 02:14 · coming soon
           </button>
