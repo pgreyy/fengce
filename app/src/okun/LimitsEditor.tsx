@@ -11,7 +11,7 @@ type Tpl = "cap" | "rate" | "quiet" | "hold" | "tilt";
 const TEMPLATES: { key: Tpl; name: string; live: boolean }[] = [
   { key: "cap", name: "Max per buy", live: true },
   { key: "quiet", name: "Quiet hours", live: false },
-  { key: "rate", name: "Trades per hour", live: true },
+  { key: "rate", name: "Trades per clock hour (UTC)", live: true },
   { key: "hold", name: "Hold lock", live: false },
   { key: "tilt", name: "Tilt shield", live: false },
 ];
@@ -126,7 +126,7 @@ export function LimitsEditor({ installed, onDone }: { installed: Installed | nul
           {tpl === "rate" && (
             <>
               <label htmlFor="rate" style={{ fontSize: 17 }}>
-                At most <span className="num">{perHour}</span> swaps per hour
+                At most <span className="num">{perHour}</span> swaps per clock hour (UTC)
               </label>
               <input id="rate" type="range" min={1} max={15} step={1} value={perHour} onChange={(e) => setPerHour(Number(e.target.value))} disabled={!rateOn} />
               <button type="button" className="chip" aria-pressed={rateOn} onClick={() => setRateOn(!rateOn)} style={{ alignSelf: "flex-start" }}>
@@ -171,7 +171,7 @@ export function LimitsEditor({ installed, onDone }: { installed: Installed | nul
           {alreadySet ? (
             <>
               <span className="small" style={{ marginTop: 8 }}>
-                Installed now: max per buy {usdt0(installed!.maxPerBuy)} USDT0{installed!.trades ? `, ${installed!.trades.perHour} swaps per hour` : ""}. A change is scheduled
+                Installed now: max per buy {usdt0(installed!.maxPerBuy)} USDT0{installed!.trades ? `, ${installed!.trades.perHour} swaps per clock hour (UTC)` : ""}. A change is scheduled
                 on chain and can apply after 1 day. Today the engine applies the same wait to tightening.
               </span>
               <button type="button" className="pill solid big" style={{ alignSelf: "flex-start", marginTop: 10 }} disabled={!!blocker || !!busy} onClick={requestChange}>

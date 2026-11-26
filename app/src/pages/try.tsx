@@ -209,7 +209,7 @@ function Try() {
         <aside style={{ display: "flex", flexDirection: "column", borderTop: "1px solid var(--line)" }}>
           <span className="lbl" style={{ padding: "14px 0" }}>Limits this wallet enforces{!safe ? " · demo Safe" : ""}</span>
           <div className="kv"><span>Max per buy</span><span className="mono muted">{!inst ? "…" : inst.set ? `${usdt0(inst.maxPerBuy)} USDT0` : "not set"}</span></div>
-          <div className="kv"><span>Trades per hour</span><span className="mono muted">{!inst ? "…" : inst.trades ? `${inst.trades.usedThisHour} of ${inst.trades.perHour} used` : "off"}</span></div>
+          <div className="kv"><span>Trades per clock hour (UTC)</span><span className="mono muted">{!inst ? "…" : inst.trades ? `${inst.trades.usedThisHour} of ${inst.trades.perHour} used` : "off"}</span></div>
           <div className="kv"><span>Quiet hours</span><span className="mono muted">coming soon</span></div>
           <div className="kv"><span>Hold lock on send</span><span className="mono muted">coming soon</span></div>
           <div className="kv"><span>Tilt shield safe mode</span><span className="mono muted">coming soon</span></div>
