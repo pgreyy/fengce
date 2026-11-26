@@ -69,6 +69,16 @@ chosen by the Safe at configuration, but `configure` enforces minimums (`src/saf
 timelock at least 1 day, recovery delay at least 2 days, recovery window at least 1 day
 (`test/FengceLimits.t.sol`).
 
+### Processor beacon upgrades
+
+TapeOut processors are beacon proxies: about 295 bytes that call `implementation()` on a beacon address written into
+their code (checked by disassembly on 2026-11-26: no storage read, one static call to the beacon, one delegatecall).
+A beacon upgrade therefore leaves every processor's code hash unchanged. A pin records the beacon, its
+`implementation()` and that implementation's code hash, and `isPinned` re-reads both on every evaluation, so an
+upgrade fails the check (`test_beaconUpgradeKeepsProcessorCodehashButBreaksThePin`). At block 76,924,400 the
+beacon `0xf70d…991C` (an OpenZeppelin `UpgradeableBeacon`) returned the zero address from `owner()`, so its
+owner-only `upgradeTo` cannot be called.
+
 ### Unsealed factory and its implementation
 
 The TapeOut processor factory is an upgradeable proxy that is not sealed. Its implementation address lives only

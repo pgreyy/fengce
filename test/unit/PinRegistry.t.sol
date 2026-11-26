@@ -3,6 +3,7 @@ pragma solidity 0.8.28;
 
 import {Test} from "forge-std/Test.sol";
 import {PinRegistry} from "../../src/core/PinRegistry.sol";
+import {PolicyEngine} from "../../src/core/PolicyEngine.sol";
 import {ITapeOutFactory} from "../../src/core/interfaces/ITapeOut.sol";
 import {MockBeacon, MockFactory, MockImpl, MockProcessor, NetlistBytes as NB} from "./mocks/TapeOutMocks.sol";
 
@@ -47,6 +48,24 @@ contract PinRegistryTest is Test {
         bytes32 id = _pin();
         beacon.set(address(new MockImpl()));
         assertFalse(reg.isPinned(id));
+    }
+
+    /// A beacon upgrade leaves every processor's own code hash unchanged (the beacon address is an immutable in its
+    /// code), so a pin on processor code hashes alone would miss it. The pin also records the beacon's implementation,
+    /// so the check fails and evaluation at execution time fails closed.
+    function test_beaconUpgradeKeepsProcessorCodehashButBreaksThePin() public {
+        bytes32 id = _pin();
+        PolicyEngine engine = new PolicyEngine(reg, 1_000_000);
+        assertEq(engine.evaluate(id, hex"02"), hex"01");
+        bytes32 before = address(p).codehash;
+
+        beacon.set(address(new MockImpl())); // the upgrade
+
+        assertEq(address(p).codehash, before, "processor code hash does not change");
+        assertEq(reg.circuitPin(id).processorCodehashes[0], before);
+        assertFalse(reg.isPinned(id));
+        vm.expectRevert(abi.encodeWithSelector(PolicyEngine.EngineNotPinned.selector, id));
+        engine.evaluate(id, hex"02");
     }
 
     function test_isPinnedFalseWhenImplementationCodeChanges() public {

@@ -84,8 +84,10 @@ private one through the `XLAYER_RPC_URL` secret). Nothing in the test suite send
 
 - Verdict V1 is live (`0xb2589D3153411c5dcedFA83692AcaAC3d93A7c55`) with one demo market; no independent review, and the first checkpoint picks the
   block (docs/VERDICT.md). Code in [src/verdict](src/verdict) (tests: test/unit/Verdict.t.sol, test/fork/VerdictFork.t.sol), notes in [docs/VERDICT.md](docs/VERDICT.md).
-- No independent security review. The TapeOut processor factory and circuit beacon are upgradeable and not sealed;
-  PinRegistry fails closed (denies) if a pinned circuit's code or REF closure changes.
+- No independent security review. The TapeOut processor factory is upgradeable and not sealed. The circuit beacon's
+  `owner()` returned the zero address at block 76,924,400, so its owner-only `upgradeTo` cannot be called; pins record its implementation
+  and code hash anyway, and PinRegistry fails closed (denies) if a pinned circuit's code, beacon implementation or
+  REF closure changes.
 - Non-Safe adapters (FengceHook, FengceHook6900, FengceAgentOwner) are deployed on mainnet but exercised only on forks;
   some wallets let the hook be removed without running it (docs/WALLETS.md, "Known bypasses").
 - Catalog install fees, Tick groups and FengceFloors are deployed but unused on mainnet so far.
