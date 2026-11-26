@@ -59,7 +59,7 @@ const STEPS = [
 function Ruled({ cols, rows, label }: { cols: string[]; rows: [string, ...[string, Tone][]][]; label: string }) {
   return (
     <div className="scroll-x">
-      <table className="rt" aria-label={label} style={{ minWidth: 760 }}>
+      <table className="rt stk" aria-label={label} style={{ minWidth: 760 }}>
         <thead>
           <tr>
             <th />
@@ -71,9 +71,9 @@ function Ruled({ cols, rows, label }: { cols: string[]; rows: [string, ...[strin
         <tbody>
           {rows.map(([k, ...cells]) => (
             <tr key={k}>
-              <td style={{ color: "var(--text)" }}>{k}</td>
+              <td className="rowhead" style={{ color: "var(--text)" }}>{k}</td>
               {cells.map(([t, tn], i) => (
-                <td key={i} style={{ fontSize: 14, color: tone(tn), fontWeight: i === cells.length - 1 ? 500 : 400 }}>{t}</td>
+                <td key={i} data-label={cols[i]} style={{ fontSize: 14, color: tone(tn), fontWeight: i === cells.length - 1 ? 500 : 400 }}>{t}</td>
               ))}
             </tr>
           ))}
@@ -91,7 +91,7 @@ function IncidentCard({ x, width }: { x: Incident; width?: number | string }) {
         <span className="disp" style={{ fontSize: 28 }}>{x.name}</span>
         <span className="num deny" style={{ fontSize: 24 }}>{x.loss}</span>
       </div>
-      <span className="mono small">
+      <span className="mono small src-line">
         {x.date} · <a href={x.src} target="_blank" rel="noreferrer noopener" style={{ textDecoration: "underline" }}>{x.host}</a>
       </span>
       <div><span className="lbl" style={{ display: "block" }}>What happened</span><span>{x.what}</span></div>
@@ -201,7 +201,7 @@ function Fengce() {
 
       {tab === "how" && (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", borderTop: "1px solid var(--line)" }}>
+          <div className="cols-m" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", borderTop: "1px solid var(--line)" }}>
             {STEPS.map(([n, t, d, code], i) => (
               <div key={n} style={{ padding: "22px 22px 22px 0", paddingLeft: i ? 22 : 0, borderLeft: i ? "1px solid var(--line)" : undefined, display: "flex", flexDirection: "column", gap: 10 }}>
                 <span className="lbl">{n}</span>
@@ -288,17 +288,17 @@ function Fengce() {
           <div>
             <span className="lbl" style={{ display: "block", paddingBottom: 12 }}>Wallet support</span>
             <div className="scroll-x">
-              <table className="rt" style={{ minWidth: 560 }}>
+              <table className="rt stk" style={{ minWidth: 560 }}>
                 <thead>
                   <tr><th>Wallet</th><th>Enforced</th><th>Permanence (isBound)</th><th>Notes</th></tr>
                 </thead>
                 <tbody>
                   {[["Safe", "yes", "yes", "guard on owner and module paths"], ["Kernel, Nexus, Etherspot (7579)", "yes", "not yet", "the hook can be uninstalled on some"], ["Alchemy MA v2 (6900)", "yes", "not yet", "hook"], ["EOA, 7702, embedded", "no", "no", "move funds to a Safe"]].map(([a, b, cc, d]) => (
                     <tr key={a}>
-                      <td>{a}</td>
-                      <td className="mono" style={{ fontSize: 13, color: b === "yes" ? "var(--allow)" : "var(--muted)" }}>{b}</td>
-                      <td className="mono" style={{ fontSize: 13, color: cc === "yes" ? "var(--allow)" : "var(--muted)" }}>{cc}</td>
-                      <td className="muted">{d}</td>
+                      <td className="rowhead">{a}</td>
+                      <td data-label="Enforced" className="mono" style={{ fontSize: 13, color: b === "yes" ? "var(--allow)" : "var(--muted)" }}>{b}</td>
+                      <td data-label="Permanence" className="mono" style={{ fontSize: 13, color: cc === "yes" ? "var(--allow)" : "var(--muted)" }}>{cc}</td>
+                      <td data-label="Notes" className="muted">{d}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -7,6 +7,18 @@ import { startVinyl } from "../okun/vinyl-hero.js";
 export const NEEDLE = "2.2.0";
 const still = () => typeof navigator !== "undefined" && (navigator.webdriver || matchMedia("(prefers-reduced-motion: reduce)").matches);
 
+function useMedia(q: string) {
+  const [m, setM] = useState(() => typeof matchMedia !== "undefined" && matchMedia(q).matches);
+  useEffect(() => {
+    const mq = matchMedia(q);
+    const on = () => setM(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, [q]);
+  return m;
+}
+
 /** 0..1 progress of a tall section scrolled past its sticky inner area. */
 function useScrollProgress(ref: React.RefObject<HTMLElement | null>) {
   const [p, setP] = useState(0);
@@ -158,11 +170,42 @@ const STEPS = [
   { kicker: "X Layer", title: "Prove", body: "Every block and every change is public. Loosening waits 1 day.", cta: "How Fengce works" },
 ];
 
+const STEP_HREF = [null, href("start"), href("fengce", { tab: "judges" }), href("fengce")];
+
+/** Under 1024px: a plain vertical stepper with the layered stack as a small static diagram above it. */
+function StepsMobile() {
+  return (
+    <section className="w" style={{ borderTop: "1px solid var(--line)", paddingTop: 48, paddingBottom: 48, display: "flex", flexDirection: "column", gap: 28 }}>
+      <div style={{ display: "flex", justifyContent: "center" }}>
+        <Stack scale={0.66} />
+      </div>
+      <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column" }}>
+        {STEPS.map((s, i) => (
+          <li key={s.kicker} style={{ display: "grid", gridTemplateColumns: "36px minmax(0, 1fr)", gap: 12, padding: "20px 0", borderTop: "1px solid var(--line)" }}>
+            <span className="num" style={{ fontSize: 20, color: "var(--accent)" }}>{String(i + 1).padStart(2, "0")}</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span className="lbl">{s.kicker}</span>
+              <span className="disp" style={{ fontSize: 26 }}>{s.title}</span>
+              <span className="body" style={{ fontSize: 16 }}>{s.body}</span>
+              {s.cta && STEP_HREF[i] && <a className="alink" href={STEP_HREF[i]!} style={{ alignSelf: "flex-start", marginTop: 4 }}>{s.cta}</a>}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
 function Steps() {
+  const small = useMedia("(max-width: 1023px)");
+  return small ? <StepsMobile /> : <StepsSticky />;
+}
+
+function StepsSticky() {
   const ref = useRef<HTMLElement>(null);
   const p = useScrollProgress(ref);
   const active = Math.min(3, Math.floor(p * 4));
-  const ctaHref = [null, href("start"), href("fengce", { tab: "judges" }), href("fengce")][active];
+  const ctaHref = STEP_HREF[active];
   return (
     <section ref={ref} className="steps-sec" style={{ borderTop: "1px solid var(--line)", height: "340vh", position: "relative" }}>
       <div className="steps-in" style={{ position: "sticky", top: "var(--headH)", height: "calc(100vh - var(--headH))", maxWidth: 1340, margin: "0 auto", display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))" }}>
@@ -294,7 +337,7 @@ function WhoItHelps() {
                 </div>
                 <span className="small">{u.card.k0}</span>
                 <span className="num" style={{ fontSize: 34, textAlign: "right" }}>{u.card.big}</span>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderTop: "1px solid var(--line)" }}>
+                <div className="card-kv" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", borderTop: "1px solid var(--line)" }}>
                   <div style={{ padding: "10px 0", display: "flex", justifyContent: "space-between", fontSize: 14, borderBottom: "1px solid var(--line)" }}><span className="muted">{u.card.a1}</span><span className="mono">{u.card.b1}</span></div>
                   <div style={{ padding: "10px 0 10px 10px", display: "flex", justifyContent: "space-between", fontSize: 14, borderBottom: "1px solid var(--line)" }}><span className="muted">{u.card.a2}</span><span className="mono">{u.card.b2}</span></div>
                 </div>
@@ -311,7 +354,7 @@ function WhoItHelps() {
                 <CodeCard title={u.apiTitle} code={u.api} />
               </div>
             )}
-            <button type="button" onClick={() => setApi(!api)} aria-label="Switch between UI and API view" style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 10px", borderRadius: 999, border: "1px solid var(--line)", background: "var(--surface)" }}>
+            <button type="button" className="ui-api" onClick={() => setApi(!api)} aria-label="Switch between UI and API view" style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 10px", borderRadius: 999, border: "1px solid var(--line)", background: "var(--surface)" }}>
               <span className="mono" style={{ fontSize: 11.5, letterSpacing: ".08em" }}>UI</span>
               <span style={{ width: 28, height: 14, borderRadius: 999, background: "var(--raised)", border: "1px solid var(--line)", position: "relative", display: "inline-block" }}>
                 <span style={{ position: "absolute", top: 1, left: api ? 15 : 1, width: 10, height: 10, borderRadius: 999, background: "var(--accent)", transition: "left .2s" }} />
@@ -376,7 +419,7 @@ function Scatter() {
 }
 
 // ------------------------------------------------------------------ powered by Fengce
-function Stack() {
+function Stack({ scale = 1 }: { scale?: number }) {
   const plates = [
     { label: "You · apps · agents", sub: "send the transaction", style: "dash" },
     { label: PRODUCT_NAME, sub: "your limits", style: "raised" },
@@ -386,7 +429,8 @@ function Stack() {
   ];
   const plate = (y: number) => `M140 ${y} L250 ${y + 32} L140 ${y + 64} L30 ${y + 32} Z`;
   return (
-    <div className="stack" style={{ position: "relative", width: 440, height: 360, marginTop: 18 }}>
+    <div style={{ width: 440 * scale, height: 360 * scale, marginTop: scale === 1 ? 18 : 0, flex: "0 0 auto" }}>
+    <div className="stack" style={{ position: "relative", width: 440, height: 360, transform: scale === 1 ? undefined : `scale(${scale})`, transformOrigin: "0 0" }}>
       <svg viewBox="0 0 280 360" width="280" height="360" style={{ position: "absolute", left: 0, top: 0 }} aria-hidden="true">
         <defs>
           <pattern id="pbh" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(30)">
@@ -417,10 +461,12 @@ function Stack() {
         </div>
       ))}
     </div>
+    </div>
   );
 }
 
 function Powered() {
+  const narrow = useMedia("(max-width: 480px)");
   const cells = [
     ["01", "Your wallet, or your agent's", "Installs on the Safe you or your AI agent already use. No new wallet, no moving funds."],
     ["02", "Rules are circuits", "Each limit is a TapeOut circuit on X Layer that anyone can re-run and check."],
@@ -436,9 +482,9 @@ function Powered() {
           </h2>
           <p className="body">A limit only helps if it's still the same rule tomorrow. Fengce is the engine that makes sure it is.</p>
           <a className="alink" href={href("fengce")} style={{ alignSelf: "flex-start" }}>How Fengce works</a>
-          <Stack />
+          <Stack scale={narrow ? 0.8 : 1} />
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", borderTop: "1px solid var(--line)" }}>
+        <div className="powered-pts" style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", borderTop: "1px solid var(--line)" }}>
           {cells.map(([n, t, d], i) => (
             <div key={n} style={{ padding: i % 2 ? "20px 0 20px 20px" : "20px 20px 20px 0", borderBottom: i < 2 ? "1px solid var(--line)" : undefined, borderLeft: i % 2 ? "1px solid var(--line)" : undefined, display: "flex", flexDirection: "column", gap: 6 }}>
               <span className="lbl">{n}</span>
@@ -459,16 +505,16 @@ function Home() {
         <Vinyl />
         <section className="w" style={{ flex: "1 1 auto", paddingTop: 48, paddingBottom: 36, display: "flex", alignItems: "flex-end", position: "relative", zIndex: 1 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 560 }}>
-            <h1 className="disp" style={{ fontSize: 52 }}>
+            <h1 className="disp hero-h1" style={{ fontSize: 52 }}>
               Limits your wallet keeps,
               <br />
               <em>even on you</em>
             </h1>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <p className="body" style={{ color: "var(--text)" }}>Set buy caps, quiet hours and hold locks inside your smart wallet.</p>
-              <p className="body">Each limit is a TapeOut circuit on X Layer. It follows your wallet across supported apps and transaction paths.</p>
+              <p className="body hero-b" style={{ color: "var(--text)" }}>Set buy caps, quiet hours and hold locks inside your smart wallet.</p>
+              <p className="body hero-b">Each limit is a TapeOut circuit on X Layer. It follows your wallet across supported apps and transaction paths.</p>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
+            <div className="hero-cta" style={{ display: "flex", alignItems: "center", gap: 24, flexWrap: "wrap" }}>
               <a className="pill accent big" href={href("start")}>Set my limits</a>
               <a className="alink" href={href("try")}>Try a trade</a>
             </div>
@@ -476,6 +522,14 @@ function Home() {
           <span className="mono hero-cap" style={{ position: "absolute", right: "var(--pad)", bottom: 14, fontSize: 11.5, color: "var(--muted)", opacity: 0.8 }}>each groove a wallet · each dot a transaction · the needle is the circuit</span>
         </section>
         <div style={{ position: "relative", zIndex: 1, background: "var(--bg)" }}>
+        <section className="w strip-m" aria-label="Wallets">
+          <span className="lbl">Works with</span>
+          <div className="mono" style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", fontSize: 12 }}>
+            {["Safe", "Kernel", "Alchemy MA v2", "Safe7579", "Nexus", "Etherspot", "Coinbase Smart Wallet (agents)"].map((n, i) => (
+              <span key={n} style={{ whiteSpace: "nowrap", color: i ? "var(--muted)" : "var(--text)" }}>{n}</span>
+            ))}
+          </div>
+        </section>
         <section className="w strip">
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, minmax(0, 1fr))", borderBottom: "1px solid var(--line)" }}>
             <div className="mono" style={{ padding: "16px 8px", fontSize: 13.5, textAlign: "center", borderRight: "1px solid var(--line)" }}>Safe</div>
@@ -505,9 +559,6 @@ function Home() {
         @keyframes sheen { 0% { transform: translateX(-60%); } 100% { transform: translateX(260%); } }
         .gcard { transition: left .18s linear, top .18s linear, transform .18s linear; }
         @media (max-width: 900px) {
-          .steps-sec { height: auto !important; }
-          .steps-in { position: static !important; height: auto !important; grid-template-columns: minmax(0, 1fr) !important; }
-          .steps-in > div:first-child { padding: 40px 16px !important; border-right: 0 !important; }
           .who { grid-template-columns: minmax(0, 1fr) !important; }
           .who > div:first-child { padding: 48px 16px !important; border-right: 0 !important; }
           .scatter { height: auto !important; }
@@ -516,10 +567,19 @@ function Home() {
           .scatter > div > div > div { position: static !important; transform: none !important; max-width: 100% !important; width: 100% !important; }
           .scatter .gcard { position: static !important; width: 100% !important; height: auto !important; min-height: 140px; transform: none !important; }
           .powered-grid { grid-template-columns: minmax(0, 1fr) !important; }
-          .stack { zoom: .78; }
-          .strip > div { grid-template-columns: minmax(0, 1fr) !important; }
-          .strip > div > div { border: 0 !important; }
           .hero-cap { display: none; }
+        }
+        .strip-m { display: none; }
+        @media (max-width: 767px) {
+          .hero-h1 { font-size: 40px !important; }
+          .hero-b { font-size: 16px !important; }
+          .hero-cta { flex-wrap: nowrap !important; gap: 18px !important; }
+          .strip { display: none; }
+          .strip-m { display: flex; flex-direction: column; gap: 8px; padding-top: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--line); border-top: 1px solid var(--line); }
+          .powered-pts { grid-template-columns: minmax(0, 1fr) !important; }
+          .card-kv { grid-template-columns: minmax(0, 1fr) !important; }
+          .card-kv > div { padding: 10px 0 !important; gap: 12px; }
+          .powered-pts > div { padding: 18px 0 !important; border-left: 0 !important; border-bottom: 1px solid var(--line) !important; }
         }
       `}</style>
     </main>

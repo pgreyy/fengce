@@ -151,7 +151,7 @@ function Try() {
           </div>
           {mode === "swap" ? (
             <>
-              <button type="button" aria-label="Switch tokens" onClick={() => (setFrom(to), setTo(from), setRes(null))} style={{ alignSelf: "center", width: 36, height: 36, margin: "-6px 0", borderRadius: 10, border: "1px solid var(--line)", background: "var(--raised)" }}>⇅</button>
+              <button type="button" className="swap-flip" aria-label="Switch tokens" onClick={() => (setFrom(to), setTo(from), setRes(null))} style={{ alignSelf: "center", width: 36, height: 36, margin: "-6px 0", borderRadius: 10, border: "1px solid var(--line)", background: "var(--raised)" }}>⇅</button>
               <div className="card" style={{ borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
                   <span className="lbl">You get</span>

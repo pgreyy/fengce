@@ -36,7 +36,7 @@ function Tilt() {
         <p className="body" style={{ color: "var(--text)" }}>"Tilt" is when a bad run pushes you into faster, bigger buys to win it back.</p>
         <p className="body">The shield watches how fast and how big you buy. When it trips, your wallet only sells or pays you back until the cooldown ends.</p>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", borderTop: "1px solid var(--line)" }}>
+      <div className="cols-m" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", borderTop: "1px solid var(--line)" }}>
         {[
           ["01 · Watches", "How fast and how big you buy", "Only your wallet's own transactions. No price feeds, no servers."],
           ["02 · Trips", `After ${after} buys in 30 minutes, or a buy 3× your usual`, "A TapeOut latch circuit flips. Its state lives on chain."],

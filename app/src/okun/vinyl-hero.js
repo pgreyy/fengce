@@ -6,10 +6,20 @@ export function startVinyl(canvas, opts) {
   var accent = function () { return opts.accent(); };
   var dots = [];
   var thetaN = -1.3; // needle angle (radians, 0 = right, negative = up)
+  var tipR = 0, pvx = 0, pvy = 0, narrow = false; // needle radius and tonearm pivot, set in layout()
   function layout() {
     var r = canvas.parentNode.getBoundingClientRect(); W = r.width; H = r.height;
     canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.width = W + "px"; canvas.style.height = H + "px";
     cx = W * 0.74; cy = H * 1.32; rMin = H * 0.42; rMax = Math.hypot(cx, cy) + 20;
+    narrow = W < 768;
+    if (narrow) {
+      // narrow screens: needle at ~70% width, short arm whose pivot sits inside the frame (never along the right edge)
+      var nxp = W * 0.7, nyp = H * 0.34;
+      thetaN = Math.atan2(nyp - cy, nxp - cx); tipR = Math.hypot(nxp - cx, nyp - cy);
+      pvx = W * 0.9; pvy = nyp - Math.min(140, H * 0.18);
+    } else {
+      thetaN = -1.3; tipR = rMin + (rMax - rMin) * 0.22; pvx = W * 0.95; pvy = -H * 0.02;
+    }
     grooves = document.createElement("canvas"); grooves.width = W * dpr; grooves.height = H * dpr;
     var g = grooves.getContext("2d"); g.scale(dpr, dpr);
     var ink = dark() ? "255,255,255" : "0,0,0";
@@ -26,7 +36,7 @@ export function startVinyl(canvas, opts) {
   }
   function seed() {
     dots = [];
-    var n = Math.round(Math.min(34, Math.max(14, W / 48)));
+    var n = narrow ? 7 : Math.round(Math.min(34, Math.max(14, W / 48)));
     for (var i = 0; i < n; i++) dots.push(newDot(true));
   }
   function newDot(anywhere) {
@@ -80,12 +90,12 @@ export function startVinyl(canvas, opts) {
     }
     ctx.restore();
     // tonearm (no parallax)
-    var px = W * 0.95, py = -H * 0.02, tipR = rMin + (rMax - rMin) * 0.22;
+    var px = pvx, py = pvy;
     var tx = cx + nx * tipR, ty = cy + ny * tipR;
     var ink2 = dark() ? "237,237,232" : "20,20,20";
     ctx.strokeStyle = "rgba(" + ink2 + ",.35)"; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(tx, ty); ctx.stroke();
     ctx.strokeStyle = "rgba(240,83,63,.12)"; ctx.lineWidth = 6; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(tx, ty); ctx.stroke();
-    ctx.fillStyle = dark() ? "#1d1d1d" : "#e3e3df"; ctx.strokeStyle = "rgba(" + ink2 + ",.2)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(px, py, 16, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = dark() ? "#1d1d1d" : "#e3e3df"; ctx.strokeStyle = "rgba(" + ink2 + ",.2)"; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(px, py, narrow ? 11 : 16, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
     var ang = Math.atan2(ty - py, tx - px); ctx.save(); ctx.translate(tx, ty); ctx.rotate(ang); ctx.fillStyle = "rgba(240,83,63,.85)"; ctx.fillRect(-14, -5, 18, 10); ctx.restore();
     var glow = ctx.createRadialGradient(tx, ty, 0, tx, ty, 60); glow.addColorStop(0, "rgba(240,83,63,.14)"); glow.addColorStop(1, "rgba(240,83,63,0)"); ctx.fillStyle = glow; ctx.fillRect(tx - 60, ty - 60, 120, 120);
   }

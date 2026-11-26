@@ -120,9 +120,8 @@ function Wallet() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 18 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <span className="lbl" style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            Safe {short(safe)} <CopyButton text={safe} label="Copy Safe address" />
-            {since ? ` · bound since block ${Number(since.block).toLocaleString("en-US")}` : ""}
-            {demo ? " · demo Safe (connect to see yours)" : ""}
+            <span>Safe {short(safe)}</span> <CopyButton text={safe} label="Copy Safe address" />
+            {(since || demo) && <span>{[since ? `bound since block ${Number(since.block).toLocaleString("en-US")}` : "", demo ? "demo Safe (connect to see yours)" : ""].filter(Boolean).join(" · ")}</span>}
           </span>
           <h1 className="disp" style={{ fontSize: 48 }}>My wallet</h1>
         </div>
@@ -136,7 +135,7 @@ function Wallet() {
       </div>
       {err && <p className="err">{err}</p>}
       <div className="scroll-x">
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(170px, 1fr))", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)" }}>
+        <div className="metrics" style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(170px, 1fr))", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)" }}>
           {metric("Max buy", inst ? usdt0(inst.maxPerBuy) : "…", inst?.okunPolicy === false && inst?.set ? "USDT0 per send (demo policy)" : "USDT0 per buy", false, 0)}
           {metric("Quiet hours", "Soon", "next engine release", false, 1)}
           {metric("Per hour", inst?.trades ? `${inst.trades.usedThisHour} / ${inst.trades.perHour}` : "Off", inst?.trades ? `swaps this hour · resets ${new Date(inst.trades.resetsAt * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "no hourly limit", false, 2)}
@@ -149,7 +148,7 @@ function Wallet() {
             <span className="lbl">Activity</span>
           </div>
           <div className="scroll-x">
-            <table className="rt" style={{ minWidth: 560 }}>
+            <table className="rt stk" style={{ minWidth: 560 }}>
               <thead>
                 <tr>
                   <th>Time</th>
@@ -167,11 +166,11 @@ function Wallet() {
                 )}
                 {rows.map((r, i) => (
                   <tr key={i}>
-                    <td className="mono muted" style={{ fontSize: 13 }}>{r.time ? fmtTime(r.time) : "on chain"}</td>
-                    <td>{r.action}</td>
-                    <td className="muted">{r.app}</td>
-                    <td className="r num">{r.amount}</td>
-                    <td className="r mono" style={{ fontSize: 13.5, color: r.ok === null ? "var(--muted)" : r.ok ? "var(--allow)" : "var(--deny)" }}>
+                    <td data-label="Time" className="mono muted" style={{ fontSize: 13 }}>{r.time ? fmtTime(r.time) : "on chain"}</td>
+                    <td data-label="Action">{r.action}</td>
+                    <td data-label="App" className="muted">{r.app}</td>
+                    <td data-label="Amount" className="r num">{r.amount}</td>
+                    <td data-label="Result" className="r mono" style={{ fontSize: 13.5, color: r.ok === null ? "var(--muted)" : r.ok ? "var(--allow)" : "var(--deny)" }}>
                       {r.tx ? (
                         <a href={EXPLORER_TX(r.tx)} target="_blank" rel="noreferrer noopener">{r.result}</a>
                       ) : (
