@@ -2,8 +2,8 @@
   "redirects": [
     {
       "source": "/:path((?!api/).*)",
-      "has": [{ "type": "host", "value": "getfengce.vercel.app" }],
-      "destination": "https://getokun.vercel.app/fengce/",
+      "has": [{ "type": "host", "value": "getokun.vercel.app" }],
+      "destination": "https://getfengce.vercel.app/:path",
       "permanent": true
     }
   ]
