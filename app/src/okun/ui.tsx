@@ -138,112 +138,159 @@ function ThemeButton() {
   );
 }
 
-// ------------------------------------------------------------------ wallet button
-function WalletButton() {
+// ------------------------------------------------------------------ wallet menu (dropdown on desktop, inside the sheet on mobile)
+function WalletMenu({ close }: { close: () => void }) {
   const w = useWallet();
-  const [open, setOpen] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [creating, setCreating] = useState<string | null>(null);
   const owned = useOwnedSafes();
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
-    document.addEventListener("click", close);
-    return () => document.removeEventListener("click", close);
-  }, []);
   const known = [
     { name: "OKX Wallet", match: /okx|okex/i },
     { name: "MetaMask", match: /metamask/i },
   ];
   return (
+    <>
+    {w.account ? (
+      <>
+        <span className="mono small" style={{ padding: "8px 10px", display: "flex", alignItems: "center", gap: 6 }}>
+          {w.wallet?.name ?? "Wallet"} · {short(w.account)}
+          <CopyButton text={w.account} label="Copy wallet address" />
+          {!w.chainOk && " · switch to X Layer"}
+        </span>
+        <span className="lbl" style={{ padding: "6px 10px 2px" }}>Your Safes{owned.loading ? " · reading" : ""}</span>
+        {owned.safes.length === 0 && !owned.loading && <span className="small" style={{ padding: "4px 10px" }}>None found yet</span>}
+        {owned.safes.map((sf) => {
+          const on = sf.toLowerCase() === w.safe?.toLowerCase();
+          return (
+            <div key={sf} className="menu-row" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <button type="button" role="menuitemradio" aria-checked={on} style={{ flex: 1 }} onClick={() => (chooseSafe(sf), close())}>
+                <span className="mono">{short(sf)}</span>
+                <span className="lbl" style={{ color: on ? "var(--accent)" : undefined }}>{on ? "In use" : "Switch"}</span>
+              </button>
+              <CopyButton text={sf} label="Copy Safe address" />
+            </div>
+          );
+        })}
+        <button
+          type="button"
+          role="menuitem"
+          disabled={!!creating}
+          onClick={() => {
+            setErr(null);
+            setCreating("Confirm in your wallet");
+            createSafe(w.account!).then(
+              () => (location.href = href("start")),
+              (e) => (setCreating(null), setErr((e as { shortMessage?: string }).shortMessage ?? (e as Error).message)),
+            );
+          }}
+        >
+          {creating ?? "Create a new Safe"}
+        </button>
+        {err && <span className="err" style={{ padding: "6px 10px" }}>{err}</span>}
+        <span style={{ borderTop: "1px solid var(--line)", margin: "4px 0" }} />
+        <a role="menuitem" href={href("wallet")}>My wallet</a>
+        <a role="menuitem" href={href("limits")}>My limits</a>
+        <button type="button" role="menuitem" style={{ color: "var(--deny)" }} onClick={() => (disconnect(), close())}>
+          Disconnect
+        </button>
+      </>
+    ) : (
+      <>
+        <span className="lbl">Connect a wallet</span>
+        {known.map((k) => {
+          const found = w.wallets.find((x) => k.match.test(x.name) || k.match.test(x.rdns));
+          return (
+            <button
+              key={k.name}
+              type="button"
+              role="menuitem"
+              disabled={!found}
+              style={found ? undefined : { color: "var(--muted)" }}
+              onClick={() => found && connect(found).then(() => close(), (e) => setErr((e as Error).message))}
+            >
+              {k.name} <span className="lbl">{found ? "Detected" : "Not found"}</span>
+            </button>
+          );
+        })}
+        {w.wallets
+          .filter((x) => !known.some((k) => k.match.test(x.name) || k.match.test(x.rdns)))
+          .map((x) => (
+            <button key={x.uuid} type="button" role="menuitem" onClick={() => connect(x).then(() => close(), (e) => setErr((e as Error).message))}>
+              {x.name} <span className="lbl">Browser</span>
+            </button>
+          ))}
+        <button type="button" role="menuitem" disabled style={{ color: "var(--muted)" }}>
+          WalletConnect <span className="lbl">Coming soon</span>
+        </button>
+        {err && <span className="err" style={{ padding: "6px 10px" }}>{err}</span>}
+      </>
+    )}
+    </>
+  );
+}
+
+function useOutside(open: boolean, setOpen: (v: boolean) => void) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const close = (e: MouseEvent) => ref.current && !ref.current.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("click", close);
+    document.addEventListener("keydown", esc);
+    return () => (document.removeEventListener("click", close), document.removeEventListener("keydown", esc));
+  }, [open, setOpen]);
+  return ref;
+}
+
+function WalletButton() {
+  const w = useWallet();
+  const [open, setOpen] = useState(false);
+  const ref = useOutside(open, setOpen);
+  return (
     <div className="wallet-btn" ref={ref}>
       {w.account ? (
-        <button type="button" className="pill line" aria-expanded={open} onClick={() => setOpen(!open)}>
+        <button type="button" className="pill line hpill" aria-expanded={open} onClick={() => setOpen(!open)}>
           <span className="dot" style={{ background: w.chainOk ? "var(--allow)" : "var(--deny)" }} />
           {short(w.account)}
         </button>
       ) : (
-        <button type="button" className="pill accent" aria-expanded={open} onClick={() => setOpen(!open)}>
-          Connect wallet
+        <button type="button" className="pill accent hpill" aria-expanded={open} onClick={() => setOpen(!open)}>
+          <span className="long">Connect wallet</span>
+          <span className="short">Connect</span>
         </button>
       )}
       {open && (
         <div className="menu" role="menu">
-          {w.account ? (
-            <>
-              <span className="mono small" style={{ padding: "8px 10px", display: "flex", alignItems: "center", gap: 6 }}>
-                {w.wallet?.name ?? "Wallet"} · {short(w.account)}
-                <CopyButton text={w.account} label="Copy wallet address" />
-                {!w.chainOk && " · switch to X Layer"}
-              </span>
-              <span className="lbl" style={{ padding: "6px 10px 2px" }}>Your Safes{owned.loading ? " · reading" : ""}</span>
-              {owned.safes.length === 0 && !owned.loading && <span className="small" style={{ padding: "4px 10px" }}>None found yet</span>}
-              {owned.safes.map((sf) => {
-                const on = sf.toLowerCase() === w.safe?.toLowerCase();
-                return (
-                  <div key={sf} className="menu-row" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <button type="button" role="menuitemradio" aria-checked={on} style={{ flex: 1 }} onClick={() => (chooseSafe(sf), setOpen(false))}>
-                      <span className="mono">{short(sf)}</span>
-                      <span className="lbl" style={{ color: on ? "var(--accent)" : undefined }}>{on ? "In use" : "Switch"}</span>
-                    </button>
-                    <CopyButton text={sf} label="Copy Safe address" />
-                  </div>
-                );
-              })}
-              <button
-                type="button"
-                role="menuitem"
-                disabled={!!creating}
-                onClick={() => {
-                  setErr(null);
-                  setCreating("Confirm in your wallet");
-                  createSafe(w.account!).then(
-                    () => (location.href = href("start")),
-                    (e) => (setCreating(null), setErr((e as { shortMessage?: string }).shortMessage ?? (e as Error).message)),
-                  );
-                }}
-              >
-                {creating ?? "Create a new Safe"}
-              </button>
-              {err && <span className="err" style={{ padding: "6px 10px" }}>{err}</span>}
-              <span style={{ borderTop: "1px solid var(--line)", margin: "4px 0" }} />
-              <a role="menuitem" href={href("wallet")}>My wallet</a>
-              <a role="menuitem" href={href("limits")}>My limits</a>
-              <button type="button" role="menuitem" style={{ color: "var(--deny)" }} onClick={() => (disconnect(), setOpen(false))}>
-                Disconnect
-              </button>
-            </>
-          ) : (
-            <>
-              <span className="lbl">Connect a wallet</span>
-              {known.map((k) => {
-                const found = w.wallets.find((x) => k.match.test(x.name) || k.match.test(x.rdns));
-                return (
-                  <button
-                    key={k.name}
-                    type="button"
-                    role="menuitem"
-                    disabled={!found}
-                    style={found ? undefined : { color: "var(--muted)" }}
-                    onClick={() => found && connect(found).then(() => setOpen(false), (e) => setErr((e as Error).message))}
-                  >
-                    {k.name} <span className="lbl">{found ? "Detected" : "Not found"}</span>
-                  </button>
-                );
-              })}
-              {w.wallets
-                .filter((x) => !known.some((k) => k.match.test(x.name) || k.match.test(x.rdns)))
-                .map((x) => (
-                  <button key={x.uuid} type="button" role="menuitem" onClick={() => connect(x).then(() => setOpen(false), (e) => setErr((e as Error).message))}>
-                    {x.name} <span className="lbl">Browser</span>
-                  </button>
-                ))}
-              <button type="button" role="menuitem" disabled style={{ color: "var(--muted)" }}>
-                WalletConnect <span className="lbl">Coming soon</span>
-              </button>
-              {err && <span className="err" style={{ padding: "6px 10px" }}>{err}</span>}
-            </>
-          )}
+          <WalletMenu close={() => setOpen(false)} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Under 768px: one header row; this icon opens a full-width sheet with the nav and the wallet actions. */
+function MobileMenu({ page }: { page: Page }) {
+  const [open, setOpen] = useState(false);
+  const ref = useOutside(open, setOpen);
+  return (
+    <div className="mnav" ref={ref}>
+      <button type="button" className="icon-btn mnav-btn" aria-label={open ? "Close menu" : "Open menu"} aria-expanded={open} onClick={() => setOpen(!open)}>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+          {open ? <path d="M6 6l12 12M18 6L6 18" /> : <path d="M4 7h16M4 12h16M4 17h16" />}
+        </svg>
+      </button>
+      {open && (
+        <div className="sheet">
+          <nav aria-label="Main">
+            {NAV.map((n) => (
+              <a key={n.page} href={href(n.page)} aria-current={n.page === page ? "page" : undefined}>
+                {n.label}
+              </a>
+            ))}
+          </nav>
+          <div className="sheet-wallet">
+            <WalletMenu close={() => setOpen(false)} />
+          </div>
         </div>
       )}
     </div>
@@ -254,7 +301,7 @@ function WalletButton() {
 const NAV: { page: Page; label: string }[] = [
   { page: "limits", label: "Limits" },
   { page: "try", label: "Try" },
-  { page: "tilt", label: "Tilt shield" },
+  { page: "tilt", label: "Tilt-shield" },
   { page: "fengce", label: "Fengce" },
 ];
 
@@ -272,7 +319,10 @@ function Header({ page }: { page: Page }) {
             </a>
           ))}
         </nav>
-        <WalletButton />
+        <div className="head-r">
+          <WalletButton />
+          <MobileMenu page={page} />
+        </div>
       </div>
     </header>
   );
@@ -282,18 +332,20 @@ function Footer() {
   return (
     <footer className="foot">
       <div className="w foot-in">
-        <div className="foot-col" style={{ gap: 12 }}>
+        <div className="foot-col foot-brand" style={{ gap: 12 }}>
           <Lockup knot={22} word={22} />
           <span style={{ fontSize: 15, color: "var(--muted)" }}>Wallet limits as TapeOut circuits on X Layer.</span>
-          <a className="powered" href={href("fengce")}>
-            <span className="muted">Powered by</span> <span className="accent">Fengce</span>
-          </a>
-          <ThemeButton />
+          <div className="foot-pw">
+            <a className="powered" href={href("fengce")}>
+              <span className="muted">Powered by</span> <span className="accent">Fengce</span>
+            </a>
+            <ThemeButton />
+          </div>
         </div>
         <div className="foot-col">
           <span className="lbl" style={{ marginBottom: 4 }}>Product</span>
           <a href={href("limits")}>Limits</a>
-          <a href={href("tilt")}>Tilt shield</a>
+          <a href={href("tilt")}>Tilt-shield</a>
         </div>
         <div className="foot-col">
           <span className="lbl" style={{ marginBottom: 4 }}>Fengce</span>
