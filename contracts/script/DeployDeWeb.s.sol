@@ -79,10 +79,24 @@ contract DeployDeWeb is Script {
     string name;
     string filesJson;
     uint256 uploadedChunks;
+    /// PHASE: "assets" (content-hashed files under assets/: new names, so the live site keeps working while they upload),
+    /// "final" (everything else, pages last; then prune, fallback and name), or "all" (default: one run does both).
+    string phase;
+    /// MAX_CHUNKS: at most this many chunks in this run (the rest continue in the next run; 0 = no limit).
+    uint256 maxChunks;
+    /// PLAN=1: count what is missing on chain and send nothing.
+    bool plan;
+    uint256 neededChunks;
+    uint256 neededAssets;
+    uint256 neededFinal;
+    bool budgetHit;
 
     function run() external {
         require(block.chainid == 196, "X Layer mainnet only");
         sender = msg.sender;
+        phase = vm.envOr("PHASE", string("all"));
+        maxChunks = vm.envOr("MAX_CHUNKS", uint256(0));
+        plan = vm.envOr("PLAN", false);
         id = _findCircuit();
         vm.startBroadcast();
         if (id == 0) {
@@ -102,17 +116,24 @@ contract DeployDeWeb is Script {
             OPENER.open{value: fee}(address(CPU), id);
         }
         string[] memory paths = _upload();
-        _prune(paths);
-        if (keccak256(bytes(SITES.fallbackPath(container))) != keccak256("index.html")) SITES.setFallback(container, "index.html");
-        if (!BINDING.isLive(name, container)) {
-            uint256 monthly = BINDING.monthlyFee();
-            uint256 months = monthly == 0 ? 120 : 1;
-            console2.log("binding name; monthly fee (wei), months:", monthly, months);
-            BINDING.bind{value: monthly * months}(name, container, months);
+        bool finalStep = !plan && !budgetHit && neededChunks == 0 && !_is(phase, "assets");
+        if (finalStep) {
+            // every file is complete on chain: only now remove files the build no longer has, and keep the name live
+            _prune(paths);
+            if (keccak256(bytes(SITES.fallbackPath(container))) != keccak256("index.html")) SITES.setFallback(container, "index.html");
+            if (!BINDING.isLive(name, container)) {
+                uint256 monthly = BINDING.monthlyFee();
+                uint256 months = monthly == 0 ? 120 : 1;
+                console2.log("binding name; monthly fee (wei), months:", monthly, months);
+                BINDING.bind{value: monthly * months}(name, container, months);
+            }
         }
         vm.stopBroadcast();
-        console2.log("chunks uploaded in this run", uploadedChunks);
-        _write(paths);
+        console2.log("DEWEB chunksSent", uploadedChunks);
+        console2.log("DEWEB remainingAssets", neededAssets);
+        console2.log("DEWEB remainingFinal", neededFinal);
+        console2.log("DEWEB done", finalStep ? 1 : 0);
+        if (finalStep) _write(paths);
     }
 
     /// The sender's circuit on processor #180 with exactly NETLIST, or 0.
@@ -175,14 +196,43 @@ contract DeployDeWeb is Script {
         paths = new string[](n);
         uint256 k;
         bytes memory prefix = bytes(string.concat(vm.projectRoot(), "/", DIST, "/"));
+        string[] memory full = new string[](n);
         for (uint256 i; i < entries.length; i++) {
             if (entries[i].isDir) continue;
-            bytes memory full = bytes(entries[i].path);
-            uint256 cut = _startsWith(full, prefix) ? prefix.length : bytes(string.concat(DIST, "/")).length;
-            string memory path = string(_slice(full, cut, full.length));
-            paths[k++] = path;
-            _uploadFile(path, vm.readFileBinary(entries[i].path));
+            bytes memory f = bytes(entries[i].path);
+            uint256 cut = _startsWith(f, prefix) ? prefix.length : bytes(string.concat(DIST, "/")).length;
+            full[k] = entries[i].path;
+            paths[k++] = string(_slice(f, cut, f.length));
         }
+        // pass 0: hashed assets; pass 1: data and other files; pass 2: pages (.html) last, so new pages only go live
+        // once everything they load is on chain
+        for (uint256 pass; pass < 3; pass++) {
+            for (uint256 i; i < n; i++) {
+                bool asset = _contains(bytes(paths[i]), "assets/");
+                bool page = _endsWith(bytes(paths[i]), ".html");
+                if ((pass == 0) != asset || (pass == 2) != (!asset && page)) continue;
+                _uploadFile(paths[i], vm.readFileBinary(full[i]), asset);
+            }
+        }
+    }
+
+    function _is(string memory a, string memory b) internal pure returns (bool) {
+        return keccak256(bytes(a)) == keccak256(bytes(b));
+    }
+
+    function _contains(bytes memory s, bytes memory p) internal pure returns (bool) {
+        if (s.length < p.length) return false;
+        for (uint256 i; i + p.length <= s.length; i++) {
+            bool m = true;
+            for (uint256 j; j < p.length; j++) {
+                if (s[i + j] != p[j]) {
+                    m = false;
+                    break;
+                }
+            }
+            if (m) return true;
+        }
+        return false;
     }
 
     function _startsWith(bytes memory s, bytes memory p) internal pure returns (bool) {
@@ -193,27 +243,46 @@ contract DeployDeWeb is Script {
         return true;
     }
 
-    function _uploadFile(string memory path, bytes memory data) internal {
+    function _uploadFile(string memory path, bytes memory data, bool asset) internal {
         bytes32 hash = sha256(data);
         uint256 chunks = (data.length + CHUNK - 1) / CHUNK;
         (,, bytes32 onchain,, uint256 have) = SITES.fileInfo(container, path);
-        uint256 start;
         if (onchain == hash && have == chunks) return; // already complete
-        if (onchain == hash && have > 0 && have < chunks) {
-            start = have; // resume a partial upload
-        } else {
-            uint256 end = data.length < CHUNK ? data.length : CHUNK;
-            SITES.putFile(container, path, _contentType(path), hash, _slice(data, 0, end));
+        uint256 start = onchain == hash && have > 0 && have < chunks ? have : 0; // resume a partial upload
+        if (!_take(chunks - start, asset)) return;
+        if (start == 0) {
+            SITES.putFile(container, path, _contentType(path), hash, _slice(data, 0, data.length < CHUNK ? data.length : CHUNK));
             uploadedChunks++;
             start = 1;
         }
         for (uint256 c = start; c < chunks; c++) {
             uint256 from = c * CHUNK;
-            uint256 to = from + CHUNK < data.length ? from + CHUNK : data.length;
-            SITES.appendChunk(container, path, c, _slice(data, from, to));
+            SITES.appendChunk(container, path, c, _slice(data, from, from + CHUNK < data.length ? from + CHUNK : data.length));
             uploadedChunks++;
         }
         console2.log("uploaded", path, data.length);
+        _done(chunks - (onchain == hash && have > 0 && have < chunks ? have : 0), asset);
+    }
+
+    /// Counts a file's missing chunks and says whether this run sends them (phase, budget and plan rules).
+    function _take(uint256 missing, bool asset) internal returns (bool) {
+        neededChunks += missing;
+        if (asset) neededAssets += missing;
+        else neededFinal += missing;
+        if (plan || budgetHit) return false;
+        if (!(_is(phase, "all") || _is(phase, asset ? "assets" : "final"))) return false;
+        if (!asset && !_is(phase, "all") && neededAssets > 0) return false; // final files wait until every asset is on chain
+        if (maxChunks != 0 && uploadedChunks + missing > maxChunks && uploadedChunks > 0) {
+            budgetHit = true; // the next run continues from the chain
+            return false;
+        }
+        return true;
+    }
+
+    function _done(uint256 missing, bool asset) internal {
+        neededChunks -= missing;
+        if (asset) neededAssets -= missing;
+        else neededFinal -= missing;
     }
 
     /// Removes on-chain files that are no longer part of the build (old hashed asset names).

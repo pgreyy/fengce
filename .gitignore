@@ -41,3 +41,4 @@ deployments/m2c-demo-dryrun.json
 # private working files (kept outside the repo)
 docs/demo-video-script.md
 docs/submission.md
+.deweb-upload.lock

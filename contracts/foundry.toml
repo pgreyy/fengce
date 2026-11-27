@@ -18,7 +18,7 @@ remappings = [
 # FengceGuard is compiled with the IR pipeline to stay under the 24,576-byte contract size limit; FengceGuardV3 also
 # with optimizer runs = 1 (smallest code).
 additional_compiler_profiles = [{ name = "ir", via_ir = true }, { name = "ir-small", via_ir = true, optimizer_runs = 1 }]
-compilation_restrictions = [{ paths = "src/safe/FengceGuard.sol", via_ir = true }, { paths = "src/safe/FengceGuardV3.sol", via_ir = true, max_optimizer_runs = 1 }, { paths = "src/safe/FengceRulesV3.sol", via_ir = true }]
+compilation_restrictions = [{ paths = "src/safe/FengceGuard.sol", via_ir = true }, { paths = "src/safe/FengceGuardV3.sol", via_ir = true, max_optimizer_runs = 1 }, { paths = "src/safe/FengceRulesV3.sol", via_ir = true }, { paths = "script/DeployDeWeb.s.sol", via_ir = true }]
 
 [rpc_endpoints]
 xlayer = "https://rpc.xlayer.tech" # official; https://xlayerrpc.okx.com is the other OKX endpoint
