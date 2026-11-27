@@ -57,7 +57,7 @@ function Wallet() {
     return () => clearInterval(t);
   }, []);
 
-  const act = useActivity(safe, 25, bump);
+  const act = useActivity(safe, 100, bump);
   const local: Attempt[] = attempts(safe);
   const pending = (hist?.scheduled ?? []).filter((s) => !s.done);
   const bound = !!inst && inst.set && inst.guardOn && inst.moduleGuardOn;
@@ -129,7 +129,7 @@ function Wallet() {
           <span className="lbl">Activity</span>
           <span className="mono muted" style={{ fontSize: 12 }}>read from X Layer · newest first</span>
         </div>
-        <ActivityTable rows={act.rows} err={act.err} empty="Nothing yet. Try a trade to see your limits work." />
+        <ActivityTable rows={act.rows} err={act.err} pageSize={25} empty="Nothing yet. Try a trade to see your limits work." />
       </section>
       <section>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
@@ -171,7 +171,7 @@ function Wallet() {
           <div className="guard" style={{ padding: "20px 24px", borderLeft: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 6 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
               <span className="lbl">Partner</span>
-              <a className="alink" href={href("tilt")}>Learn more</a>
+              <a className="alink" href={href("tilt-shield")}>Learn more</a>
             </div>
             <span style={{ fontSize: 16 }}>Optional · coming soon</span>
             <span className="small">Co-approves loosening and can clear a tripped Tilt-shield. Never moves funds.</span>

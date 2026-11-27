@@ -5,7 +5,7 @@ import { ActivityTable, useActivity } from "../okun/ActivityTable";
 import { record } from "../okun/activity";
 import { TOKENS, multiSend, sendCall, swapCalls } from "../okun/engine";
 import { readInstalled, usdt0, type Installed } from "../okun/reads";
-import { href, mount, short } from "../okun/ui";
+import { Addr, href, mount, short, StartLink } from "../okun/ui";
 import { EXPLORER_TX, balances, sendFromWallet, simulateSafeTx, useWallet } from "../okun/wallet";
 
 type Sym = keyof typeof TOKENS;
@@ -47,6 +47,7 @@ function Try() {
   const [amt, setAmt] = useState("5");
   const [recipKind, setRecipKind] = useState<"mine" | "other">("mine");
   const [recip, setRecip] = useState("");
+  const [recipFocus, setRecipFocus] = useState(false);
   const [q, setQ] = useState<{ fee: number; price: number } | null>(null);
   const [usd, setUsd] = useState<number | null>(null);
   const [inst, setInst] = useState<Installed | null>(null);
@@ -133,7 +134,7 @@ function Try() {
       </div>
       {(!w.account || !safe) && (
         <p className="note">
-          <b>Connect your wallet and choose your Safe</b> to run real trades through your limits. <a className="alink accent" href={href("start")}>Get started</a>
+          <b>Connect your wallet and choose your Safe</b> to run real trades through your limits. <StartLink className="alink accent">Get started</StartLink>
         </p>
       )}
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 520px) minmax(0, 1fr)", gap: 40, alignItems: "start" }} className="try-cols">
@@ -180,9 +181,20 @@ function Try() {
                 <button type="button" {...chip(recipKind === "other")} onClick={() => setRecipKind("other")}>Someone else</button>
               </div>
               {recipKind === "mine" ? (
-                <span className="mono small">{w.account ?? "connect your wallet"}</span>
+                w.account ? <Addr value={w.account} label="Copy your wallet address" /> : <span className="mono small">connect your wallet</span>
               ) : (
-                <input aria-label="Recipient" value={recip} onChange={(e) => setRecip(e.target.value)} placeholder="0x…" className="field mono" />
+                <input
+                  aria-label="Recipient"
+                  title={recip || undefined}
+                  value={recipFocus || !isAddress(recip) ? recip : short(recip)}
+                  onFocus={() => setRecipFocus(true)}
+                  onBlur={() => setRecipFocus(false)}
+                  onChange={(e) => setRecip(e.target.value.trim())}
+                  placeholder="0x…"
+                  className="field mono"
+                  spellCheck={false}
+                  autoComplete="off"
+                />
               )}
             </div>
           )}
@@ -228,7 +240,7 @@ function Try() {
           <span className="lbl">Recent{!safe ? " · demo Safe" : ""}</span>
           <a className="alink" href={href("wallet", undefined, "activity")}>All activity</a>
         </div>
-        <ActivityTable rows={recent.rows} err={recent.err} max={8} empty="No trades yet on this Safe." />
+        <ActivityTable rows={recent.rows} err={recent.err} max={5} empty="No trades yet on this Safe." />
       </section>
       <style>{`@media (max-width: 900px) { .try-cols { grid-template-columns: minmax(0, 1fr) !important; } }`}</style>
     </main>
