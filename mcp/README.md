@@ -36,24 +36,26 @@ example a local fork).
 
 ## Setup
 
+The package is `@fengce/mcp` on npm; `npx -y @fengce/mcp` starts the server over stdio (Node 20 or later). Nothing else to
+install: the server is one self-contained file.
+
+**Claude Desktop** (`claude_desktop_config.json`: Settings, Developer, Edit Config) or **Cursor** (`.cursor/mcp.json`):
+
+```json
+{ "mcpServers": { "fengce": { "command": "npx", "args": ["-y", "@fengce/mcp"] } } }
+```
+
 **Claude Code**
 
 ```sh
-claude mcp add fengce -- node /absolute/path/to/fengce/mcp/dist/server.mjs
+claude mcp add fengce -- npx -y @fengce/mcp
 ```
 
-**Claude Desktop**: add to `claude_desktop_config.json` (Settings, Developer, Edit Config), then restart:
+Environment (optional): `XLAYER_RPC` replaces the public RPCs (for example a local fork); `FENGCE_AGENT_PRIVATE_KEY` lets
+`pay_through_safe` sign with `signer: "key"` (it is never printed); `ONCHAINOS_BIN` points to the onchainos CLI for
+`signer: "onchainos"`.
 
-```json
-{
-  "mcpServers": {
-    "fengce": { "command": "node", "args": ["/absolute/path/to/fengce/mcp/dist/server.mjs"] }
-  }
-}
-```
-
-**Any MCP client**: start `node mcp/dist/server.mjs` as a stdio server. Cursor, for example, takes the same `command` and
-`args` in `.cursor/mcp.json`.
+From a clone instead of npm: `node /absolute/path/to/fengce/mcp/dist/server.mjs` after the build below.
 
 ## Checks
 

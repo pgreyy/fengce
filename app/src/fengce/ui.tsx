@@ -471,12 +471,12 @@ function Footer() {
           <Lockup knot={22} word={22} />
           <span style={{ fontSize: 14.5, color: "var(--muted)", maxWidth: 300 }}>Limits your wallet keeps, even on you. Built on TapeOut circuits on X Layer.</span>
           <div className="foot-pw">
-            <a className="mono code-link" style={{ fontSize: 12 }} href={circuitHref(CIRCUIT.deweb)} title="This site, stored on X Layer as TapeOut circuit #6 on processor #180">{TAPE_NAME}</a>
+            <a className="mono code-link" style={{ fontSize: 12 }} href="https://6-2-180.tapekit.org/" target="_blank" rel="noopener" title="Open the on-chain copy of this site">{TAPE_NAME}</a>
             <ThemeButton />
           </div>
         </div>
         {col("Product", [["Limits", href("limits")], ["Try", href("try")], ["Tilt-shield", href("tilt-shield")], ["Wallet", href("wallet")]])}
-        {col("Build", [["Docs", href("docs")], ["Agents", href("agents")], ["Catalog", href("limits", { tab: "add" })], ["GitHub", REPO, true], ["Earlier version", oldHref()]])}
+        {col("Build", [["Docs", href("docs")], ["Agents", href("agents")], ["Catalog", href("limits", { tab: "add" })], ["MCP server", href("agents", undefined, "mcp")], ["GitHub", REPO, true], ["Earlier version", oldHref()]])}
         {col("Proof", [["Contracts", href("docs", { tab: "contracts" })], ["Circuits", href("docs", { tab: "circuits" })], ["Incidents", href("docs", { tab: "inc" })], ["For judges", href("docs", { tab: "judges" })]])}
       </div>
     </footer>

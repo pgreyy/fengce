@@ -1,17 +1,35 @@
 {
   "name": "@fengce/mcp",
   "version": "0.2.0",
-  "private": true,
-  "description": "Read-only MCP server for Fengce on X Layer: list and quote policies, simulate and preflight transactions, build unsigned Safe install payloads",
+  "description": "MCP server for Fengce on X Layer: check whether a Safe allows a transaction (with the reason code), explain a refusal, pay through a Safe with an agent key, plus read tools for policies and installs",
   "license": "MIT",
   "type": "module",
   "bin": {
     "fengce-mcp": "dist/server.mjs"
   },
   "files": [
-    "dist",
+    "dist/server.mjs",
     "README.md"
   ],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "safe",
+    "x-layer",
+    "tapeout",
+    "fengce",
+    "agents",
+    "wallet-limits"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pgreyy/fengce.git",
+    "directory": "mcp"
+  },
+  "homepage": "https://getfengce.vercel.app/agents/#mcp",
+  "publishConfig": {
+    "access": "public"
+  },
   "engines": {
     "node": ">=20"
   },
@@ -19,17 +37,16 @@
     "build": "tsc --noEmit -p . && node build.mjs",
     "start": "node dist/server.mjs",
     "check:live": "tsx scripts/call-tools.mts",
-    "demo": "tsx demo/agent-demo.mts"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.2",
-    "viem": "^2.58.0",
-    "zod": "^4.6.7"
+    "demo": "tsx demo/agent-demo.mts",
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "@types/node": "^22.20.5",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
-    "vite": "^7.3.8"
+    "viem": "^2.58.0",
+    "vite": "^7.3.8",
+    "zod": "^4.6.7"
   }
 }
