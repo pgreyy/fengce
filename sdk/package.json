@@ -1,7 +1,7 @@
 {
   "name": "@fengce/sdk",
-  "version": "0.1.1",
-  "description": "TypeScript SDK for Fengce: TapeOut circuit schemas, Quote certificates and Safe guard install calldata",
+  "version": "0.2.0",
+  "description": "TypeScript SDK for Fengce: check a Safe transaction against its on-chain limits (allowed, or the reason code), TapeOut circuit schemas, Quote certificates and guard install calldata",
   "license": "MIT",
   "type": "module",
   "main": "dist/index.js",

@@ -1,7 +1,8 @@
 # @fengce/sdk
 
-TypeScript tools for [Fengce](https://github.com/pgreyy/fengce): TapeOut circuit schemas, Quote certificates and
-Safe guard install calldata. Built on [viem](https://viem.sh). Node 20 or later.
+TypeScript tools for [Fengce](https://github.com/pgreyy/fengce): check a Safe transaction against its on-chain limits
+before you send it, TapeOut circuit schemas, Quote certificates and Safe guard install calldata. Built on
+[viem](https://viem.sh). Node 20 or later.
 
 App: [getfengce.vercel.app](https://getfengce.vercel.app) (limits on your Safe) and the [docs](https://getfengce.vercel.app/docs/). Changes: [CHANGELOG.md](CHANGELOG.md).
 
@@ -15,6 +16,32 @@ npx fengce-quote <processor> <circuitId> --out quote.json   # the Quote CLI
 ```
 
 From the repository instead: `cd sdk && npm ci && npm run build`.
+
+## Check a transaction before you send it
+
+```ts
+import { createPublicClient, http } from "viem";
+import { check } from "@fengce/sdk";
+
+const client = createPublicClient({ transport: http("https://rpc.xlayer.tech") });
+const r = await check(client, safe, { to: USDT0, data: transferCalldata });
+// { allowed: false, reason: "MAX_PER_BUY", limit: 30000000n, guard: "0x9D2A…8E6e", refusedTo: "0x779D…3736" }
+```
+
+`check` runs the Safe's own guard on the transaction (one `eth_call` with the Safe as sender; nothing is sent and no
+signature is needed), so the answer is the one the Safe would give. Batches: pass the MultiSendCallOnly call with
+`operation: 1`. A Safe without a guard returns `{ allowed: true, guard: null }`.
+
+| `reason` | Meaning |
+|---|---|
+| `MAX_PER_BUY` | the max-per-buy circuit (NAND #2) refused: over the cap, paying USDT0; `limit` is the cap |
+| `CIRCUIT` | another pinned policy circuit refused |
+| `TRADES_PER_HOUR` | counter circuit #7: too many swaps this clock hour (UTC) |
+| `QUIET_HOURS`, `HOLD_LOCK`, `TILT_SHIELD`, `AGENT_CAP` | FengceGuardV3 rules (`code` 3, 4, 5, 6) |
+| `NOT_CONFIGURED` | a Fengce guard is installed but has no policy for this Safe |
+| `DELEGATECALL` | a delegatecall other than MultiSendCallOnly |
+| `ADMIN` | a Safe admin change that must wait for the timelock or recovery |
+| `OTHER` | anything else (`detail` has the decoded error) |
 
 ## Schemas
 

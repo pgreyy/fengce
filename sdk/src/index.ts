@@ -1,3 +1,4 @@
+export { check, V3_REASONS, MAX_BUY_PIN, type CheckResult, type CheckTx, type ReasonCode } from "./check.js";
 export { quote, refClosure, circuitTree, certificateHash, canonicalJson, type Certificate, type TreeNode, type QuoteEnv, type QuoteOptions } from "./quote.js";
 export { parseRefs, type Ref } from "./netlist.js";
 export { TIERS, tierFor, type Tier } from "./tiers.js";
