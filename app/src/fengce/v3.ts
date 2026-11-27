@@ -7,10 +7,12 @@ import { encodeAbiParameters, encodeFunctionData, getAddress, hexToBigInt, kecca
 import { FengceGuardArtifact, TickArtifact, toLayout, type SchemaFile } from "@fengce/sdk";
 import m2json from "../../../deployments/m2-demo-xlayer-196.json";
 import { client } from "../lib/chain";
-import { ENGINE, ROUTER_SELECTORS, TICK_SALT, TOKENS, TRADE_PERIOD, configureInput, counterSchema, tickGroupId, type Call, type Prepared } from "./engine";
+import { COUNTER, ENGINE, ROUTER_SELECTORS, TICK_SALT, TOKENS, TRADE_PERIOD, configureInput, counterSchema, tickGroupId, type Call, type Prepared } from "./engine";
+const COUNTER_NETLIST = COUNTER.netlist;
 
 interface M2 {
   guard?: string;
+  setupV3?: string;
   tiltLatchPin?: Hex;
   tiltLatchNetlistHash?: Hex;
   safe?: string;
@@ -19,7 +21,7 @@ const m2 = m2json as M2 | undefined;
 
 export const V3 =
   m2?.guard && m2.tiltLatchPin && m2.tiltLatchNetlistHash
-    ? { guard: getAddress(m2.guard) as Address, latchPin: m2.tiltLatchPin, latchNetlistHash: m2.tiltLatchNetlistHash, demoSafe: m2.safe ? (getAddress(m2.safe) as Address) : null }
+    ? { guard: getAddress(m2.guard) as Address, latchPin: m2.tiltLatchPin, latchNetlistHash: m2.tiltLatchNetlistHash, demoSafe: m2.safe ? (getAddress(m2.safe) as Address) : null, setup: m2.setupV3 ? (getAddress(m2.setupV3) as Address) : null }
     : null;
 
 const RULES = "(bool quietOn, uint8 quietStart, uint8 quietEnd, uint32 holdSeconds, bool tiltOn, bytes32 tiltCountGroup, bytes32 tiltLatchGroup, uint16 tiltMultX10, uint32 tiltCooldown, address quoteToken, address partner)";
@@ -191,3 +193,46 @@ export function v3ChangeCalls(safe: Address, cur: { maxPerBuy: bigint | null; ru
 export function scheduleCall(c: Call): Call {
   return { to: c.to, value: 0n, label: `${c.label} (scheduled, applies after 1 day)`, data: encodeFunctionData({ abi: guardAbi, functionName: "scheduleAdmin", args: [c.to, c.data] }) };
 }
+
+// ------------------------------------------------------------------ one-signature Safe creation (FengceSetupV3)
+
+const INSTALL = "(address guard, address safe, uint256 maxPerBuy, bytes32 maxBuyPin, uint256 tiltAfter, bytes32 counterPin, bytes32 counterNetlistHash, bytes32 latchPin, bytes32 latchNetlistHash, uint32 tiltCooldown, uint16 tiltMultX10, uint256 tradesPerHour, bytes32 tradesPin, bool quietOn, uint8 quietStart, uint8 quietEnd, uint32 holdSeconds, address partner, address executor, address agent, uint256 agentCapPerDay)";
+const setupAbi = parseAbi([`function setup(${INSTALL} p)`, "function setup(address[] owners, uint256 threshold, address to, bytes data, address fallbackHandler, address paymentToken, uint256 payment, address paymentReceiver)"]);
+const factoryAbi = parseAbi(["function createProxyWithNonce(address singleton, bytes initializer, uint256 saltNonce) returns (address proxy)"]);
+const ZERO = "0x0000000000000000000000000000000000000000" as Address;
+
+/** Limits a Safe gets when created from the wallet menu: lower them any time (applies at once); raising waits 1 day. */
+export const CREATE_DEFAULTS = { ...V3_DEFAULTS, maxPerBuy: 100_000_000n, tradesPerHour: 0 } satisfies V3Settings;
+
+/** Factory call that creates a 1-of-1 Safe 1.5 for `owner` with guard v3 and limits already installed: Safe setup
+ * delegatecalls FengceSetupV3.setup, which installs from inside the new Safe (one transaction, one signature). */
+export function createSafeV3Calldata(owner: Address, saltNonce: bigint, s: V3Settings, prepared: Prepared): Hex {
+  if (!V3?.setup) throw new Error("FengceSetupV3 is not deployed");
+  const n = s.tiltAfter - 1;
+  const p = {
+    guard: V3.guard,
+    safe: ZERO, // FengceSetupV3 uses the new Safe's own address
+    maxPerBuy: s.maxPerBuy,
+    maxBuyPin: prepared.maxBuyPin,
+    tiltAfter: s.tiltOn ? BigInt(s.tiltAfter) : 0n,
+    counterPin: prepared.counterPins[String(n)],
+    counterNetlistHash: keccak256(COUNTER_NETLIST),
+    latchPin: V3.latchPin,
+    latchNetlistHash: V3.latchNetlistHash,
+    tiltCooldown: Math.round(s.tiltCooldownHours * 3600),
+    tiltMultX10: 30,
+    tradesPerHour: BigInt(s.tradesPerHour),
+    tradesPin: s.tradesPerHour ? prepared.counterPins[String(s.tradesPerHour)] : (`0x${"0".repeat(64)}` as Hex),
+    quietOn: s.quietOn,
+    quietStart: s.quietStart,
+    quietEnd: s.quietEnd,
+    holdSeconds: Math.round(s.holdHours * 3600),
+    partner: s.partner ?? ZERO,
+    executor: ZERO,
+    agent: ZERO,
+    agentCapPerDay: 0n,
+  };
+  const init = encodeFunctionData({ abi: setupAbi, functionName: "setup", args: [[owner], 1n, V3.setup, encodeFunctionData({ abi: setupAbi, functionName: "setup", args: [p] }), ENGINE.fallbackHandler, ZERO, 0n, ZERO] });
+  return encodeFunctionData({ abi: factoryAbi, functionName: "createProxyWithNonce", args: [ENGINE.safeL2, init, saltNonce] });
+}
+

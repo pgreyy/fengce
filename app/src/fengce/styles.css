@@ -515,8 +515,17 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .imp-warn b { font-weight: 500; color: var(--deny); }
 
 /* Limits → Templates: ready-made setups */
-.tpl-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
-.tpl-card { display: flex; flex-direction: column; gap: 12px; padding: 20px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); min-width: 0; }
+.tpl-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.tpl-card { display: flex; flex-direction: column; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); min-width: 0; }
+.tpl-head { position: relative; display: flex; flex-direction: column; gap: 8px; padding: 20px 52px 20px 20px; min-height: 132px; cursor: pointer; border-radius: 6px; }
+.tpl-head:hover { background: color-mix(in srgb, var(--text) 3%, transparent); }
+.tpl-head:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+.tpl-chev { position: absolute; top: 22px; right: 20px; color: var(--muted); transition: transform .25s ease; }
+.tpl-card.open .tpl-chev { transform: rotate(180deg); }
+.tpl-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows .3s ease; }
+.tpl-card.open .tpl-body { grid-template-rows: 1fr; }
+.tpl-inner { overflow: hidden; display: flex; flex-direction: column; gap: 12px; padding: 0 20px; }
+.tpl-card.open .tpl-inner { padding-bottom: 20px; }
 .tpl-h { display: flex; flex-direction: column; gap: 4px; }
 .tpl-name { font-size: 20px; }
 .tpl-tag { font-size: 14px; color: var(--accent); }
@@ -525,6 +534,6 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .tpl-fields { display: flex; gap: 12px; flex-wrap: wrap; }
 .tpl-fields .cat-f { flex: 1 1 140px; min-width: 0; }
 .tpl-gap { font-size: 12.5px; border-left: 2px solid var(--line); padding-left: 10px; }
-.tpl-card .pill { margin-top: auto; }
+.tpl-card .pill { align-self: flex-start; }
 @media (max-width: 1000px) { .tpl-grid { grid-template-columns: minmax(0, 1fr); } }
 

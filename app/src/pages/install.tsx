@@ -1,34 +1,19 @@
 import { useEffect, useState } from "react";
 import { getAddress, isAddress, type Address } from "viem";
 import { guardOf, type GuardKind } from "../fengce/addSafe";
-import { installCalls } from "../fengce/engine";
+import { V3, V3_DEFAULTS, v3InstallCalls } from "../fengce/v3";
+import { batchFile } from "../fengce/installFile";
 import { parseAmount } from "../fengce/LimitsEditor";
 import { PREPARED } from "../fengce/reads";
 import { Addr, href, mount, param, short } from "../fengce/ui";
 import { safeInfo, useWallet } from "../fengce/wallet";
-
-/** Safe{Wallet} Transaction Builder batch file (version 1.0). The builder groups the calls into one MultiSend. */
-function batchFile(safe: Address, calls: ReturnType<typeof installCalls>, maxPerBuy: number, perHour: number) {
-  return {
-    version: "1.0",
-    chainId: "196",
-    createdAt: Date.now(),
-    meta: {
-      name: "Fengce: install limits",
-      description: `Installs FengceGuard on this Safe with max per buy ${maxPerBuy} USDT0${perHour ? ` and ${perHour} trades per clock hour (UTC)` : ""}. Built at getfengce.vercel.app/install for ${safe}.`,
-      txBuilderVersion: "1.16.5",
-      createdFromSafeAddress: safe,
-      createdFromOwnerAddress: "",
-    },
-    transactions: calls.map((c) => ({ to: c.to, value: c.value.toString(), data: c.data, contractMethod: null, contractInputsValues: null })),
-  };
-}
 
 function Install() {
   const w = useWallet();
   const [addr, setAddr] = useState(param("safe") ?? w.safe ?? "");
   const [cap, setCap] = useState("2");
   const [perHour, setPerHour] = useState(5);
+  const [tilt, setTilt] = useState(true);
   const [state, setState] = useState<{ safe: Address; threshold: number; owners: number; guard: Address | null; kind: GuardKind } | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
@@ -46,11 +31,11 @@ function Install() {
   }, [addr]);
 
   const capN = parseAmount(cap);
-  const calls = state && capN !== null && PREPARED ? installCalls(state.safe, { maxPerBuy: BigInt(Math.round(capN * 1e6)), tradesPerHour: perHour }, PREPARED) : null;
+  const calls = state && capN !== null && PREPARED && V3 ? v3InstallCalls(state.safe, { ...V3_DEFAULTS, tiltOn: tilt, maxPerBuy: BigInt(Math.round(capN * 1e6)), tradesPerHour: perHour }, PREPARED) : null;
 
   const download = () => {
     if (!state || !calls || capN === null) return;
-    const blob = new Blob([JSON.stringify(batchFile(state.safe, calls, capN, perHour), null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(batchFile(state.safe, calls, capN, perHour, tilt), null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "fengce-install.json";
@@ -118,6 +103,10 @@ function Install() {
                 ))}
               </select>
             </label>
+            <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <span className="small">Tilt-shield</span>
+              <button type="button" className="chip" aria-pressed={tilt} onClick={() => setTilt(!tilt)} style={{ minHeight: 44 }}>{tilt ? "On: 4 buys per half hour" : "Off"}</button>
+            </label>
           </div>
           {capN === null && <span className="err" style={{ fontSize: 13 }}>Enter an amount above 0, with at most 2 decimals.</span>}
           {calls && (
@@ -135,7 +124,7 @@ function Install() {
         <aside className="ts-set">
           <span className="lbl" style={{ marginBottom: 18 }}>2 · The file</span>
           <span className="small">
-            One Transaction Builder batch: {calls ? calls.length : "–"} calls, chain X Layer (196). Nothing in it moves funds: it configures the guard and turns it on. Changes to limits later wait 1 day; removing the guard waits 2 days with every owner.
+            One Transaction Builder batch: {calls ? calls.length : "–"} calls, chain X Layer (196), installing FengceGuardV3. Nothing in it moves funds: it configures the guard and turns it on. Later, tightening a limit applies at once; loosening waits 1 day; removing the guard waits 2 days with every owner.
           </span>
           <div className="ts-bottom" style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 10 }}>
             <button type="button" className="pill accent big" disabled={!calls || !state || state.kind === "fengce-v2" || state.kind === "fengce-v3"} onClick={download}>

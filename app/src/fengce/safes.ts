@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { decodeFunctionResult, getAddress, parseAbi, type Address, type Hash } from "viem";
 import { client } from "../lib/chain";
 import { ENGINE, createSafeCalldata } from "./engine";
-import { loadSnapshot } from "./reads";
+import { PREPARED, loadSnapshot } from "./reads";
+import { CREATE_DEFAULTS, V3, createSafeV3Calldata } from "./v3";
 import { chooseSafe, rememberedSafes, safeInfo, sendFromWallet, useWallet } from "./wallet";
 
 const factoryAbi = parseAbi(["function createProxyWithNonce(address singleton, bytes initializer, uint256 saltNonce) returns (address proxy)"]);
@@ -41,9 +42,11 @@ export function useOwnedSafes(): { safes: Address[]; loading: boolean; refresh: 
   return { safes, loading, refresh: () => setN((x) => x + 1) };
 }
 
-/** Creates a 1-of-1 Safe 1.5 owned by the connected wallet and makes it the chosen Safe. */
+/** Creates a 1-of-1 Safe 1.5 owned by the connected wallet, with guard v3 and default limits (max 100 USDT0 per buy,
+ * Tilt-shield on) installed in the same transaction, and makes it the chosen Safe. */
 export async function createSafe(owner: Address): Promise<{ safe: Address; hash: Hash }> {
-  const data = createSafeCalldata(owner, BigInt(Date.now()));
+  // with FengceSetupV3 deployed: the new Safe gets guard v3 and default limits in the same transaction (one signature)
+  const data = V3?.setup && PREPARED ? createSafeV3Calldata(owner, BigInt(Date.now()), CREATE_DEFAULTS, PREPARED) : createSafeCalldata(owner, BigInt(Date.now()));
   const sim = await client.call({ account: owner, to: ENGINE.safeFactory, data });
   const safe = getAddress(decodeFunctionResult({ abi: factoryAbi, functionName: "createProxyWithNonce", data: sim.data! }) as Address);
   const r = await sendFromWallet(ENGINE.safeFactory, data);

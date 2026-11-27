@@ -59,7 +59,7 @@ export function SafePicker({ onChosen }: { onChosen?: (safe: Address) => void })
       </div>
       <button type="button" className="card" disabled={!!busy || !w.account} onClick={createNew} style={{ padding: 20, textAlign: "left", display: "flex", flexDirection: "column", gap: 6 }}>
         <span style={{ fontSize: 18 }}>{busy === "create" ? "Confirm in your wallet" : "Create a new Safe"}</span>
-        <span className="small">A Safe 1.5 owned only by your connected wallet. One transaction; then install your limits with one more signature.</span>
+        <span className="small">A Safe 1.5 owned only by your connected wallet, with Fengce guard v3 already on: max 100 USDT0 per buy and Tilt-shield. One signature. Lower the limits any time (applies at once); raising waits 1 day.</span>
       </button>
       {msg && (
         <span className={msg.ok ? "mono" : "err"} style={{ fontSize: 14, color: msg.ok ? "var(--allow)" : undefined }}>

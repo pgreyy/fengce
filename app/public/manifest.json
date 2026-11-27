@@ -1,5 +1,5 @@
 {
   "name": "Fengce",
-  "description": "Limits your Safe keeps, even on you: max per buy, Tilt-shield, Vault and Treasury templates, any TapeOut circuit as a rule. Rules run on TapeOut circuits on X Layer.",
+  "description": "Limits your Safe keeps, even on you: max per buy, Tilt-shield, Vault and Admin key guard templates, any TapeOut circuit as a rule.",
   "iconPath": "favicon.svg"
 }

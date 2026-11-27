@@ -50,7 +50,7 @@ if [[ $DRY == 1 ]]; then
 else
   STATE=deployments/m2-demo-xlayer-196.json
   RPC=$MAINNET
-  echo "Milestone 2b on X Layer mainnet, from $DEPLOYER ($ACCOUNT)."
+  echo "Milestone 2c on X Layer mainnet, from $DEPLOYER ($ACCOUNT)."
   read -r -s -p "Keystore password for $ACCOUNT: " PW
   echo
   # forge cannot read /dev/fd paths, so the password goes to a private file (mode 600, in the per-user runtime folder

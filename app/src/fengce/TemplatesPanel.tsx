@@ -9,7 +9,7 @@ import { presetSchema } from "../lib/data";
 import { multiSend } from "./engine";
 import { parseAmount } from "./LimitsEditor";
 import { PREPARED, readInstalled, type Installed } from "./reads";
-import { TEMPLATES, templateCalls, type TemplateInfo } from "./templates";
+import { SHOWN_TEMPLATES, templateCalls, type TemplateInfo } from "./templates";
 import { href, openWallet, short } from "./ui";
 import { EXPLORER_TX, sendFromWallet, simulateSafeTx, useWallet } from "./wallet";
 
@@ -24,20 +24,36 @@ async function loadBudget(): Promise<{ pinId: Hex; schema: SchemaFile } | null> 
   return null;
 }
 
+/** Why templates cannot be installed on the chosen Safe (shown once, under the cards), or null. */
+function safeBlocker(installed: Installed | null, account: Address | null, safe: Address | null): string | null {
+  if (!PREPARED) return "The limit circuits are not pinned yet.";
+  if (!account || !safe) return null;
+  if (!installed) return "Reading your Safe…";
+  if (!installed.owners.some((o) => o.toLowerCase() === account.toLowerCase())) return "The connected wallet is not an owner of this Safe.";
+  if (installed.threshold > 1) return `This Safe needs ${installed.threshold} owner signatures; templates install on 1-of-1 Safes from here.`;
+  const otherGuard = !/^0x0{40}$/i.test(String(installed.raw?.guard ?? "0x0000000000000000000000000000000000000000"));
+  if (installed.set || otherGuard) return "Templates install on a Safe with no limits yet. Create a new Safe from the wallet menu, then install.";
+  return null;
+}
+
 export function TemplatesPanel({ installed, onDone }: { installed: Installed | null; onDone?: (i: Installed) => void }) {
+  const w = useWallet();
+  const [open, setOpen] = useState<string | null>(null);
+  const blocker = safeBlocker(installed, w.account, w.safe);
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <span className="lbl">Ready-made setups · one signature on a new Safe</span>
       <div className="tpl-grid">
-        {TEMPLATES.map((t) => (
-          <TemplateCard key={t.key} t={t} installed={installed} onDone={onDone} />
+        {SHOWN_TEMPLATES.map((t) => (
+          <TemplateCard key={t.key} t={t} open={open === t.key} onToggle={() => setOpen(open === t.key ? null : t.key)} blocker={blocker} onDone={onDone} />
         ))}
       </div>
+      {blocker && w.account && w.safe && <span className="small">{blocker}</span>}
     </section>
   );
 }
 
-function TemplateCard({ t, installed, onDone }: { t: TemplateInfo; installed: Installed | null; onDone?: (i: Installed) => void }) {
+function TemplateCard({ t, open, onToggle, blocker: safeBlock, onDone }: { t: TemplateInfo; open: boolean; onToggle: () => void; blocker: string | null; onDone?: (i: Installed) => void }) {
   const w = useWallet();
   const [cap, setCap] = useState(t.key === "admin" ? "10000" : t.key === "vault" ? "100" : "500");
   const [partner, setPartner] = useState("");
@@ -51,27 +67,15 @@ function TemplateCard({ t, installed, onDone }: { t: TemplateInfo; installed: In
 
   const capN = parseAmount(cap);
   const partnerOk = !partner || isAddress(partner);
-  const isOwner = !!installed && !!w.account && installed.owners.some((o) => o.toLowerCase() === w.account!.toLowerCase());
-  const otherGuard = installed && !/^0x0{40}$/i.test(String(installed.raw?.guard ?? "0x0000000000000000000000000000000000000000"));
-  const blocker = !PREPARED
-    ? "The limit circuits are not pinned yet."
-    : !w.account || !w.safe
-      ? null
-      : !installed
-        ? "Reading your Safe…"
-        : !isOwner
-          ? "The connected wallet is not an owner of this Safe."
-          : installed.threshold > 1
-            ? `This Safe needs ${installed.threshold} owner signatures; templates install on 1-of-1 Safes from here.`
-            : installed.set || otherGuard
-              ? "Templates install on a Safe with no limits yet. Create a new Safe from the wallet menu, then install."
-              : capN === null
-                ? "Enter a cap above 0."
-                : !partnerOk
-                  ? "The partner must be an address (or leave it empty)."
-                  : t.key === "treasury" && !budget
-                    ? "Reading the budget circuit from the Catalog…"
-                    : null;
+  const blocker = safeBlock
+    ? safeBlock
+    : capN === null
+      ? "Enter a cap above 0."
+      : !partnerOk
+        ? "The partner must be an address (or leave it empty)."
+        : t.key === "treasury" && !budget
+          ? "Reading the budget circuit from the Catalog…"
+          : null;
 
   async function install() {
     if (!w.account || !w.safe) return openWallet();
@@ -93,14 +97,27 @@ function TemplateCard({ t, installed, onDone }: { t: TemplateInfo; installed: In
   }
 
   return (
-    <div className="tpl-card">
-      <div className="tpl-h">
-        <span className="tpl-name">{t.name}</span>
-        <span className="tpl-tag">{t.tagline}</span>
+    <div className={`tpl-card${open ? " open" : ""}`}>
+      <div
+        className="tpl-head"
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        aria-controls={`tpl-${t.key}`}
+        onClick={onToggle}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), onToggle())}
+      >
+        <div className="tpl-h">
+          <span className="tpl-name">{t.name}</span>
+          <span className="tpl-tag">{t.tagline}</span>
+        </div>
+        <span className="small">
+          <b style={{ fontWeight: 500, color: "var(--text)" }}>For:</b> {t.who}
+        </span>
+        <svg className="tpl-chev" width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" strokeWidth="1.6" /></svg>
       </div>
-      <span className="small">
-        <b style={{ fontWeight: 500, color: "var(--text)" }}>For:</b> {t.who}
-      </span>
+      <div className="tpl-body" id={`tpl-${t.key}`} aria-hidden={!open}>
+      <div className="tpl-inner">
       <div className="tpl-sec">
         <span className="lbl">Blocks</span>
         <ul>{t.blocks.map((b) => <li key={b}>{b}</li>)}</ul>
@@ -140,7 +157,7 @@ function TemplateCard({ t, installed, onDone }: { t: TemplateInfo; installed: In
       <button type="button" className="pill accent big" disabled={!!busy || (!!w.account && !!w.safe && !!blocker)} onClick={install}>
         {busy ?? (!w.account || !w.safe ? "Connect to install" : `Install ${t.name}`)}
       </button>
-      {w.account && w.safe && blocker && <span className="small">{blocker}</span>}
+      {w.account && w.safe && blocker && blocker !== safeBlock && <span className="small">{blocker}</span>}
       {msg && (
         <span className={msg.ok ? "mono" : "err"} style={{ fontSize: 13.5, color: msg.ok ? "var(--allow)" : undefined }}>
           {msg.text}
@@ -152,6 +169,8 @@ function TemplateCard({ t, installed, onDone }: { t: TemplateInfo; installed: In
           )}
         </span>
       )}
+      </div>
+      </div>
     </div>
   );
 }

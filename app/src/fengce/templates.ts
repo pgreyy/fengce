@@ -24,13 +24,14 @@ export const TEMPLATES: TemplateInfo[] = [
     key: "admin",
     name: "Admin key guard",
     tagline: "For the keys that can change everything.",
-    who: "Protocol multisigs and admin Safes: the Safe that owns upgrades, treasuries or bridges.",
+    who: "Protocol multisigs and admin Safes that own upgrades or bridges.",
     blocks: [
       "Delegatecalls to any contract other than Safe's MultiSendCallOnly (the Bybit path: signers approved a delegatecall that rewrote the Safe)",
       "Adding or removing owners, changing the threshold, enabling modules, right away (the WazirX and Radiant paths: control moved in one signed transaction)",
       "Removing the guard without every owner and a 2-day wait",
     ],
     rules: [
+      "Delegatecall allowlist: Safe's MultiSendCallOnly only. Every other delegatecall is refused.",
       "Owner, threshold and module changes are loosening: scheduled in public, they apply after 1 day.",
       "Removing the guard takes every owner and waits 2 days.",
       "Payments over your cap per transaction are refused (max per buy, circuit #2).",
@@ -41,8 +42,8 @@ export const TEMPLATES: TemplateInfo[] = [
     key: "vault",
     name: "Vault",
     tagline: "Small sends now, big ones tomorrow.",
-    who: "Savings and cold storage: money you rarely move and never want to lose in one transaction.",
-    blocks: ["Any single USDT0 send or buy over your cap", "Raising the cap without a public 1-day wait (7 days with a partner, unless they approve sooner)"],
+    who: "Savings in USDT0 you rarely move (it limits USDT0 sends only).",
+    blocks: ["Any single USDT0 send or buy over your cap (it limits USDT0 only; other tokens are not capped)", "Raising the cap without a public 1-day wait (7 days with a partner, unless they approve sooner)"],
     rules: [
       "Sends up to your cap go through at once.",
       "Anything bigger is refused. To move more, schedule a higher cap: it applies after 1 day, or earlier if your partner approves.",
@@ -67,6 +68,9 @@ export interface TemplateOptions {
   /** treasury: the Periodic Spending Budget (#18) Catalog pin, its schema (netlistHash filled) and the period */
   budget?: { pinId: Hex; schema: SchemaFile; period: bigint };
 }
+
+/** Templates shown on Limits now. Treasury is kept in code but hidden until it can include a recipient allowlist. */
+export const SHOWN_TEMPLATES = TEMPLATES.filter((t) => t.key !== "treasury");
 
 /** Every call of the one-signature install of a template on a Safe with no guard. */
 export function templateCalls(key: TemplateKey, safe: Address, o: TemplateOptions, prepared: Prepared): Call[] {

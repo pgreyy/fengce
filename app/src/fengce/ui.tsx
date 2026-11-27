@@ -279,6 +279,7 @@ function WalletMenu({ close }: { close: () => void }) {
         >
           {creating ?? "Create a new Safe"}
         </button>
+        <span className="small" style={{ padding: "0 10px 6px" }}>With guard v3 on: max 100 USDT0 per buy, Tilt-shield. One signature.</span>
         {err && <span className="err" style={{ padding: "6px 10px" }}>{err}</span>}
         <span style={{ borderTop: "1px solid var(--line)", margin: "4px 0" }} />
         <a role="menuitem" href={href("wallet")}>My wallet</a>
