@@ -28,3 +28,6 @@ sdk/LICENSE
 
 # Design handoff (local source of truth for the Okun rebuild; not published)
 design/
+
+# local dry run of scripts/m2-onchain.sh (a fork, not mainnet)
+deployments/m2-demo-dryrun.json
