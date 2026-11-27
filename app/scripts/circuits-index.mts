@@ -31,7 +31,7 @@ interface Index {
   generatedAt: string;
   factory: Address;
   processors: Address[];
-  next: number[]; // nextId per processor at `block`
+  next: number[]; // nextId per processor at `block`: the highest circuit id taped out
   circuits: Row[];
 }
 
@@ -51,12 +51,13 @@ const n = Number(await client.readContract({ address: FACTORY, abi: fAbi, functi
 const known = prev?.processors.length ?? 0;
 const newCpus = (await mc<Address>([...Array(n - known).keys()].map((i) => ({ address: FACTORY, abi: fAbi, functionName: "cpuAt", args: [BigInt(known + i)] })))) as Address[];
 const processors = [...(prev?.processors ?? []), ...newCpus];
-const next = ((await mc<bigint>(processors.map((a) => ({ address: a, abi: cAbi, functionName: "nextId" })))) as (bigint | null)[]).map((x) => Number(x ?? 1n));
+const next = ((await mc<bigint>(processors.map((a) => ({ address: a, abi: cAbi, functionName: "nextId" })))) as (bigint | null)[]).map((x) => Number(x ?? 0n));
 
 // circuits to read: ids from the previous nextId (or 1) up to the current one
 const todo: { p: number; id: number }[] = [];
 processors.forEach((_, p) => {
-  for (let id = prev?.next[p] ?? 1; id < next[p]; id++) todo.push({ p, id });
+  // nextId() is the highest circuit id taped out so far on that processor (ids start at 1)
+  for (let id = (prev?.next[p] ?? 0) + 1; id <= next[p]; id++) todo.push({ p, id });
 });
 const infos = await mc<readonly [number, number, number, number]>(todo.map((c) => ({ address: processors[c.p], abi: cAbi, functionName: "circuitInfo", args: [BigInt(c.id)] })));
 const accounts = await mc<Address>(todo.map((c) => ({ address: OPENER, abi: oAbi, functionName: "accountOf", args: [processors[c.p], BigInt(c.id)] })));

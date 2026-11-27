@@ -4,8 +4,10 @@ import { Fragment, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { Address, Hex } from "viem";
 import { schemaHash, type SchemaFile } from "@fengce/sdk";
-import { cannotUse, describe, evalBits, type Circuit } from "./circuitIndex";
-import { FACT_LABEL, NOT_WIRABLE, fingerprint, importPlan, importSchema, pinFor, type Fact } from "./importInstall";
+import { MEMORY_SET, cannotUse, describe, evalBits, memoryNote, stepBits, zeroState, type Circuit } from "./circuitIndex";
+import { FACT_LABEL, NOT_WIRABLE, fingerprint, importPlan, importSchema, importStatefulPlan, pinFor, type Fact } from "./importInstall";
+import { createSafe } from "./safes";
+import { parseAmount } from "./LimitsEditor";
 import { multiSend, TOKENS } from "./engine";
 import { PREPARED, type Installed } from "./reads";
 import { Addr, href, openWallet, short } from "./ui";
@@ -17,6 +19,19 @@ const blank = (k: Fact["kind"]): Fact => (k === "amountGt" ? { kind: k, usdt0: "
 export function ImportRow({ c, inst, guard, agentExecutor, open, onToggle }: { c: Circuit; inst: Installed | null; guard: Address; agentExecutor: Address; open: boolean; onToggle: () => void }) {
   const w = useWallet();
   const why = cannotUse(c);
+  const mem = c.nState > 0;
+  const memBlocked = mem && !!inst?.set;
+  const [creating, setCreating] = useState<string | null>(null);
+  const newSafe = async () => {
+    if (!w.account) return openWallet();
+    setCreating("Confirm in your wallet");
+    try {
+      await createSafe(w.account);
+      setCreating(null);
+    } catch (e) {
+      setCreating((e as Error).message.split("\n")[0]);
+    }
+  };
   const [facts, setFacts] = useState<Fact[]>(() => [...Array(Math.max(0, Math.min(8, c.nIn))).keys()].map((i) => blank(i === 0 ? "amountGt" : "tokenIs")));
   const [fp, setFp] = useState<Awaited<ReturnType<typeof fingerprint>> | null>(null);
   const [sheet, setSheet] = useState(false);
@@ -47,7 +62,7 @@ export function ImportRow({ c, inst, guard, agentExecutor, open, onToggle }: { c
         <span className="mono muted" title={c.cpu}>#{c.p} {short(c.cpu)}</span>
         <span className="mono muted">not reviewed</span>
         <span className="r cat-act" onClick={(e) => e.stopPropagation()}>
-          <button type="button" className="pill line cat-add" disabled={!!why} title={why ?? undefined} onClick={add}>
+          <button type="button" className="pill line cat-add" disabled={!!why || memBlocked} title={why ?? (memBlocked ? MEMORY_SET : undefined)} onClick={add}>
             Add
           </button>
         </span>
@@ -60,7 +75,15 @@ export function ImportRow({ c, inst, guard, agentExecutor, open, onToggle }: { c
               {describe(c)}. {c.nIn} input bit{c.nIn === 1 ? "" : "s"}, {c.nOut} output bit{c.nOut === 1 ? "" : "s"}, {c.gates} gate{c.gates === 1 ? "" : "s"}
               {c.nState ? `, ${c.nState} state bits` : ""}. Output bit 0 decides: 1 allows, 0 refuses.
             </span>
-            {why ? <span className="err" style={{ fontSize: 14 }}>{why}</span> : <LiveRun c={c} />}
+            {mem && <span className="err" style={{ fontSize: 14 }}>{memoryNote(c)}</span>}
+            {memBlocked && (
+              <span className="small" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+                <span>Your Safe {short(inst!.safe)} already has limits. {MEMORY_SET}</span>
+                <button type="button" className="pill line" onClick={newSafe} disabled={creating === "Confirm in your wallet"}>{creating === "Confirm in your wallet" ? creating : "Create a new Safe"}</button>
+                {creating && creating !== "Confirm in your wallet" && <span className="err" style={{ fontSize: 13 }}>{creating}</span>}
+              </span>
+            )}
+            {why ? <span className="err" style={{ fontSize: 14 }}>{why}</span> : mem ? <LiveStep c={c} /> : <LiveRun c={c} />}
             <div className="addr-row"><span>Processor #{c.p}</span><Addr value={c.cpu} label="Copy processor address" /></div>
             {fp && (
               <>
@@ -91,7 +114,7 @@ export function ImportRow({ c, inst, guard, agentExecutor, open, onToggle }: { c
                 </div>
               ))}
               {schema && "error" in schema && <span className="err" style={{ fontSize: 14 }}>{schema.error}</span>}
-              {schema && !("error" in schema) && <Preview c={c} facts={facts} />}
+              {schema && !("error" in schema) && (mem ? <StepPreview c={c} facts={facts} /> : <Preview c={c} facts={facts} />)}
               <span className="small">Quiet hours, hold lock, agent caps and Tilt-shield are decided by guard v3 on its own circuits; they cannot be wired into another circuit.</span>
             </div>
           )}
@@ -122,6 +145,61 @@ function LiveRun({ c }: { c: Circuit }) {
         </button>
       ))}
       <span className={`tag ${out ? (out[0] ? "g" : "r") : "n"}`}>{out ? `out = ${out.join("")} · ${out[0] ? "ALLOW" : "REFUSE"}` : "…"}</span>
+    </div>
+  );
+}
+
+/** A circuit with memory: toggle the inputs and step it from its current state (read-only step; nothing is stored). */
+function LiveStep({ c }: { c: Circuit }) {
+  const [bits, setBits] = useState<number[]>(() => Array(c.nIn).fill(0));
+  const [state, setState] = useState<Hex>(() => zeroState(c));
+  const [last, setLast] = useState<{ out: number[]; from: Hex; to: Hex } | null>(null);
+  const run = () => stepBits(c, state, bits).then((r) => (setLast({ out: r.out, from: state, to: r.state }), setState(r.state)), () => setLast(null));
+  return (
+    <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <span className="small">Run it:</span>
+      {bits.map((b, i) => (
+        <button key={i} type="button" className="chip" aria-pressed={b === 1} onClick={() => setBits((x) => x.map((y, k) => (k === i ? 1 - y : y)))}>
+          in{i} = {b}
+        </button>
+      ))}
+      <button type="button" className="chip" onClick={run}>Step</button>
+      <button type="button" className="alink" onClick={() => (setState(zeroState(c)), setLast(null))}>Reset memory</button>
+      <span className="mono small">memory {state}</span>
+      {last && <span className={`tag ${last.out[0] ? "g" : "r"}`}>{`out = ${last.out.join("")} · ${last.out[0] ? "ALLOW" : "REFUSE"}`}</span>}
+    </div>
+  );
+}
+
+/** Three transactions in a row in one period, with the mapping (wired facts as "no"), stepped live. */
+function StepPreview({ c, facts }: { c: Circuit; facts: Fact[] }) {
+  const [rows, setRows] = useState<boolean[] | null>(null);
+  useEffect(() => {
+    let live = true;
+    setRows(null);
+    (async () => {
+      const bits = facts.map((f) => (f.kind === "one" ? 1 : 0));
+      let st = zeroState(c);
+      const out: boolean[] = [];
+      for (let i = 0; i < 3; i++) {
+        const r = await stepBits(c, st, bits);
+        out.push(r.out[0] === 1);
+        st = r.state;
+      }
+      return out;
+    })().then((r) => live && setRows(r), () => live && setRows(null));
+    return () => void (live = false);
+  }, [JSON.stringify(facts)]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <div className="ts-log" style={{ marginTop: 6 }}>
+      {(rows ?? []).map((a, i) => (
+        <div key={i} className="ts-lr" style={{ gridTemplateColumns: "minmax(0, 1fr) auto" }}>
+          <span style={{ fontSize: 13.5 }}>Transaction {i + 1} in a period{facts.some((f) => f.kind !== "one" && f.kind !== "zero") ? " (wired facts: no)" : ""}</span>
+          <span className={`tag ${a ? "g" : "r"}`}>{a ? "ALLOW" : "REFUSE"}</span>
+        </div>
+      ))}
+      {!rows && <span className="small">Stepping it on X Layer…</span>}
+      <span className="small">Tick resets the memory at the start of each period you choose.</span>
     </div>
   );
 }
@@ -185,8 +263,21 @@ function ImportSheet({ c, schema, facts, fp, inst, guard, onClose }: { c: Circui
   useEffect(() => {
     if (w.account) pinFor(c, schema, w.account).then(setPin, (e) => setMsg((e as Error).message.split("\n")[0]));
   }, [w.account]); // eslint-disable-line react-hooks/exhaustive-deps
-  const blocker = !w.account || !w.safe ? "Connect your wallet and choose a Safe." : !inst ? "Reading your Safe…" : !inst.owners.some((o) => o.toLowerCase() === w.account!.toLowerCase()) ? "The connected wallet is not an owner of this Safe." : inst.threshold > 1 ? `This Safe needs ${inst.threshold} owner signatures.` : !set && inst.raw?.guard && !/^0x0{40}$/i.test(String(inst.raw.guard)) && !inst.guardOn ? "This Safe runs another guard; install Fengce from Limits first." : !PREPARED ? "The limit circuits are not pinned yet." : null;
-  const plan = useMemo(() => (pin && w.safe && inst && PREPARED ? importPlan({ safe: w.safe, circuit: c, schema, pinId: pin.pinId, pinned: pin.exists, fengceSet: set, guard, prepared: PREPARED }) : null), [pin, w.safe, inst]); // eslint-disable-line react-hooks/exhaustive-deps
+  const mem = c.nState > 0;
+  const [period, setPeriod] = useState<bigint>(86_400n);
+  const [base, setBase] = useState("5");
+  const baseN = parseAmount(base);
+  const plan = useMemo(() => {
+    if (!pin || !w.safe || !inst || !PREPARED) return null;
+    try {
+      return mem
+        ? importStatefulPlan({ safe: w.safe, circuit: c, schema, pinId: pin.pinId, pinned: pin.exists, fengceSet: set, period, baseMaxPerBuy: BigInt(Math.round((baseN ?? 0) * 1e6)), prepared: PREPARED })
+        : importPlan({ safe: w.safe, circuit: c, schema, pinId: pin.pinId, pinned: pin.exists, fengceSet: set, guard, prepared: PREPARED });
+    } catch {
+      return null;
+    }
+  }, [pin, w.safe, inst, period, base]); // eslint-disable-line react-hooks/exhaustive-deps
+  const blocker = !w.account || !w.safe ? "Connect your wallet and choose a Safe." : !inst ? "Reading your Safe…" : mem && set ? MEMORY_SET : mem && baseN === null ? "Enter a max per buy above 0." : !inst.owners.some((o) => o.toLowerCase() === w.account!.toLowerCase()) ? "The connected wallet is not an owner of this Safe." : inst.threshold > 1 ? `This Safe needs ${inst.threshold} owner signatures.` : !set && inst.raw?.guard && !/^0x0{40}$/i.test(String(inst.raw.guard)) && !inst.guardOn ? "This Safe runs another guard; install Fengce from Limits first." : !PREPARED ? "The limit circuits are not pinned yet." : null;
   const sigs = plan ? (plan.ownerPin ? 1 : 0) + 1 : 0;
 
   async function sign() {
@@ -245,6 +336,25 @@ function ImportSheet({ c, schema, facts, fp, inst, guard, onClose }: { c: Circui
           ))}
           <span className="small">No install fee: unlisted circuits are not in the Catalog.</span>
         </div>
+        {mem && (
+          <div className="cat-sec">
+            <span className="lbl">Its memory</span>
+            <span className="small">{memoryNote(c)} Tick keeps it for your Safe and resets it at the start of each period.</span>
+            <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
+              <label className="cat-f">
+                <span className="small">Period (memory resets at its start)</span>
+                <select className="field" style={{ width: 140 }} value={String(period)} onChange={(e) => setPeriod(BigInt(e.target.value))}>
+                  {([["1 hour", 3_600n], ["1 day", 86_400n], ["1 week", 604_800n]] as [string, bigint][]).map(([l, v]) => <option key={l} value={String(v)}>{l}</option>)}
+                </select>
+              </label>
+              <label className="cat-f">
+                <span className="small">Max per buy (USDT0)</span>
+                <input className="field num" style={{ width: 140 }} inputMode="decimal" value={base} onChange={(e) => setBase(e.target.value.replace(/[^0-9.]/g, ""))} aria-invalid={baseN === null} />
+              </label>
+            </div>
+            <span className="small">The guard needs one stateless limit as its base, so this also sets max per buy (circuit #2); Tick runs this circuit next to it.</span>
+          </div>
+        )}
         {plan && (
           <div className="cat-sec">
             <span className="lbl">{sigs === 1 ? "One signature" : `${sigs} signatures`}</span>
@@ -260,7 +370,9 @@ function ImportSheet({ c, schema, facts, fp, inst, guard, onClose }: { c: Circui
             <span className="small">
               {set
                 ? "Your Safe already runs Fengce: your wallet pins the circuit, then the Safe schedules the change; it applies after the wait (1 day, 7 with a partner), like any loosening."
-                : "Your Safe has no guard yet: one batch pins the circuit and installs guard v3 with it as the policy (Tilt-shield on). Tightening later applies at once; loosening waits 1 day."}
+                : mem
+                  ? "Your Safe has no guard yet: one batch pins the circuit, sets up its memory on Tick and installs guard v3 (Tilt-shield on)."
+                  : "Your Safe has no guard yet: one batch pins the circuit and installs guard v3 with it as the policy (Tilt-shield on). Tightening later applies at once; loosening waits 1 day."}
             </span>
           </div>
         )}

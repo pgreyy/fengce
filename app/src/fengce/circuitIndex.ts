@@ -54,8 +54,19 @@ async function mc<T>(calls: any[], chunk = 200): Promise<(T | null)[]> {
 
 let loading: Promise<{ circuits: Circuit[]; block: string; fresh: number }> | null = null;
 
+let snapshotReady: Promise<Circuit[]> | null = null;
+let resolveSnapshot: (c: Circuit[]) => void = () => undefined;
+
+/** The snapshot alone, as soon as it is read (search and Import by ID work at once). */
+export function snapshotCircuits(): Promise<Circuit[]> {
+  snapshotReady ??= new Promise((r) => (resolveSnapshot = r));
+  void loadCircuits();
+  return snapshotReady;
+}
+
 /** The snapshot, then circuits taped out after it (read live). Cached for the page. */
 export function loadCircuits(): Promise<{ circuits: Circuit[]; block: string; fresh: number }> {
+  snapshotReady ??= new Promise((r) => (resolveSnapshot = r));
   loading ??= (async () => {
     // pages live one folder deep (/limits/), as for the event snapshot (reads.ts loadSnapshot)
     const base = location.pathname.split("/").filter(Boolean).length > 0 && !location.pathname.endsWith(".html") ? "../" : "./";
@@ -63,6 +74,7 @@ export function loadCircuits(): Promise<{ circuits: Circuit[]; block: string; fr
     const processors = [...f.processors];
     let fresh = 0;
     const rows: Row[] = [...f.circuits];
+    resolveSnapshot(rows.map((r) => toCircuit(processors, r)));
     try {
       const n = Number(await client.readContract({ address: FACTORY, abi: fAbi, functionName: "cpuCount" }));
       const added = (await mc<Address>([...Array(Math.max(0, n - processors.length)).keys()].map((i) => ({ address: FACTORY, abi: fAbi, functionName: "cpuAt", args: [BigInt(processors.length + i)] })))) as Address[];
@@ -70,7 +82,7 @@ export function loadCircuits(): Promise<{ circuits: Circuit[]; block: string; fr
       const next = await mc<bigint>(processors.map((a) => ({ address: a, abi: cpuAbi, functionName: "nextId" })));
       const todo: { p: number; id: number }[] = [];
       next.forEach((x, p) => {
-        for (let id = f.next[p] ?? 1; id < Number(x ?? 1n); id++) todo.push({ p, id });
+        for (let id = (f.next[p] ?? 0) + 1; id <= Number(x ?? 0n); id++) todo.push({ p, id }); // nextId(): highest id so far
       });
       if (todo.length) {
         const infos = await mc<readonly [number, number, number, number]>(todo.map((c) => ({ address: processors[c.p], abi: cpuAbi, functionName: "circuitInfo", args: [BigInt(c.id)] })));
@@ -118,10 +130,24 @@ export function describe(c: Circuit): string {
 }
 
 /** Why a circuit cannot be a limit here, or null. */
+/** Plain note for a circuit with memory (state bits kept between transactions by Tick). */
+export const memoryNote = (c: Circuit) => `This circuit has memory (${c.nState} state bit${c.nState === 1 ? "" : "s"}). Circuits with memory can only be added when a Safe's limits are first set up.`;
+export const MEMORY_SET = "Circuits with memory can only be added when a Safe's limits are first set up.";
+
+/** Runs a circuit with memory one step from `state` (read-only): the new state and the outputs. */
+export async function stepBits(c: Circuit, state: Hex, bits: number[]): Promise<{ state: Hex; out: number[] }> {
+  let v = 0;
+  bits.forEach((b, i) => (v |= (b & 1) << i));
+  const [ns, o] = (await client.readContract({ address: c.cpu, abi: stepAbi, functionName: "step", args: [BigInt(c.id), state, toHex(v, { size: Math.max(1, Math.ceil(c.nIn / 8)) })] })) as [Hex, Hex];
+  const ob = parseInt(o.slice(2, 4) || "0", 16);
+  return { state: ns, out: [...Array(Math.min(8, c.nOut)).keys()].map((i) => (ob >> i) & 1) };
+}
+export const zeroState = (c: Circuit) => toHex(0, { size: Math.max(1, Math.ceil(c.nState / 8)) });
+const stepAbi = parseAbi(["function step(uint256 id, bytes state, bytes inputs) view returns (bytes newState, bytes outputs)"]);
+
 export function cannotUse(c: Circuit): string | null {
   if (c.app) return "That's a TapeOut app, not a circuit.";
   if (c.nIn < 0) return "This circuit could not be read on X Layer.";
-  if (c.nState > 0) return "Can't be used as a limit here: it keeps state between calls, which needs a Tick group. Stateful circuits are added from the Fengce Catalog when limits are first installed.";
   if (c.nOut < 1) return "Can't be used as a limit: it has no output bit to decide allow or refuse.";
   if (c.nIn < 1 || c.nIn > 8) return `Can't be used as a limit here: it has ${c.nIn} inputs, and this page wires one guard fact to each input bit, up to 8.`;
   return null;

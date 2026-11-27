@@ -15,7 +15,7 @@ import { parseAmount } from "./LimitsEditor";
 import { PREPARED, readInstalled, type Installed } from "./reads";
 import { Addr, CIRCUIT, circuitHref, href, openWallet, short } from "./ui";
 import { V3 } from "./v3";
-import { describe, isAppContainer, loadCircuits, parseQuery, type Circuit } from "./circuitIndex";
+import { describe, isAppContainer, loadCircuits, parseQuery, snapshotCircuits, type Circuit } from "./circuitIndex";
 import { ImportRow } from "./ImportRow";
 import m2 from "../../../deployments/m2-demo-xlayer-196.json";
 
@@ -23,6 +23,7 @@ const V3_EXECUTOR = (m2.agentExecutor ?? null) as Address | null;
 import { EXPLORER_TX, sendFromWallet, simulateSafeTx, useWallet } from "./wallet";
 
 const evalAbi = parseAbi(["function eval(uint256 id, bytes input) view returns (bytes)"]);
+const stepAbi = parseAbi(["function step(uint256 id, bytes state, bytes input) view returns (bytes newState, bytes outputs)"]);
 const ZERO = "0x0000000000000000000000000000000000000000";
 
 interface Row {
@@ -145,7 +146,11 @@ export function CatalogPanel() {
   }, []);
 
   useEffect(() => {
-    loadCircuits().then((x) => setCircuits(x.circuits), () => setCircuits([]));
+    // the snapshot first (instant), then circuits taped out since (read live)
+    let live = true;
+    snapshotCircuits().then((c) => live && setCircuits((cur) => cur ?? c));
+    loadCircuits().then((x) => live && setCircuits(x.circuits), () => live && setCircuits((cur) => cur ?? []));
+    return () => void (live = false);
   }, []);
 
   useEffect(() => {
@@ -302,10 +307,12 @@ function Details({ row }: { row: Row }) {
   const [tests, setTests] = useState<{ reason: string; want: string; got: string }[] | null>(null);
   useEffect(() => {
     setTests(null);
-    if (!row.preset || row.preset.stateful) return;
+    if (!row.preset) return;
     Promise.all(
       row.preset.vectors.map(async (v) => {
-        const out = (await client.readContract({ address: row.processor, abi: evalAbi, functionName: "eval", args: [row.id, v.input] })) as Hex;
+        const out = row.preset!.stateful
+          ? ((await client.readContract({ address: row.processor, abi: stepAbi, functionName: "step", args: [row.id, v.state ?? "0x00", v.input] })) as [Hex, Hex])[1]
+          : ((await client.readContract({ address: row.processor, abi: evalAbi, functionName: "eval", args: [row.id, v.input] })) as Hex);
         const allow = (parseInt(out.slice(2, 4) || "0", 16) & 1) === 1;
         return { reason: v.reason, want: v.decision, got: allow ? "allow" : "deny" };
       }),
@@ -329,25 +336,14 @@ function Details({ row }: { row: Row }) {
           <div className="ts-log" style={{ marginTop: 6 }}>
             {tests.map((t, i) => (
               <div key={i} className="ts-lr">
-                <span className="num muted" style={{ fontSize: 12 }}>eval</span>
+                <span className="num muted" style={{ fontSize: 12 }}>{p?.stateful ? "step" : "eval"}</span>
                 <span>{t.reason}</span>
                 <span className={`tag ${t.got === t.want ? (t.got === "allow" ? "g" : "r") : "n"}`}>{t.got === t.want ? t.got.toUpperCase() : `got ${t.got}`}</span>
               </div>
             ))}
           </div>
         )}
-        {p?.stateful && (
-          <div className="ts-log" style={{ marginTop: 6 }}>
-            {p.vectors.map((v, i) => (
-              <div key={i} className="ts-lr">
-                <span className="num muted" style={{ fontSize: 12 }}>step</span>
-                <span>{v.reason}</span>
-                <span className={`tag ${v.decision === "allow" ? "g" : "r"}`}>{v.decision.toUpperCase()}</span>
-              </div>
-            ))}
-          </div>
-        )}
-        {p?.stateful && <span className="small">Stateful vectors were stepped on chain when the circuit was listed (Catalog.list); the browser cannot re-run a step without changing state.</span>}
+        {p?.stateful && <span className="small">Stepped live from each vector's memory (a read-only step; nothing is stored).</span>}
       </div>
     </div>
   );

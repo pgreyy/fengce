@@ -2,11 +2,11 @@
 // pinned in PinRegistry with that schema, then installed like any other policy. Pure functions, shared by the page and
 // the fork check (app/scripts/import-fork.mts). No install fee: unlisted circuits are not in the Catalog.
 import { decodeErrorResult, encodeFunctionData, getAddress, keccak256, type Address, type Hex } from "viem";
-import { FengceGuardArtifact, PinRegistryArtifact, parseSchema, schemaHash, toLayout, type SchemaFile } from "@fengce/sdk";
+import { BINDING_SOURCES, FengceGuardArtifact, PinRegistryArtifact, TickArtifact, parseSchema, schemaHash, toLayout, type SchemaFile } from "@fengce/sdk";
 import { client } from "../lib/chain";
 import { ENGINE, TOKENS, type Call, type Prepared } from "./engine";
 import { cpuAbi, type Circuit } from "./circuitIndex";
-import { policyInput } from "./catalogInstall";
+import { catalogGroupId, catalogSalt, policyInput } from "./catalogInstall";
 import { V3, V3_DEFAULTS, scheduleCall, v3InstallCalls } from "./v3";
 
 const regAbi = PinRegistryArtifact.abi as any;
@@ -56,7 +56,7 @@ export function importSchema(c: Circuit, netlist: Hex, facts: Fact[], agentExecu
     } else if (f.kind === "foreign") bindings.push({ field: name, source: "RecipientIsForeign" });
     else bindings.push({ field: name, source: "ActorIs", param: BigInt(agentExecutor).toString() });
   }
-  if (!bindings.length) return { error: "Wire at least one input to a fact; with only fixed inputs the circuit decides the same way every time." };
+  if (!bindings.length && c.nState === 0) return { error: "Wire at least one input to a fact; with only fixed inputs the circuit decides the same way every time." };
   return parseSchema({ format: "fengce-schema/1", netlistHash: keccak256(netlist), nIn: c.nIn, fields, bindings });
 }
 
@@ -94,6 +94,31 @@ export interface ImportPlan {
   /** one Safe transaction: a MultiSend batch (no guard yet) or the scheduled change */
   batch: Call[];
   schedule: Call | null;
+}
+
+/** A circuit with memory: Tick keeps its state for the Safe (reset each period) next to a base max per buy, exactly as
+ * Catalog #18 is added. Only while the Safe has no guard: once the guard is on it does not run Tick setup calls. */
+export function importStatefulPlan(o: { safe: Address; circuit: Circuit; schema: SchemaFile; pinId: Hex; pinned: boolean; fengceSet: boolean; period: bigint; baseMaxPerBuy: bigint; prepared: Prepared }): ImportPlan {
+  if (o.fengceSet) throw new Error("Circuits with memory can only be added when a Safe's limits are first set up.");
+  if (!V3) throw new Error("guard v3 is not deployed");
+  const group = catalogGroupId(o.safe, o.pinId);
+  const parsed = parseSchema(o.schema);
+  const bindings = parsed.fields
+    .filter((f) => f.kind !== "flag")
+    .map((f) => {
+      const b = parsed.bindings!.find((x) => x.field === f.name)!;
+      return { source: BINDING_SOURCES.indexOf(b.source), param: BigInt(b.param ?? 0) };
+    });
+  const calls = v3InstallCalls(o.safe, { ...V3_DEFAULTS, maxPerBuy: o.baseMaxPerBuy, tradesPerHour: 0 }, o.prepared);
+  const at = calls.findIndex((c) => c.label.includes("setRules"));
+  calls.splice(
+    at,
+    0,
+    { to: ENGINE.tick, value: 0n, label: `Keep ${o.circuit.tape}'s memory per period (Tick.createGroup)`, data: encodeFunctionData({ abi: TickArtifact.abi as any, functionName: "createGroup", args: [catalogSalt(o.pinId), o.pinId, o.period, toLayout(parsed), bindings] }) },
+    { to: ENGINE.tick, value: 0n, label: "Add this Safe to the group (Tick.setMember)", data: encodeFunctionData({ abi: TickArtifact.abi as any, functionName: "setMember", args: [group, o.safe, true] }) },
+    { to: V3.guard, value: 0n, label: "Run it on every transaction (configureTick)", data: encodeFunctionData({ abi: FengceGuardArtifact.abi as any, functionName: "configureTick", args: [ENGINE.tick, group] }) },
+  );
+  return { ownerPin: null, batch: [...(o.pinned ? [] : [pinCall(o.circuit, o.schema)]), ...calls], schedule: null };
 }
 
 /** No guard yet: pin and install guard v3 with this circuit as the policy, one signature. With a guard: the owner's
