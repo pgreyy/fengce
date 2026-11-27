@@ -35,3 +35,4 @@ deployments/m2-demo-dryrun.json
 # Third-party agent skills installed locally (npx skills add ...), not part of this repo
 .claude/
 skills-lock.json
+deployments/m2c-demo-dryrun.json

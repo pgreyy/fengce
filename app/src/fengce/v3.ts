@@ -101,7 +101,8 @@ export function rulesFor(safe: Address, s: V3Settings, partner: Address = "0x000
 
 /** Every call of the one-signature v3 install on a Safe with no guard, guard turned on last. The Tilt-shield groups are
  * always created, so turning Tilt-shield on later is a tightening that applies at once. */
-export function v3InstallCalls(safe: Address, s: V3Settings, prepared: Prepared): Call[] {
+/** `policy` replaces max per buy as the guard's policy (a Catalog or imported circuit). */
+export function v3InstallCalls(safe: Address, s: V3Settings, prepared: Prepared, policy?: unknown): Call[] {
   if (!V3) throw new Error("FengceGuardV3 is not deployed");
   const G = V3.guard;
   const n = s.tiltAfter - 1;
@@ -109,7 +110,9 @@ export function v3InstallCalls(safe: Address, s: V3Settings, prepared: Prepared)
   if (!countPin) throw new Error(`no counter pin for N = ${n}`);
   const kind = [{ source: 4, param: 0n }];
   const calls: Call[] = [
-    { to: G, value: 0n, label: "Set max per buy (FengceGuardV3.configure)", data: encodeFunctionData({ abi: guardAbi, functionName: "configure", args: [configureInput({ maxPerBuy: s.maxPerBuy, tradesPerHour: 0 }, prepared)] }) },
+    policy
+      ? { to: G, value: 0n, label: "Use this circuit as your policy (FengceGuardV3.configure)", data: encodeFunctionData({ abi: guardAbi, functionName: "configure", args: [policy] }) }
+      : { to: G, value: 0n, label: "Set max per buy (FengceGuardV3.configure)", data: encodeFunctionData({ abi: guardAbi, functionName: "configure", args: [configureInput({ maxPerBuy: s.maxPerBuy, tradesPerHour: 0 }, prepared)] }) },
     ...ROUTER_SELECTORS.map((sel) => ({ to: G, value: 0n, label: `Read swaps on SwapRouter02 (${sel})`, data: encodeFunctionData({ abi: guardAbi, functionName: "setDecoder", args: [ENGINE.router, sel, ENGINE.v3Decoder] }) as Hex })),
     { to: ENGINE.tick, value: 0n, label: "Let the guard advance your counters (Tick.setRelayer)", data: encodeFunctionData({ abi: tickAbi, functionName: "setRelayer", args: [G, true] }) },
   ];

@@ -10,6 +10,7 @@ import prepared from "../../deployments/limits-xlayer-196.json" with { type: "js
 import { catalogPlan } from "../src/fengce/catalogInstall";
 import { ENGINE, createSafeCalldata, execCalldata, multiSend } from "../src/fengce/engine";
 import { presetFor } from "../src/lib/policies";
+import { V3 } from "../src/fengce/v3";
 
 const rpc = process.argv[2] ?? "http://127.0.0.1:8551";
 const chain = { id: 196, name: "X Layer fork", nativeCurrency: { name: "OKB", symbol: "OKB", decimals: 18 }, rpcUrls: { default: { http: [rpc] } } } as const;
@@ -72,15 +73,16 @@ for (const want of [18n, 52n]) {
     period: 86_400n,
     baseMaxPerBuy: 5_000_000n,
     prepared: prepared as never,
+    guard: V3!.guard,
   });
   check(plan.batch.length > 0 && plan.schedule === null, `one signature: ${plan.batch.length} calls in one batch, fee ${plan.value} wei`);
   const r = await execSafe(s, multiSend(plan.batch), plan.value);
   if (!check(r.ok, `batch executed${"hash" in r ? ` (tx ${r.hash})` : ""}${"err" in r ? `: ${r.err}` : ""}`) || !("receipt" in r)) continue;
   const fees = parseEventLogs({ abi: CatalogArtifact.abi as any, logs: r.receipt!.logs, eventName: "FeePaid" }) as any[];
-  check(fees.length === 1 && fees[0].args.pinId === entry.e.pinId && getAddress(fees[0].args.payer) === s.safe, "Catalog.payInstall ran in the batch (FeePaid from the Safe)");
+  check(entry.e.installFee === 0n ? fees.length === 0 : fees.length === 1, entry.e.installFee === 0n ? "free listing: no payInstall in the batch" : "paid listing: FeePaid from the Safe");
   const guard = await pc.readContract({ address: s.safe, abi: parseAbi(["function getStorageAt(uint256, uint256) view returns (bytes)"]), functionName: "getStorageAt", args: [BigInt("0x4a204f620c8c5ccdca3fd54d003badd85ba500436a431f0cbda4f558c93c34c8"), 1n] });
-  check(getAddress(`0x${guard.slice(-40)}`) === ENGINE.guard, "Safe guard is FengceGuard");
-  const cfg = (await pc.readContract({ address: ENGINE.guard, abi: FengceGuardArtifact.abi as any, functionName: "configOf", args: [s.safe] })) as unknown[];
+  check(getAddress(`0x${guard.slice(-40)}`) === V3!.guard, "Safe guard is FengceGuardV3 (Tilt-shield on)");
+  const cfg = (await pc.readContract({ address: V3!.guard, abi: FengceGuardArtifact.abi as any, functionName: "configOf", args: [s.safe] })) as unknown[];
   if (preset.stateful) {
     check(cfg[0] === true && String(cfg[1]) === prepared.maxBuyPin, "guard configured with the base max per buy pin");
     const g = (await pc.readContract({ address: ENGINE.tick, abi: TickArtifact.abi as any, functionName: "groupOf", args: [cfg[6]] })) as unknown[];

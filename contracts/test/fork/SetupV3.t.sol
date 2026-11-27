@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {Test} from "forge-std/Test.sol";
+import {Test, Vm} from "forge-std/Test.sol";
 import {ISafe} from "@safe/interfaces/ISafe.sol";
 import {Enum} from "@safe/libraries/Enum.sol";
 import {FengceGuardV3} from "../../src/safe/FengceGuardV3.sol";
@@ -75,6 +75,26 @@ contract SetupV3ForkTest is Test {
         assertTrue(_buy(safe, 200_000), "0.2 USDT0 buy allowed");
         vm.expectRevert(abi.encodeWithSelector(FengceGuardV3.FengceRefused.selector, FengceRulesV3.CIRCUIT, address(safe), LimitsLib.USDT0));
         _buy(safe, 3_000_000);
+    }
+
+    /// A Catalog install fee is paid from the new Safe during creation, before the guard is on (here a free listing).
+    function test_createWithCatalogFee_paysBeforeTheGuard() public {
+        address catalog = 0x26C5437428cdD7e4854614DC5DDEFE2776B51dFe;
+        bytes32 pin = 0x6661c56a76bc6769c7153d9a44a9b546b860543d42fce4cd34a4bf9d4d89ce44; // Stablecoin Transfer Limit, fee 0
+        address[] memory o = new address[](1);
+        o[0] = owner;
+        bytes memory init = abi.encodeCall(ISafe.setup, (o, 1, address(setupper), abi.encodeCall(FengceSetupV3.setupWithCatalogFee, (p, catalog, pin, 0)), FALLBACK, address(0), 0, payable(address(0))));
+        vm.recordLogs();
+        vm.prank(owner);
+        address safe = FACTORY.createProxyWithNonce(SAFE_L2, init, 2);
+        bool paid;
+        bytes32 feePaid = keccak256("FeePaid(bytes32,address,address,uint256,uint256)");
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+        for (uint256 i; i < logs.length; i++) {
+            if (logs[i].emitter == catalog && logs[i].topics[0] == feePaid && address(uint160(uint256(logs[i].topics[2]))) == safe) paid = true;
+        }
+        assertTrue(paid, "FeePaid from the new Safe");
+        assertEq(address(uint160(uint256(vm.load(safe, GUARD_SLOT)))), address(guard), "guard set during creation");
     }
 
     function test_setupCannotBeCalledDirectly() public {

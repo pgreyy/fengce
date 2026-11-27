@@ -14,7 +14,7 @@ import { ENGINE, multiSend, type Call } from "./engine";
 import { parseAmount } from "./LimitsEditor";
 import { PREPARED, readInstalled, type Installed } from "./reads";
 import { Addr, CIRCUIT, circuitHref, href, openWallet, short } from "./ui";
-import { GUARD_V3 } from "./addSafe";
+import { V3 } from "./v3";
 import { EXPLORER_TX, sendFromWallet, simulateSafeTx, useWallet } from "./wallet";
 
 const evalAbi = parseAbi(["function eval(uint256 id, bytes input) view returns (bytes)"]);
@@ -37,7 +37,6 @@ const errText = (e: unknown) => (e as { shortMessage?: string }).shortMessage ??
 interface SafeState {
   inst: Installed;
   tickPin: Hex | null;
-  relayerSet: boolean;
 }
 
 async function readSafeState(safe: Address): Promise<SafeState> {
@@ -47,8 +46,7 @@ async function readSafeState(safe: Address): Promise<SafeState> {
     const g = (await client.readContract({ address: inst.tick, abi: TickArtifact.abi as any, functionName: "groupOf", args: [inst.tickGroup] })) as unknown[];
     tickPin = g[1] as Hex;
   }
-  const relayerSet = (await client.readContract({ address: ENGINE.tick, abi: TickArtifact.abi as any, functionName: "relayers", args: [safe, ENGINE.guard] })) as boolean;
-  return { inst, tickPin, relayerSet };
+  return { inst, tickPin };
 }
 
 /** What the Safe's one Tick slot (guard v2) runs now, by name; null when it is free. */
@@ -59,6 +57,11 @@ function occupantOf(st: SafeState | null, rows: Row[]): string | null {
   if (n) return `trades per hour (${n} per hour)`;
   const r = rows.find((x) => x.entry.pinId.toLowerCase() === pin);
   return r ? `${r.preset?.name ?? "a Catalog circuit"} (#${r.id})` : `the stateful circuit on pin ${short(st.tickPin, 6)}`;
+}
+
+/** The guard that takes a Catalog circuit: the Safe's own Fengce guard, or guard v3 for a Safe with no guard yet. */
+function targetGuard(st: SafeState): Address {
+  return st.inst.set ? st.inst.guard : V3 ? V3.guard : ENGINE.guard;
 }
 
 /** Import by ID: a circuit number (18 or #18), a processor address, or a pin id. */
@@ -334,7 +337,7 @@ function Sheet({ row, mode, st, occupant, onClose, onDone }: { row: Row; mode: "
           baseMaxPerBuy: needsBase ? BigInt(Math.round(baseN! * 1e6)) : undefined,
           prepared: PREPARED,
           groupExists,
-          relayerSet: st.relayerSet,
+          guard: targetGuard(st),
         });
       })
       .then((pl) => live && setPlan(pl), (e) => live && setPlan({ error: errText(e) }));
@@ -349,15 +352,13 @@ function Sheet({ row, mode, st, occupant, onClose, onDone }: { row: Row; mode: "
         ? "The connected wallet is not an owner of this Safe."
         : st.inst.threshold > 1
           ? `This Safe needs ${st.inst.threshold} owner signatures; one-signature install is for 1-of-1 Safes.`
-          : GUARD_V3 && String(st.inst.raw?.guard ?? "").toLowerCase() === GUARD_V3.toLowerCase()
-            ? "This Safe runs Fengce guard v3 (Tilt-shield and its other rules). This page adds Catalog circuits to guard v2 Safes for now, so nothing on this Safe is changed."
-            : !set && st.inst.raw?.guard && String(st.inst.raw.guard) !== ZERO && !st.inst.guardOn
+          : !set && st.inst.raw?.guard && String(st.inst.raw.guard) !== ZERO && !st.inst.guardOn
             ? `This Safe runs another guard (${short(String(st.inst.raw.guard))}). Install Fengce from Limits first, where replacing it is confirmed.`
             : null;
 
   const steps: { label: string; call: { to: Address; data: Hex; operation: 0 | 1 }; value: bigint; calls: Call[] }[] = [];
   if (mode === "remove") {
-    const c = removeTickCall();
+    const c = removeTickCall(st?.inst.guard);
     steps.push({ label: "Schedule the removal", call: { to: c.to, data: c.data, operation: 0 }, value: 0n, calls: [c] });
   } else if (plan && !("error" in plan)) {
     if (plan.batch.length) steps.push({ label: plan.schedule ? "Pay and set up" : "Sign and add", call: multiSend(plan.batch), value: plan.value, calls: plan.batch });
@@ -475,8 +476,9 @@ function Sheet({ row, mode, st, occupant, onClose, onDone }: { row: Row; mode: "
                 ))}
               </div>
             ))}
-            {steps.length > 1 && <span className="small">Your Safe already runs Fengce, and the guard does not let a batch change its own settings: the fee and setup go first, then the change is scheduled. It applies after 1 day (Apply on My wallet).</span>}
-            {steps.length === 1 && set && mode === "add" && <span className="small">Your Safe already runs Fengce, so the change is scheduled and applies after 1 day (Apply on My wallet).</span>}
+            
+            {steps.length === 1 && set && mode === "add" && <span className="small">Your Safe already runs Fengce, so the change is scheduled: it applies after the wait (1 day, or 7 with a partner unless they approve sooner). Apply it on My wallet.</span>}
+            {!set && mode === "add" && V3 && <span className="small">Your Safe has no guard yet: this installs Fengce guard v3 with this circuit as its policy and Tilt-shield on (4 buys in the same half hour), in one signature.</span>}
           </div>
         )}
         {plan && "error" in plan && <span className="err">{plan.error}</span>}
