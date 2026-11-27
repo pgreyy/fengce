@@ -321,6 +321,17 @@
         "contract": null,
         "created": "0x637a7bee8a71a750923cd023d4666eb89a2a5208"
       }
+    ],
+    "mcp": [
+      {
+        "hash": "0x33ad40b85771b96fb7237b65351f5f87c5b790607e87869d41feb067df6dd0a9",
+        "to": "0x3ffd99e3e2386c863fbcc16362af233648d6695a",
+        "function": "execute(address,address,uint256,bytes)",
+        "contract": null,
+        "created": "0x3ffd99e3e2386c863fbcc16362af233648d6695a",
+        "result": "allowed: 0.05 USDT0 from the Safe to its owner (AgentExecuted)",
+        "sentBy": "Fengce MCP server, pay_through_safe with signer onchainos (OKX Agentic Wallet)"
+      }
     ]
   },
   "tiltLatchCircuitId": "8",

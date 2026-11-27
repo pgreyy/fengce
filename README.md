@@ -165,7 +165,11 @@ Safe [`0x5641DA334011832Feec997875781a3D40239465e`](https://www.oklink.com/x-lay
 - **OKX Agentic Wallet**: the agentic wallet is the agent key on a Fengce-bound Safe; calls go through AgentExecutorV3 and an
   over-cap call is recorded as Denied with `AGENT_CAP` ([/agents](https://getfengce.vercel.app/agents/), [scripts/m2-agent-calls.sh](scripts/m2-agent-calls.sh)).
 - **SDK**: `npm i @fengce/sdk`, then `check(client, safe, tx)` returns `allowed` or a reason code ([sdk/README.md](sdk/README.md)).
-- **Skill**: `npx skills add pgreyy/fengce --skill fengce` ([skills/fengce/SKILL.md](skills/fengce/SKILL.md)). MCP server: [mcp/README.md](mcp/README.md).
+- **Skill**: `npx skills add pgreyy/fengce --skill fengce` ([skills/fengce/SKILL.md](skills/fengce/SKILL.md)).
+- **MCP server** (Claude Desktop, Cursor, Claude Code): `check` (allowed or a reason code), `explain_refusal` (plain words and which limit
+  to change) and `pay_through_safe` (an agent key pays through AgentExecutorV3; refused payments are never sent). Build with
+  `cd mcp && npm ci && npm run build`, then point the client at `node mcp/dist/server.mjs` ([mcp/README.md](mcp/README.md)). Tried on the demo
+  Safe: [`0x33ad40b8…6dd0a9`](https://www.oklink.com/x-layer/tx/0x33ad40b85771b96fb7237b65351f5f87c5b790607e87869d41feb067df6dd0a9) (0.05 USDT0 paid through the OKX Agentic Wallet).
 
 ## Repo map
 

@@ -11,8 +11,9 @@ import { PRESETS } from "../../app/src/lib/policies";
 import { quoteFor } from "../../app/src/lib/quotes";
 import type { Snapshot } from "../../app/src/lib/events";
 import snapshotJson from "../../app/public/events-snapshot.json";
+import { AGENT_EXECUTOR_V3, decide, explain, outcome, payCall, send } from "./agentTools";
 
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 const snapshot = snapshotJson as unknown as Snapshot;
 
 // ---------------------------------------------------------------- input pieces
@@ -84,7 +85,8 @@ const server = new McpServer(
   {
     instructions:
       "Fengce enforces spending policies inside smart wallets on X Layer (chain 196): a TapeOut circuit decides every transaction. " +
-      "Before acting for a Safe, call preflight_transaction; if the decision is deny, the wallet will refuse the transaction: treat it as final, " +
+      "Before acting for a Safe, call check (or preflight_transaction); if it is refused, the wallet will refuse the transaction: treat it as final, " +
+      "call explain_refusal to tell the user why and what limit would have to change, and " +
       "do not split, reroute or retry it, and tell the user. simulate_transaction tests a listed policy on any transaction. " +
       "Every tool is read-only; build_install_payload returns an unsigned payload for the Safe's owners to review and sign.",
   },
@@ -298,5 +300,80 @@ async function resolveCircuit(a: { key?: string; processor?: string; circuitId?:
   }
   throw new Fix("Identify the policy with key, or processor and circuitId, or pinId (all from list_policies).");
 }
+
+// ---------------------------------------------------------------- agent tools (guard v2 and v3)
+
+server.registerTool(
+  "check",
+  {
+    title: "Would this Safe allow this transaction?",
+    description:
+      "Runs the Safe's own guard on the transaction exactly as it would run at execution (eth_call, nothing sent) and returns allowed or refused " +
+      "with the reason code (guard v3: CIRCUIT, TRADES_PER_HOUR, QUIET_HOURS, HOLD_LOCK, TILT_SHIELD, AGENT_CAP, OTHER). Give agent to check the " +
+      "agent path (AgentExecutorV3: the agent must be active, and its daily cap applies).",
+    inputSchema: { safe: address.describe("The Safe on X Layer."), agent: address.optional().describe("Optional: the agent key that would send it through AgentExecutorV3."), ...txShape },
+    annotations: READ_ONLY,
+  },
+  guarded(async (a: TxIn & { safe: string; agent?: string }) => {
+    const tx = toTx(a);
+    const d = await decide(getAddress(a.safe), { to: tx.to, value: BigInt(tx.value), data: tx.data }, a.agent ? getAddress(a.agent) : undefined);
+    const data = { safe: getAddress(a.safe), path: d.path, allowed: d.allowed, reason: d.reason, code: d.code ?? null, guard: d.guard, detail: d.detail ?? null, limit: d.limit?.toString() ?? null, cap: d.cap ?? null };
+    return ok(d.allowed ? "ALLOWED: the Safe would let this transaction through." : `REFUSED (${d.reason ?? "refused"}${d.code ? `, code ${d.code}` : ""}): the Safe will refuse it. Treat this as final; call explain_refusal for the reason and what limit to change.`, data);
+  }),
+);
+
+server.registerTool(
+  "explain_refusal",
+  {
+    title: "Why would the Safe refuse this, and what would have to change?",
+    description: "Checks the transaction (as check does) and explains a refusal in plain words: which rule, the numbers involved, and which limit to change or when it resets. Read-only.",
+    inputSchema: { safe: address.describe("The Safe on X Layer."), agent: address.optional().describe("Optional: the agent key (AgentExecutorV3 path)."), ...txShape },
+    annotations: READ_ONLY,
+  },
+  guarded(async (a: TxIn & { safe: string; agent?: string }) => {
+    const tx = toTx(a);
+    const t = { to: tx.to, value: BigInt(tx.value), data: tx.data };
+    const safe = getAddress(a.safe) as Address;
+    const d = await decide(safe, t, a.agent ? getAddress(a.agent) : undefined);
+    const e = await explain(safe, d, t);
+    return ok(`${e.reason}\nWhat to change: ${e.change}`, { allowed: d.allowed, reason: d.reason, code: d.code ?? null, explanation: e.reason, change: e.change });
+  }),
+);
+
+server.registerTool(
+  "pay_through_safe",
+  {
+    title: "Pay from a Safe with an agent key (AgentExecutorV3)",
+    description:
+      "An agent key pays an ERC-20 amount from the Safe through AgentExecutorV3. It checks first and never sends a payment the Safe would refuse " +
+      "(it returns the reason instead). signer: none (default) returns the unsigned call to sign elsewhere; onchainos sends it from the OKX Agentic Wallet " +
+      "(onchainos CLI, logged in); key sends it with FENGCE_AGENT_PRIVATE_KEY from the server's environment. The Safe's guard decides again on chain.",
+    inputSchema: {
+      safe: address.describe("The Safe that pays."),
+      agent: address.describe("The agent key, active on AgentExecutorV3 for this Safe."),
+      token: address.describe("The token, for example USDT0 0x779Ded0c9e1022225f8E0630b35a9b54bE713736."),
+      recipient: address.describe("Who receives it."),
+      amount: uint.describe("Amount in base units (USDT0 has 6 decimals: 0.05 USDT0 = \"50000\")."),
+      signer: z.enum(["none", "onchainos", "key"]).optional().describe("none (default): return the unsigned call; onchainos or key: send it."),
+    },
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true },
+  },
+  guarded(async (a: { safe: string; agent: string; token: string; recipient: string; amount: string; signer?: "none" | "onchainos" | "key" }) => {
+    const safe = getAddress(a.safe) as Address;
+    const agent = getAddress(a.agent) as Address;
+    const call = payCall(safe, getAddress(a.token) as Address, getAddress(a.recipient) as Address, BigInt(a.amount));
+    const d = await decide(safe, call.inner, agent);
+    if (!d.allowed) {
+      const e = await explain(safe, d, call.inner);
+      return ok(`Not sent: the Safe would refuse it (${d.reason}). ${e.reason} What to change: ${e.change}`, { sent: false, allowed: false, reason: d.reason, code: d.code ?? null, explanation: e.reason, change: e.change });
+    }
+    const unsigned = { from: agent, to: call.to, data: call.data, value: "0", chainId: 196 };
+    if (!a.signer || a.signer === "none")
+      return ok(`Allowed. Not sent (signer none): sign this call with the agent key, for example: onchainos wallet contract-call --chain xlayer --to ${call.to} --input-data <data> --from ${agent}`, { sent: false, allowed: true, executor: AGENT_EXECUTOR_V3, unsigned });
+    const hash = await send(a.signer, agent, call);
+    const o = await outcome(hash);
+    return ok(`Sent: ${o.result === "executed" ? "the Safe paid (AgentExecuted)" : o.result === "denied" ? "the guard refused it on chain (Denied); nothing moved" : "see the transaction"}. tx ${hash}`, { sent: true, tx: hash, explorer: `https://www.oklink.com/x-layer/tx/${hash}`, result: o.result, status: o.status });
+  }),
+);
 
 await server.connect(new StdioServerTransport());

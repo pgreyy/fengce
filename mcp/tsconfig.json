@@ -1,7 +1,10 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["es2022", "dom"],
+    "lib": [
+      "es2022",
+      "dom"
+    ],
     "module": "esnext",
     "moduleResolution": "bundler",
     "strict": true,
@@ -9,8 +12,19 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
-    "types": ["node"],
-    "paths": { "@fengce/sdk": ["../sdk/src/index.ts"] }
+    "types": [
+      "node",
+      "vite/client"
+    ],
+    "paths": {
+      "@fengce/sdk": [
+        "../sdk/src/index.ts"
+      ]
+    }
   },
-  "include": ["src/**/*.ts", "scripts/**/*.mts", "demo/**/*.mts"]
+  "include": [
+    "src/**/*.ts",
+    "scripts/**/*.mts",
+    "demo/**/*.mts"
+  ]
 }

@@ -122,6 +122,28 @@ function Agents() {
         <span className="small">onchainos 4.6.13: contract-call first returns "confirming"; after you confirm, the same command with --force sends it. Value 0, X Layer (196).</span>
       </section>
 
+      <section style={{ display: "flex", flexDirection: "column", gap: 18 }} id="mcp">
+        <span className="lbl">MCP server · Claude Desktop, Cursor, Claude Code</span>
+        <h2 className="h2" style={{ fontSize: 30 }}>Let your agent ask the Safe first.</h2>
+        <p className="body" style={{ maxWidth: 760 }}>
+          Three tools: <b>check</b> (would this Safe allow this transaction, with the reason code), <b>explain_refusal</b> (the reason in plain words and
+          which limit to change), and <b>pay_through_safe</b> (an agent key pays through AgentExecutorV3; a payment the Safe would refuse is never sent).
+          check and explain_refusal only read X Layer. pay_through_safe returns the unsigned call unless you choose a signer: the OKX Agentic Wallet
+          (onchainos, logged in) or a key in FENGCE_AGENT_PRIVATE_KEY.
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 16 }}>
+          <CodeCard title="1. build it (once)" code={"git clone https://github.com/pgreyy/fengce\ncd fengce/sdk && npm ci\ncd ../app && npm ci\ncd ../mcp && npm ci && npm run build"} />
+          <CodeCard title="2a. Claude Desktop: claude_desktop_config.json" code={'{\n  "mcpServers": {\n    "fengce": {\n      "command": "node",\n      "args": ["/path/to/fengce/mcp/dist/server.mjs"]\n    }\n  }\n}'} />
+          <CodeCard title="2b. Cursor: .cursor/mcp.json" code={'{\n  "mcpServers": {\n    "fengce": {\n      "command": "node",\n      "args": ["/path/to/fengce/mcp/dist/server.mjs"]\n    }\n  }\n}'} />
+          <CodeCard title="2c. Claude Code" code={"claude mcp add fengce -- node /path/to/fengce/mcp/dist/server.mjs"} />
+        </div>
+        <span className="small">
+          Tried on the demo Safe: check refused an agent payment over its daily cap (AGENT_CAP), explain_refusal said "over the Safe's max per buy of 2 USDT0",
+          and pay_through_safe paid 0.05 USDT0 through the OKX Agentic Wallet:{" "}
+          <a className="alink accent" href="https://www.oklink.com/x-layer/tx/0x33ad40b85771b96fb7237b65351f5f87c5b790607e87869d41feb067df6dd0a9" target="_blank" rel="noreferrer noopener">tx 0x33ad…d0a9</a>.
+        </span>
+      </section>
+
       <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         <span className="lbl">When an AI agent goes wrong</span>
         <Ruled cols={AGENT_COLS} rows={AGENT} label="AI agent failure scenarios compared" />

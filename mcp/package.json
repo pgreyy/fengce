@@ -1,6 +1,6 @@
 {
   "name": "@fengce/mcp",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Read-only MCP server for Fengce on X Layer: list and quote policies, simulate and preflight transactions, build unsigned Safe install payloads",
   "license": "MIT",
