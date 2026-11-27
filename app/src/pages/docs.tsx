@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PRODUCT_NAME, REPO, TAPE_NAME } from "../brand";
 import { DEPLOYMENT, EXPLORER } from "../lib/chain";
+import DEWEB from "../../../deployments/deweb-xlayer-196.json";
 import { MAX_BUY_CIRCUIT, COUNTER } from "../okun/engine";
 import { PREPARED } from "../okun/reads";
 import { IncidentGrid } from "../okun/incidents";
 import { Ruled, type Tone } from "../okun/Ruled";
-import { CodeCard, CopyButton, mount, param, short } from "../okun/ui";
+import { Addr, CIRCUIT, CodeCard, circuitHref, mount, param, short } from "../okun/ui";
 
 type Tab = "how" | "inc" | "cmp" | "devs" | "contracts" | "circuits" | "judges";
 const TABS: [Tab, string][] = [
@@ -46,12 +47,19 @@ const STEPS = [
 
 function Docs() {
   const [tab, setTab] = useState<Tab>((TABS.find(([k]) => k === param("tab"))?.[0] as Tab) ?? "how");
+  // links like /docs/?tab=circuits#c-6-2-180 open the tab and scroll to that circuit
+  useEffect(() => {
+    const id = location.hash.slice(1);
+    if (!id) return;
+    const t = setTimeout(() => document.getElementById(id)?.scrollIntoView({ block: "start" }), 50);
+    return () => clearTimeout(t);
+  }, [tab]);
   const c = DEPLOYMENT.contracts as Record<string, string>;
   const addrs: [string, string][] = [
     ["Network", "X Layer mainnet · chain 196"],
     ...["FengceGuard", "PinRegistry", "PolicyEngine", "Tick", "Catalog", "AgentExecutor", "FengceBinding", "FengceInspector", "UniswapV3RouterDecoder"].map((k) => [k, c[k]] as [string, string]),
-    ["Max per buy circuit", `${MAX_BUY_CIRCUIT.processor} #${MAX_BUY_CIRCUIT.id} (NAND)`],
-    ["Trades per hour circuit", PREPARED ? `${PREPARED.counterProcessor} #${PREPARED.counterCircuitId} (${COUNTER.gates} NAND + ${COUNTER.latches} LATCH)` : `${COUNTER.gates} NAND + ${COUNTER.latches} LATCH, taped out on processor #180 (pending)`],
+    ["Max per buy circuit", `${short(MAX_BUY_CIRCUIT.processor)} #${MAX_BUY_CIRCUIT.id} (NAND)`],
+    ["Trades per hour circuit", PREPARED ? `${short(PREPARED.counterProcessor)} #${PREPARED.counterCircuitId} (${COUNTER.gates} NAND + ${COUNTER.latches} LATCH)` : `${COUNTER.gates} NAND + ${COUNTER.latches} LATCH, taped out on processor #180 (pending)`],
     ["Catalog circuits", "0x839b…74e #2 · 0xF9bB…a0F #7 · 0xB04E…3FF #5 · 0xE2a6…cd7 #18 · 0x87BF…9a6 #52"],
     ["Demo Safe", DEPLOYMENT.demoSafe],
     ["TapeOut features used", `Circuits (eval, step with LATCH state through Tick), PinRegistry over REF closures, DeWeb (${TAPE_NAME})`],
@@ -172,10 +180,9 @@ function Docs() {
           {Object.entries(c).map(([name, addr]) => (
             <div key={name} className="addr-row">
               <span>{name}</span>
-              <span className="mono" style={{ fontSize: 13, overflowWrap: "anywhere", display: "inline-flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                <a href={`${EXPLORER}/address/${addr}`} target="_blank" rel="noreferrer noopener" style={{ textDecoration: "underline", textDecorationColor: "var(--line)" }}>{addr}</a>
+              <span style={{ display: "inline-flex", gap: 12, alignItems: "center", flexWrap: "wrap", minWidth: 0 }}>
+                <Addr value={addr} link={`${EXPLORER}/address/${addr}`} label={`Copy ${name} address`} />
                 <a className="alink" href={`https://repo.sourcify.dev/196/${addr}`} target="_blank" rel="noreferrer noopener">Sourcify</a>
-                <CopyButton text={addr} label={`Copy ${name} address`} />
               </span>
             </div>
           ))}
@@ -185,20 +192,29 @@ function Docs() {
       {tab === "circuits" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
           <p className="body" style={{ maxWidth: 720 }}>Each limit is a TapeOut circuit. PinRegistry fingerprints the circuit, every processor it depends on and the code behind them; if any of it changes, the check fails closed.</p>
-          <div>
-            <span className="lbl" style={{ display: "block", paddingBottom: 8 }}>Max per buy</span>
-            <div className="addr-row"><span>Circuit</span><span className="mono" style={{ fontSize: 13, overflowWrap: "anywhere" }}>{MAX_BUY_CIRCUIT.processor} #{String(MAX_BUY_CIRCUIT.id)} · NAND(amount over cap, paying USDT0)</span></div>
-            {PREPARED && <div className="addr-row"><span>Pin</span><span className="mono" style={{ fontSize: 13, overflowWrap: "anywhere" }}>{PREPARED.maxBuyPin}</span></div>}
+          <div id={CIRCUIT.maxBuy} className="anchor">
+            <span className="lbl" style={{ display: "block", paddingBottom: 8 }}>Max per buy · circuit #{String(MAX_BUY_CIRCUIT.id)}</span>
+            <div className="addr-row"><span>Processor</span><Addr value={MAX_BUY_CIRCUIT.processor} link={`${EXPLORER}/address/${MAX_BUY_CIRCUIT.processor}`} label="Copy processor address" /></div>
+            <div className="addr-row"><span>Circuit</span><span className="mono" style={{ fontSize: 13 }}>#{String(MAX_BUY_CIRCUIT.id)} · NAND(amount over cap, paying USDT0)</span></div>
+            {PREPARED && <div className="addr-row"><span>Pin</span><Addr value={PREPARED.maxBuyPin} n={6} label="Copy pin id" /></div>}
           </div>
-          <div>
-            <span className="lbl" style={{ display: "block", paddingBottom: 8 }}>Trades per clock hour (UTC)</span>
-            <div className="addr-row"><span>Circuit</span><span className="mono" style={{ fontSize: 13, overflowWrap: "anywhere" }}>{PREPARED ? `${PREPARED.counterProcessor} #${PREPARED.counterCircuitId}` : "processor #180"} · {COUNTER.gates} NAND + {COUNTER.latches} LATCH, run by Tick</span></div>
+          <div id={CIRCUIT.counter} className="anchor">
+            <span className="lbl" style={{ display: "block", paddingBottom: 8 }}>Trades per clock hour (UTC) · circuit #{PREPARED ? PREPARED.counterCircuitId : "7"}</span>
+            {PREPARED && <div className="addr-row"><span>Processor #180</span><Addr value={PREPARED.counterProcessor} link={`${EXPLORER}/address/${PREPARED.counterProcessor}`} label="Copy processor address" /></div>}
+            <div className="addr-row"><span>Circuit</span><span className="mono" style={{ fontSize: 13 }}>{COUNTER.gates} NAND + {COUNTER.latches} LATCH, run by Tick</span></div>
             {PREPARED &&
               Object.entries(PREPARED.counterPins).map(([n, pinId]) => (
-                <div key={n} className="addr-row"><span>Pin, {n} per hour</span><span className="mono" style={{ fontSize: 12.5, overflowWrap: "anywhere", color: "var(--muted)" }}>{pinId}</span></div>
+                <div key={n} className="addr-row"><span>Pin, {n} per hour</span><Addr value={pinId} n={6} label={`Copy pin for ${n} per hour`} /></div>
               ))}
           </div>
-          <div>
+          <div id={CIRCUIT.deweb} className="anchor">
+            <span className="lbl" style={{ display: "block", paddingBottom: 8 }}>{TAPE_NAME} · this site on X Layer</span>
+            <div className="addr-row"><span>Name</span><span className="mono" style={{ fontSize: 13 }}>circuit #6 · area 2 · processor #180, served by TapeOut DeWeb</span></div>
+            <div className="addr-row"><span>Processor #180</span><Addr value={DEWEB.processor} link={`${EXPLORER}/address/${DEWEB.processor}`} label="Copy processor address" /></div>
+            <div className="addr-row"><span>Site container</span><Addr value={DEWEB.container} link={`${EXPLORER}/address/${DEWEB.container}`} label="Copy container address" /></div>
+            <div className="addr-row"><span>Open it</span><a className="code-link mono" style={{ fontSize: 13 }} href="https://6-2-180.tapekit.org/" target="_blank" rel="noreferrer noopener">6-2-180.tapekit.org</a></div>
+          </div>
+          <div id={CIRCUIT.catalog} className="anchor">
             <span className="lbl" style={{ display: "block", paddingBottom: 8 }}>Catalog circuits</span>
             <div className="addr-row"><span>Listed</span><span className="mono" style={{ fontSize: 13 }}>0x839b…74e #2 · 0xF9bB…a0F #7 · 0xB04E…3FF #5 · 0xE2a6…cd7 #18 · 0x87BF…9a6 #52</span></div>
           </div>
@@ -210,7 +226,13 @@ function Docs() {
           {addrs.map(([a, b]) => (
             <div key={a} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1.6fr)", gap: 16, padding: "13px 0", borderBottom: "1px solid var(--line)" }}>
               <span>{a}</span>
-              <span className="mono" style={{ fontSize: 13, color: "var(--muted)", overflowWrap: "anywhere" }} title={b}>{b.length > 60 && b.startsWith("0x") ? short(b, 6) : b}</span>
+              {/^0x[0-9a-fA-F]{40}$/.test(b) ? (
+                <Addr value={b} link={`${EXPLORER}/address/${b}`} label={`Copy ${a} address`} />
+              ) : a === "Max per buy circuit" || a === "Trades per hour circuit" ? (
+                <a className="mono code-link" style={{ fontSize: 13 }} href={circuitHref(a === "Max per buy circuit" ? CIRCUIT.maxBuy : CIRCUIT.counter)}>{b}</a>
+              ) : (
+                <span className="mono" style={{ fontSize: 13, color: "var(--muted)", overflowWrap: "anywhere" }} title={b}>{b}</span>
+              )}
             </div>
           ))}
         </div>

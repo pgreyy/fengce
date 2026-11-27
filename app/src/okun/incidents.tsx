@@ -55,7 +55,8 @@ function useMode() {
   useEffect(() => {
     const rm = matchMedia("(prefers-reduced-motion: reduce)");
     const mob = matchMedia("(max-width: 900px)");
-    const pick = () => setMode(rm.matches ? "grid" : mob.matches ? "swipe" : "pin");
+    // scroll-linked on every screen, touch included; a static grid only for reduced motion
+    const pick = () => setMode(rm.matches ? "grid" : "pin");
     pick();
     rm.addEventListener("change", pick);
     mob.addEventListener("change", pick);
@@ -88,11 +89,14 @@ export function PinnedIncidents({ head }: { head: React.ReactNode }) {
     };
     measure();
     onScroll();
+    const ro = typeof ResizeObserver !== "undefined" && track.current ? new ResizeObserver(measure) : null;
+    if (ro && track.current) ro.observe(track.current);
     addEventListener("resize", measure);
     addEventListener("scroll", onScroll, { passive: true });
-    return () => (removeEventListener("resize", measure), removeEventListener("scroll", onScroll));
+    return () => (ro?.disconnect(), removeEventListener("resize", measure), removeEventListener("scroll", onScroll));
   }, [mode]);
   const p = dist ? Math.min(1, x / dist) : 0;
+  const narrow = typeof innerWidth !== "undefined" && innerWidth < 768;
   const counter = (
     <span className="lbl num" aria-live="off">
       {pad(Math.min(n, 1 + Math.floor(p * n * 0.999)))} / {pad(n)}
@@ -131,7 +135,7 @@ export function PinnedIncidents({ head }: { head: React.ReactNode }) {
         <div className="w" style={{ marginTop: 40 }}>
           <div style={{ overflow: "visible" }}>
             <div ref={track} style={{ display: "flex", gap: 18, width: "max-content", transform: `translate3d(${-Math.min(x, dist)}px, 0, 0)`, willChange: "transform" }}>
-              {INCIDENTS.map((i) => <IncidentCard key={i.name} x={i} width={360} />)}
+              {INCIDENTS.map((i) => <IncidentCard key={i.name} x={i} width={narrow ? "min(80vw, 320px)" : 360} />)}
             </div>
           </div>
           <div style={{ height: 2, background: "var(--line)", marginTop: 34, borderRadius: 2 }}>

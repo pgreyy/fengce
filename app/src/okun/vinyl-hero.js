@@ -10,14 +10,15 @@ export function startVinyl(canvas, opts) {
   function layout() {
     var r = canvas.parentNode.getBoundingClientRect(); W = r.width; H = r.height;
     canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.width = W + "px"; canvas.style.height = H + "px";
-    cx = W * 0.74; cy = H * 1.32; rMin = H * 0.42; rMax = Math.hypot(cx, cy) + 20;
     narrow = W < 768;
     if (narrow) {
-      // narrow screens: needle at ~70% width, short arm whose pivot sits inside the frame (never along the right edge)
-      var nxp = W * 0.7, nyp = H * 0.34;
+      // phones: the record sits low on the right and the arm stays in the bottom-right corner, below and beside the text
+      cx = W * 1.02; cy = H * 1.18; rMin = Math.min(W, H) * 0.36; rMax = Math.hypot(cx, cy) + 20;
+      var nxp = W * 0.86, nyp = H * 0.9;
       thetaN = Math.atan2(nyp - cy, nxp - cx); tipR = Math.hypot(nxp - cx, nyp - cy);
-      pvx = W * 0.9; pvy = nyp - Math.min(140, H * 0.18);
+      pvx = W * 0.97; pvy = nyp - Math.min(90, H * 0.12);
     } else {
+      cx = W * 0.74; cy = H * 1.32; rMin = H * 0.42; rMax = Math.hypot(cx, cy) + 20;
       thetaN = -1.3; tipR = rMin + (rMax - rMin) * 0.22; pvx = W * 0.95; pvy = -H * 0.02;
     }
     grooves = document.createElement("canvas"); grooves.width = W * dpr; grooves.height = H * dpr;
@@ -101,9 +102,19 @@ export function startVinyl(canvas, opts) {
   }
   function onMove(e) { tmx = (e.clientX / window.innerWidth - 0.5); }
   layout();
-  var still = navigator.webdriver || (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  // A still frame only when the viewer asked for reduced motion; phones and tablets animate like desktops.
+  var still = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   if (still) { last = -100; draw(performance.now()); cancelAnimationFrame(raf); } else { raf = requestAnimationFrame(draw); }
-  var relayout = function () { layout(); if (still) { last = -100; draw(performance.now()); cancelAnimationFrame(raf); } };
-  window.addEventListener("resize", relayout); window.addEventListener("mousemove", onMove);
-  return function stop() { cancelAnimationFrame(raf); window.removeEventListener("resize", relayout); window.removeEventListener("mousemove", onMove); };
+  var lastW = W, lastH = H;
+  var relayout = function () {
+    var r = canvas.parentNode.getBoundingClientRect();
+    if (Math.abs(r.width - lastW) < 1 && Math.abs(r.height - lastH) < 1) return;
+    layout(); lastW = W; lastH = H;
+    if (still) { last = -100; draw(performance.now()); cancelAnimationFrame(raf); }
+  };
+  // size from the container whenever it changes (fonts loading, address bar on phones, rotation), not only on load
+  var ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(relayout) : null;
+  if (ro) ro.observe(canvas.parentNode); else window.addEventListener("resize", relayout);
+  window.addEventListener("pointermove", onMove, { passive: true });
+  return function stop() { cancelAnimationFrame(raf); if (ro) ro.disconnect(); else window.removeEventListener("resize", relayout); window.removeEventListener("pointermove", onMove); };
 }

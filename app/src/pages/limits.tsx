@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { LimitsEditor } from "../okun/LimitsEditor";
 import { readInstalled, type Installed } from "../okun/reads";
-import { href, mount, param, short } from "../okun/ui";
+import { href, mount, param, short, StartLink } from "../okun/ui";
 import { useWallet } from "../okun/wallet";
 
 type Tab = "tpl" | "add" | "build";
@@ -33,7 +33,7 @@ function Limits() {
           <span className="lbl">{w.safe ? `Safe ${short(w.safe)}` : "No Safe chosen"}</span>
           <h1 className="disp" style={{ fontSize: 48 }}>Your limits</h1>
         </div>
-        {!w.safe && <a className="pill accent" href={href("start")}>Get started</a>}
+        {!w.safe && <StartLink className="pill accent">Get started</StartLink>}
       </div>
       <div className="seg" role="tablist" aria-label="Rule source" style={{ alignSelf: "flex-start" }}>
         {([["tpl", "Templates"], ["add", "Add a circuit"], ["build", "Build your own"]] as [Tab, string][]).map(([k, l]) => (

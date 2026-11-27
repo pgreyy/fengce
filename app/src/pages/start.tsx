@@ -3,7 +3,7 @@ import { LimitsEditor } from "../okun/LimitsEditor";
 import { SafePicker } from "../okun/SafePicker";
 import { readInstalled, type Installed } from "../okun/reads";
 import { createSafe } from "../okun/safes";
-import { CopyButton, mount } from "../okun/ui";
+import { Addr, mount } from "../okun/ui";
 import { chooseSafe, connect, useWallet } from "../okun/wallet";
 
 function Start() {
@@ -46,7 +46,7 @@ function Start() {
       {step === 3 && (
         <>
           <div className="card" style={{ padding: 20, maxWidth: 560 }}>
-            <div className="kv"><span className="muted">Wallet</span><span className="mono" style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>{w.safe}<CopyButton text={w.safe!} label="Copy Safe address" /></span></div>
+            <div className="kv"><span className="muted">Wallet</span><Addr value={w.safe!} label="Copy Safe address" /></div>
             <div className="kv"><span className="muted">Type</span><span className="mono">{installed ? `Safe ${installed.version} · ${installed.threshold} of ${installed.owners.length}` : "…"}</span></div>
             <div className="kv">
               <span className="muted">Enforcement</span>

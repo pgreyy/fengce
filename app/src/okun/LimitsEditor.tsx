@@ -184,7 +184,7 @@ export function LimitsEditor({ installed, onDone }: { installed: Installed | nul
           )}
           {tpl === "tilt" && (
             <span className="small">
-              Sells-only after a burst of buys. <a className="alink accent" href={href("tilt")}>See how it works</a>
+              Sells-only after a burst of buys. <a className="alink accent" href={href("tilt-shield")}>See how it works</a>
             </span>
           )}
         </div>

@@ -1,6 +1,7 @@
 import { Ruled, type Tone } from "../okun/Ruled";
-import { CodeCard, href, mount } from "../okun/ui";
-import { DEPLOYMENT } from "../lib/chain";
+import { Addr, mount } from "../okun/ui";
+import { EXPLORER_TX } from "../okun/wallet";
+import { DEPLOYMENT, EXPLORER } from "../lib/chain";
 
 const AGENT_COLS = ["Prompt rules", "Wallet warnings", "Vendor policy", "Fengce"];
 const AGENT: [string, ...[string, Tone][]][] = [
@@ -28,15 +29,19 @@ function Agents() {
         <div className="plates">
           {[
             ["Agent key", "OKX Agentic Wallet, or any key the agent holds", "ASKS"],
-            ["AgentExecutor", c.AgentExecutor, "CHECKS FIRST"],
+            ["AgentExecutor", "addr:" + c.AgentExecutor, "CHECKS FIRST"],
             ["Your Safe", "holds the funds; the agent is a module, not an owner", "HOLDS FUNDS"],
-            ["FengceGuard + pinned circuit", c.FengceGuard, "DECIDES"],
+            ["FengceGuard + pinned circuit", "addr:" + c.FengceGuard, "DECIDES"],
             ["X Layer", "allowed calls run; refused calls are recorded as Denied with a reason", "RECORDS"],
           ].map(([a, b, n], i) => (
             <div key={a} className={`plate${i === 3 ? " hl" : ""}`}>
               <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
                 <span>{a}</span>
-                <span className="mono muted" style={{ fontSize: 12, overflowWrap: "anywhere" }}>{b}</span>
+                {b.startsWith("addr:") ? (
+                  <Addr value={b.slice(5)} link={`${EXPLORER}/address/${b.slice(5)}`} label={`Copy ${a} address`} />
+                ) : (
+                  <span className="mono muted" style={{ fontSize: 12 }}>{b}</span>
+                )}
               </span>
               <span className="lbl" style={i === 3 ? { color: "var(--accent)" } : undefined}>{n}</span>
             </div>
@@ -59,9 +64,23 @@ function Agents() {
           ))}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          <CodeCard title="the demo agent on mainnet: one call refused" code={"Denied · over the limit\ntx 0x9b70d386a2782e269ab1d3b1df6de767534a5b5b7904998abd92a651d2584a1b"} />
-          <CodeCard title="and one allowed" code={"AgentExecuted\ntx 0x7a70f5c9713fd9236ecdd81287bcf775253d2cbea19c857524bb1047acfcccab"} />
-          <a className="alink" href={href("docs", { tab: "devs" })} style={{ alignSelf: "flex-start" }}>Developer docs</a>
+          {[
+            ["The demo agent on mainnet: one call refused", "Denied · over the limit", "r", "0x9b70d386a2782e269ab1d3b1df6de767534a5b5b7904998abd92a651d2584a1b"],
+            ["And one allowed", "AgentExecuted", "g", "0x7a70f5c9713fd9236ecdd81287bcf775253d2cbea19c857524bb1047acfcccab"],
+          ].map(([title, ev, tone, tx]) => (
+            <div key={tx} className="code">
+              <div className="code-head">
+                <span className="lbl">// {title}</span>
+              </div>
+              <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                <span className={`tag ${tone}`} style={{ alignSelf: "flex-start" }}>{ev}</span>
+                <span style={{ display: "flex", gap: 10, alignItems: "center", color: "var(--codeText)" }}>
+                  <span className="mono muted" style={{ fontSize: 12 }}>tx</span>
+                  <Addr value={tx} link={EXPLORER_TX(tx)} label="Copy transaction ID" />
+                </span>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
 

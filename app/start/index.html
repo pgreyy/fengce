@@ -9,9 +9,9 @@
     <meta property="og:title" content="Get started · Fengce" />
     <meta property="og:description" content="Connect a browser wallet, choose or create a Safe on X Layer, and install your limits with one signature." />
     <script>
-      /* Theme before first paint: the saved choice, else dark. */
+      /* Theme before first paint: the saved choice, else the system's. */
       (function () {
-        try { var t = localStorage.getItem("fengce-theme") || localStorage.getItem("okun-theme"); if (t === "light") document.documentElement.setAttribute("data-theme", "light"); } catch (e) {}
+        var t = null; try { t = localStorage.getItem("fengce-theme") || localStorage.getItem("okun-theme"); } catch (e) {} if (!t && window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches) t = "light"; if (t === "light") document.documentElement.setAttribute("data-theme", "light");
       })();
     </script>
   </head>

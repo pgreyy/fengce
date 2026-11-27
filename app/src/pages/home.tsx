@@ -4,7 +4,7 @@ import { safeActivity, type ActivityRow } from "../okun/chainActivity";
 import { MAX_BUY_CIRCUIT, TOKENS, multiSend, swapCalls } from "../okun/engine";
 import { PinnedIncidents } from "../okun/incidents";
 import { readInstalled } from "../okun/reads";
-import { CodeCard, href, mount, short } from "../okun/ui";
+import { CIRCUIT, CodeCard, circuitHref, href, mount, short, StartLink } from "../okun/ui";
 import { startVinyl } from "../okun/vinyl-hero.js";
 import { EXPLORER_TX, safeInfo, simulateSafeTx } from "../okun/wallet";
 
@@ -41,13 +41,16 @@ function Hero() {
     <div className="hero">
       <Vinyl veil={`linear-gradient(90deg, ${mix(94)} 0%, ${mix(70)} 42%, ${mix(0)} 70%)`} />
       <div className="w hero-in">
-        <span className="lbl">On-chain limits for Safe and agent wallets · X Layer</span>
+        <span className="lbl">
+          <span className="hide-m">On-chain limits for Safe and agent wallets · X Layer</span>
+          <span className="show-m">On-chain limits · X Layer</span>
+        </span>
         <h1 className="hero-h1">
           Limits your wallet keeps, <em>even on you.</em>
         </h1>
         <p className="hero-sub">Set a max per buy and trades per hour once. Your Safe refuses anything outside them, in every app and for every agent, because the check lives in the wallet, not in an app.</p>
         <div className="hero-cta">
-          <a className="pill accent big" href={href("start")}>Set my limits</a>
+          <StartLink className="pill accent big" to={href("limits")}>Set my limits</StartLink>
           <a className="pill line big" href={href("try")}>Test a limit</a>
         </div>
         <div className="works">
@@ -142,7 +145,9 @@ function LiveStrip() {
           </div>
           <div>
             <span className="lbl">Rule ran on</span>
-            <div className="v num">TapeOut circuit #{String(MAX_BUY_CIRCUIT.id)}</div>
+            <div className="v num">
+              <a className="code-link" href={circuitHref(CIRCUIT.maxBuy)}>TapeOut circuit #{String(MAX_BUY_CIRCUIT.id)}</a>
+            </div>
             <span className="small">pinned code, readable on chain</span>
           </div>
         </div>
@@ -183,7 +188,7 @@ const RULES: { name: string; short: string; status: "LIVE" | "GUARD V3" | "CATAL
   { name: "Trades per hour", short: "Counts swaps each UTC clock hour.", status: "LIVE", long: "Set 5 per hour. The 6th swap in the same clock hour is refused; the counter resets on the hour. Sends don't count.", example: "5 / hour", to: href("limits", { rule: "rate" }) },
   { name: "Quiet hours", short: "No trading in the hours you choose.", status: "GUARD V3", long: "Pick a window like 01:00 to 07:00 UTC. Swaps inside it are refused with QUIET_HOURS. Sends still work.", example: "01:00 to 07:00", to: href("limits", { rule: "quiet" }) },
   { name: "Hold lock", short: "No selling a token within N hours of buying it.", status: "GUARD V3", long: "Buy a token and it can't be sold for the hours you set. Stops panic-selling the dip you just bought.", example: "24 hours", to: href("limits", { rule: "hold" }) },
-  { name: "Tilt-shield", short: "4 buys in 30 minutes, or one buy 3× your usual, pauses buying.", status: "GUARD V3", long: "When the pattern trips, buying pauses for your cooldown. Sells and sends still go through.", example: "Pause 6 hours", to: href("tilt") },
+  { name: "Tilt-shield", short: "4 buys in 30 minutes, or one buy 3× your usual, pauses buying.", status: "GUARD V3", long: "When the pattern trips, buying pauses for your cooldown. Sells and sends still go through.", example: "Pause 6 hours", to: href("tilt-shield") },
   { name: "Agent cap", short: "A separate budget per agent key, with reason codes.", status: "GUARD V3", long: "Each agent key gets its own daily budget. Over it, the agent gets AGENT_CAP back and can tell you why.", example: "50 USDT0 / day", to: href("agents") },
   { name: "Partner approval", short: "Optional. A partner can speed up loosening; silence falls back after 7 days.", status: "GUARD V3", long: "Name a friend. They can approve a looser limit early. If they never answer, it unlocks after 7 days anyway.", example: "Optional", to: href("limits", { rule: "partner" }) },
   { name: "Add a circuit", short: "Install a rule from the catalog, or build your own.", status: "CATALOG", long: "Pick a pinned TapeOut circuit from the Fengce catalog, or build one. Designers earn 80% of install fees.", example: "Catalog", to: href("limits", { tab: "add" }) },
@@ -242,15 +247,15 @@ function Holds() {
           <p className="body" style={{ marginTop: 18, maxWidth: 480 }}>
             Apps and agents only ask. Your Safe sends every transaction through the guard, the guard asks a pinned TapeOut circuit, and X Layer keeps the answer. Removing the guard takes 2 days, so a stolen session or a bad moment can't switch it off.
           </p>
-          <div style={{ display: "flex", gap: 30, marginTop: 26, flexWrap: "wrap" }}>
+          <div className="holds-stats">
             {[
-              ["0s", "to tighten · guard v3"],
+              ["0s", "to tighten"],
               ["1 day", "to loosen"],
               ["2 days", "to remove"],
             ].map(([a, b]) => (
               <div key={b}>
-                <div className="num" style={{ fontSize: 28 }}>{a}</div>
-                <div className="lbl">{b}</div>
+                <span className="num">{a}</span>
+                <span className="lbl">{b}</span>
               </div>
             ))}
           </div>
@@ -355,7 +360,7 @@ function Feed() {
       .map((e, k) => ({ e, t, k }));
   });
   useEffect(() => {
-    if (navigator.webdriver || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     let i = 5,
       k = 5;
     const id = setInterval(() => {
@@ -396,7 +401,7 @@ function Closer() {
           </div>
           <p className="body" style={{ maxWidth: 380, marginTop: 18 }}>One signature installs your limits. After that, every app and agent gets the same answer.</p>
           <div className="hero-cta">
-            <a className="pill accent big" href={href("start")}>Set my limits</a>
+            <StartLink className="pill accent big" to={href("limits")}>Set my limits</StartLink>
             <a className="pill line big" href={href("try")}>Test a limit</a>
           </div>
         </div>

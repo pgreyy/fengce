@@ -6,7 +6,7 @@ import { chooseSafe, connect, disconnect, useWallet } from "./wallet";
 import "./styles.css";
 
 // ------------------------------------------------------------------ routes (static pages, relative links: works on DeWeb)
-export type Page = "" | "start" | "limits" | "wallet" | "tilt" | "try" | "agents" | "docs" | "install" | "onboard";
+export type Page = "" | "start" | "limits" | "wallet" | "tilt-shield" | "try" | "agents" | "docs" | "install" | "onboard";
 let DEPTH = 0;
 export function href(page: Page, q?: Record<string, string>, hash?: string) {
   const base = DEPTH === 0 ? "./" : "../";
@@ -15,6 +15,9 @@ export function href(page: Page, q?: Record<string, string>, hash?: string) {
 export function param(name: string) {
   return new URLSearchParams(location.search).get(name);
 }
+/** Anchors of the circuits listed on /docs (Circuits). Every circuit ID shown in the app links to one of them. */
+export const CIRCUIT = { maxBuy: "c-max-per-buy", counter: "c-trades-per-hour", deweb: "c-6-2-180", catalog: "c-catalog" } as const;
+export const circuitHref = (anchor: string) => href("docs", { tab: "circuits" }, anchor);
 export const short = (a: string, n = 4) => (a.length > 2 + 2 * n ? `${a.slice(0, 2 + n)}…${a.slice(-n)}` : a);
 
 // ------------------------------------------------------------------ marks
@@ -94,6 +97,29 @@ export function CopyButton({ text, label = "Copy address" }: { text: string; lab
         </svg>
       )}
     </button>
+  );
+}
+
+/** An address or hash, middle-truncated (0xa627…11B3), full value on hover or long press, with a copy button.
+ * Optional link (for example OKLink). Never overflows its container. */
+export function Addr({ value, n = 4, link, label }: { value: string; n?: number; link?: string; label?: string }) {
+  const text = short(value, n);
+  const inner = (
+    <span className="mono addr-t" title={value}>
+      {text}
+    </span>
+  );
+  return (
+    <span className="addr">
+      {link ? (
+        <a href={link} target="_blank" rel="noreferrer noopener" className="code-link" title={value}>
+          {inner}
+        </a>
+      ) : (
+        inner
+      )}
+      <CopyButton text={value} label={label ?? "Copy"} />
+    </span>
   );
 }
 
@@ -238,10 +264,42 @@ function useOutside(open: boolean, setOpen: (v: boolean) => void) {
   return ref;
 }
 
+/** Opens the header wallet menu in place (Get started, Connect wallet and similar links never navigate). */
+export function openWallet() {
+  setTimeout(() => dispatchEvent(new CustomEvent("fengce:open-wallet")), 0);
+}
+
+/** A "get started" style link: opens the wallet menu when no wallet is connected, else goes to `to`. */
+export function StartLink({ className, to, children }: { className?: string; to?: string; children: ReactNode }) {
+  const w = useWallet();
+  return (
+    <a
+      className={className}
+      href={to ?? "#"}
+      onClick={(e) => {
+        if (w.account && to) return;
+        e.preventDefault();
+        openWallet();
+      }}
+    >
+      {children}
+    </a>
+  );
+}
+
 function WalletButton() {
   const w = useWallet();
   const [open, setOpen] = useState(false);
   const ref = useOutside(open, setOpen);
+  useEffect(() => {
+    const on = () => {
+      setOpen(true);
+      ref.current?.scrollIntoView({ block: "nearest" });
+      (ref.current?.querySelector("button") as HTMLButtonElement | null)?.focus({ preventScroll: true });
+    };
+    addEventListener("fengce:open-wallet", on);
+    return () => removeEventListener("fengce:open-wallet", on);
+  }, [ref]);
   return (
     <div className="wallet-btn" ref={ref}>
       {w.account ? (
@@ -297,7 +355,7 @@ function MobileMenu({ page }: { page: Page }) {
 const NAV: { page: Page; label: string }[] = [
   { page: "limits", label: "Limits" },
   { page: "try", label: "Try" },
-  { page: "tilt", label: "Tilt-shield" },
+  { page: "tilt-shield", label: "Tilt-shield" },
   { page: "agents", label: "Agents" },
   { page: "docs", label: "Docs" },
 ];
@@ -341,11 +399,11 @@ function Footer() {
           <Lockup knot={22} word={22} />
           <span style={{ fontSize: 14.5, color: "var(--muted)", maxWidth: 300 }}>Limits your wallet keeps, even on you. Built on TapeOut circuits on X Layer.</span>
           <div className="foot-pw">
-            <span className="mono muted" style={{ fontSize: 12 }}>{TAPE_NAME}</span>
+            <a className="mono code-link" style={{ fontSize: 12 }} href={circuitHref(CIRCUIT.deweb)} title="This site, stored on X Layer as TapeOut circuit #6 on processor #180">{TAPE_NAME}</a>
             <ThemeButton />
           </div>
         </div>
-        {col("Product", [["Limits", href("limits")], ["Try", href("try")], ["Tilt-shield", href("tilt")], ["Wallet", href("wallet")]])}
+        {col("Product", [["Limits", href("limits")], ["Try", href("try")], ["Tilt-shield", href("tilt-shield")], ["Wallet", href("wallet")]])}
         {col("Build", [["Docs", href("docs")], ["Agents", href("agents")], ["Catalog", href("limits", { tab: "add" })], ["GitHub", REPO, true]])}
         {col("Proof", [["Contracts", href("docs", { tab: "contracts" })], ["Circuits", href("docs", { tab: "circuits" })], ["Incidents", href("docs", { tab: "inc" })], ["For judges", href("docs", { tab: "judges" })]])}
       </div>
@@ -353,11 +411,11 @@ function Footer() {
   );
 }
 
-/** Home page only, once per browser session; never for reduced motion or automated browsers (previews must see the page). */
+/** Home page only, once per browser session, in the page theme (saved choice, else the system). Never for reduced motion. */
 function Splash() {
   const [show] = useState(() => {
     try {
-      if (navigator.webdriver || matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
+      if (matchMedia("(prefers-reduced-motion: reduce)").matches) return false;
       if (sessionStorage.getItem("okun-splash")) return false;
       sessionStorage.setItem("okun-splash", "1");
       return true;
@@ -374,7 +432,7 @@ function Splash() {
   if (gone) return null;
   return (
     <div className="splash" aria-hidden="true">
-      <Knot size={72} stroke={1.2} ring="#EDEDE8" />
+      <Knot size={72} stroke={1.2} ring="currentColor" />
     </div>
   );
 }
