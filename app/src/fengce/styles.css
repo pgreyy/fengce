@@ -448,12 +448,20 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 }
 
 /* Limits → Add a circuit: the Catalog as one grid, rows expand in place; Add opens a confirm sheet */
-.cat-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.cat-top { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.cat-intro { flex: 1 1 420px; min-width: 0; font-size: 15px; }
+.cat-tools { display: flex; gap: 8px; align-items: center; margin-left: auto; }
+.cat-tools .field { width: 240px; }
+.cat-imp-btn { min-height: 44px; }
+.cat-imp-btn.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+.cat-imp-head { display: flex; justify-content: space-between; align-items: center; }
+.cat-imp-x { border: 0; background: none; color: var(--muted); font-size: 22px; line-height: 1; padding: 2px 6px; cursor: pointer; }
+.cat-imp-x:hover { color: var(--text); }
 .cat-imp { display: flex; flex-direction: column; gap: 8px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
 .cat-imp-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .cat-imp-row .field { flex: 1 1 320px; min-width: 0; font-size: 14px; }
 .cat-imp-row .pill { min-height: 44px; }
-.cat { --cols: minmax(280px, 3fr) 52px 84px 136px 140px 108px 128px 100px; min-width: 1080px; }
+.cat { --cols: minmax(270px, 3fr) 52px 84px 136px 156px 108px 128px 92px; min-width: 1080px; }
 .cat-r { display: grid; grid-template-columns: var(--cols); column-gap: 20px; align-items: center; border-bottom: 1px solid var(--line); }
 .cat-r > span { min-width: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cat-r > span.r { text-align: right; overflow: visible; }
@@ -487,7 +495,8 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .cat-ack b { font-weight: 500; }
 @media (max-width: 767px) {
   .cat-x { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-  .cat-top .field { width: 100% !important; }
+  .cat-tools { width: 100%; margin-left: 0; }
+  .cat-tools .field { flex: 1 1 auto; width: auto; min-width: 0; }
   .csheet-bg { align-items: flex-end; padding: 0; }
   .csheet { width: 100%; max-height: 88vh; border-radius: 16px 16px 0 0; padding: 20px var(--pad) 28px; }
 }

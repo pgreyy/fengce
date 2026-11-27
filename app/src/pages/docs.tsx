@@ -311,6 +311,7 @@ function Docs() {
           <div id={CIRCUIT.catalog} className="anchor">
             <span className="lbl" style={{ display: "block", paddingBottom: 8 }}>Catalog circuits</span>
             <div className="addr-row"><span>Listed</span><span className="mono" style={{ fontSize: 13 }}>0x839b…74e #2 · 0xF9bB…a0F #7 · 0xB04E…3FF #5 · 0xE2a6…cd7 #18 · 0x87BF…9a6 #52</span></div>
+            <div className="addr-row"><span>For designers</span><span className="small" style={{ fontSize: 13.5 }}>List your circuit in the Catalog (Catalog.list with test vectors, checked on chain; see <a className="code-link" href="https://github.com/pgreyy/fengce/blob/main/docs/INTEGRATION.md" target="_blank" rel="noreferrer noopener">INTEGRATION.md</a>) for the Catalog badge. Listings are free during launch; when you set an install fee, Catalog.payInstall sends 80% to you and 20% to the Fengce treasury. Any other TapeOut circuit can still be imported on Limits, marked Unlisted.</span></div>
           </div>
         </div>
       )}

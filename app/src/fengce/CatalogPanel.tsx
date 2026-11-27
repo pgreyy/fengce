@@ -117,6 +117,13 @@ export function CatalogPanel() {
   const [found, setFound] = useState<Found | null>(null);
   const [circuits, setCircuits] = useState<Circuit[] | null>(null);
   const [openU, setOpenU] = useState<string | null>(null);
+  const [impOpen, setImpOpen] = useState(false);
+  useEffect(() => {
+    if (!impOpen) return;
+    const k = (e: KeyboardEvent) => e.key === "Escape" && !document.querySelector(".csheet") && setImpOpen(false);
+    document.addEventListener("keydown", k);
+    return () => document.removeEventListener("keydown", k);
+  }, [impOpen]);
   const [sheet, setSheet] = useState<{ row: Row; mode: "add" | "remove" } | null>(null);
   const [st, setSt] = useState<SafeState | null>(null);
   const [tick, setTick] = useState(0);
@@ -183,33 +190,38 @@ export function CatalogPanel() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div className="cat-top">
-        <p className="body" style={{ maxWidth: 640 }}>
-          Circuits already taped out on X Layer and listed by their designers, with test vectors checked on chain. Open one to see what it reads; add it to your Safe with one signature. Listings are free during launch; when a designer sets a fee, Catalog.payInstall sends 80% to the designer and 20% to the treasury.
-        </p>
-        <input className="field" style={{ width: 240 }} aria-label="Search circuits" placeholder="Search circuits" value={search} onChange={(e) => (setSearch(e.target.value), setFound(null))} />
+        <p className="body cat-intro">Add any TapeOut circuit on X Layer to your Safe. Catalog circuits are reviewed; unlisted ones are at your own risk.</p>
+        <div className="cat-tools">
+          <input className="field" aria-label="Search circuits" placeholder="Search circuits" value={search} onChange={(e) => (setSearch(e.target.value), setFound(null))} />
+          <button type="button" className={`pill line cat-imp-btn${impOpen ? " on" : ""}`} aria-expanded={impOpen} aria-controls="cat-imp" onClick={() => setImpOpen(!impOpen)}>
+            Import
+          </button>
+        </div>
       </div>
 
-      <div className="cat-imp">
-        <label htmlFor="cat-id" className="lbl">Import by ID</label>
-        <form className="cat-imp-row" onSubmit={(e) => (e.preventDefault(), doImport())}>
-          <input id="cat-id" className="field mono" value={imp} onChange={(e) => setImp(e.target.value)} placeholder="Tape name (15.2.414), circuit #, processor address or pin id" spellCheck={false} />
-          <button type="submit" className="pill line" disabled={!rows || !imp.trim()}>Find</button>
-          {found && (
-            <button type="button" className="alink" onClick={() => (setFound(null), setImp(""))}>Show all</button>
+      {impOpen && (
+        <div className="cat-imp" id="cat-imp">
+          <div className="cat-imp-head">
+            <label htmlFor="cat-id" className="lbl">Import by ID</label>
+            <button type="button" className="cat-imp-x" aria-label="Close import" onClick={() => setImpOpen(false)}>×</button>
+          </div>
+          <form className="cat-imp-row" onSubmit={(e) => (e.preventDefault(), doImport())}>
+            <input id="cat-id" className="field mono" autoFocus value={imp} onChange={(e) => setImp(e.target.value)} placeholder="Tape name (15.2.414), circuit #, processor address or pin id" spellCheck={false} />
+            <button type="submit" className="pill line" disabled={!rows || !imp.trim()}>Find</button>
+            {found && (
+              <button type="button" className="alink" onClick={() => (setFound(null), setImp(""))}>Show all</button>
+            )}
+          </form>
+          {found && "error" in found && <span className="err" style={{ fontSize: 14 }}>{found.error}</span>}
+          {found && "rows" in found && (
+            <span className="small">
+              {found.rows.length ? <span style={{ color: "var(--allow)" }}>In the Fengce Catalog: {found.rows.length === 1 ? "1 listing" : `${found.rows.length} listings`}. </span> : null}
+              {found.unlisted.length ? `${found.unlisted.length === 1 ? "1 unlisted circuit" : `${found.unlisted.length} unlisted circuits`}: not reviewed by their designers or Fengce; map its inputs before adding.` : null}
+            </span>
           )}
-        </form>
-        {found && "error" in found && <span className="err" style={{ fontSize: 14 }}>{found.error}</span>}
-        {found && "rows" in found && (
-          <span className="small">
-            {found.rows.length ? <span style={{ color: "var(--allow)" }}>In the Fengce Catalog: {found.rows.length === 1 ? "1 listing" : `${found.rows.length} listings`}. </span> : null}
-            {found.unlisted.length ? `${found.unlisted.length === 1 ? "1 unlisted circuit" : `${found.unlisted.length} unlisted circuits`}: not reviewed by their designers or Fengce; map its inputs before adding.` : null}
-          </span>
-        )}
-        <span className="small">
-          Any TapeOut circuit on X Layer can be imported{circuits ? ` (${circuits.filter((c) => !c.app).length.toLocaleString("en-US")} circuits indexed)` : ""}. Designers: list yours in the Catalog for the Catalog badge and 80% of any install fee
-          (Catalog.list with test vectors, see <a className="alink" href="https://github.com/pgreyy/fengce/blob/main/docs/INTEGRATION.md" target="_blank" rel="noreferrer noopener">INTEGRATION.md</a>).
-        </span>
-      </div>
+          {circuits && <span className="small">{circuits.filter((c) => !c.app).length.toLocaleString("en-US")} TapeOut circuits on X Layer indexed.</span>}
+        </div>
+      )}
 
       {err && <span className="err">{err}</span>}
       <div className="act-scroll">
