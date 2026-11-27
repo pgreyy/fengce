@@ -42,8 +42,8 @@ Demo Safe `0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707`, demo agent `0x81DeB61C44
 ## Interfaces
 
 - Solidity: [src/core](contracts/src/core) (PinRegistry, Schema, PolicyEngine, TxFacts, Catalog, Tick, FengceFloors),
-  [src/safe](contracts/src/safe) (FengceGuard, AgentExecutor, FengceInspector, signature verifier), [src/erc7579](contracts/src/erc7579)
-  (FengceHook), [src/erc6900](contracts/src/erc6900) (FengceHook6900), [src/agent](contracts/src/agent) (FengceAgentOwner),
+  [src/safe](contracts/src/safe) (FengceGuard, FengceGuardV3, AgentExecutor, AgentExecutorV3, FengceInspector, signature verifier),
+  [src/erc6900](contracts/src/erc6900) (FengceHook6900), [src/agent](contracts/src/agent) (FengceAgentOwner),
   [src/binding](contracts/src/binding) (FengceBinding, BoundOnly). Policy context: [docs/POLICY-INTERFACE.md](docs/POLICY-INTERFACE.md).
 - SDK: [sdk/README.md](sdk/README.md) (schemas, Quote, install calldata, local evaluation and `evaluateTrace`).
 - HTTP API: [docs/API.md](docs/API.md), [docs/openapi.yaml](docs/openapi.yaml).
@@ -78,10 +78,10 @@ private one through the `XLAYER_RPC_URL` secret). Nothing in the test suite send
 - **Mainnet transactions**: the v2 demo (an agent's 1.5 USDT0 transfer denied, 0.5 allowed), the v1 demo, the v2
   deployment (pins, Catalog listings with on-chain vector checks, demo Safe setup). Links in [docs/CLAIMS.md](docs/CLAIMS.md).
 - **Verified**: 18/18 v2 contracts on Sourcify.
-- **Wallet types**: 8 with a tested adapter (Safe on mainnet, the other 7 on forks); list and tests in
-  [docs/WALLETS.md](docs/WALLETS.md#wallet-types-with-a-tested-adapter-8), claim `wallet-types-8`.
+- **Wallet types**: 4 with a tested adapter (Safe on mainnet, the other 3 on forks); list and tests in
+  [docs/WALLETS.md](docs/WALLETS.md#wallet-types-with-a-tested-adapter-4), claim `wallet-types-4`.
 - **Fork-tested**: owner-path blocking, recovery and timelocks, outcome checks, floors, Tick budgets, approvals and
-  signatures, swaps, and every non-Safe wallet adapter. Fork tests run against live X Layer mainnet state.
+  signatures, swaps, and the non-Safe wallet adapters listed in docs/WALLETS.md. Fork tests run against live X Layer mainnet state.
 - **CI**: 112 tests for the release commit (44 unit, 53 core and Safe fork, 15 wallet fork); Slither 0 High (not an audit).
 
 ## Experimental or deferred
@@ -90,8 +90,8 @@ private one through the `XLAYER_RPC_URL` secret). Nothing in the test suite send
   `owner()` returned the zero address at block 76,924,400, so its owner-only `upgradeTo` cannot be called; pins record its implementation
   and code hash anyway, and PinRegistry fails closed (denies) if a pinned circuit's code, beacon implementation or
   REF closure changes.
-- Non-Safe adapters (FengceHook, FengceHook6900, FengceAgentOwner) are deployed on mainnet but exercised only on forks;
-  some wallets let the hook be removed without running it (docs/WALLETS.md, "Known bypasses").
+- Non-Safe adapters (FengceHook6900, FengceAgentOwner) are deployed on mainnet but exercised only on forks;
+  the hook can be removed without running it (docs/WALLETS.md, "Known bypasses").
 - Catalog install fees, Tick groups and FengceFloors are deployed but unused on mainnet so far.
 - Explorer verification on OKX: not done (the API rejected every submission); Sourcify is complete.
 - The app is published on TapeOut DeWeb as `6.2.180.tape` ([deployments/deweb-xlayer-196.json](deployments/deweb-xlayer-196.json));

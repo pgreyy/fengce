@@ -30,7 +30,7 @@ Every scheduled change is a public `AdminScheduled` event; the app shows it with
 - Funds in wallets without Fengce (plain EOAs, 7702 and embedded wallets): move funds to a Safe.
 - Approvals granted before install (the first configuration refuses to proceed if it finds them, unless overridden).
 - All owners together: owners holding every signature can schedule recovery and remove the guard after the wait.
-- ERC-7579 and ERC-6900 accounts: enforced through hooks that some wallets let you remove without running them
+- ERC-6900 accounts: enforced through a hook that the wallet lets you remove without running it
   ([WALLETS.md](WALLETS.md), Known bypasses).
 - What a circuit cannot see: price, counterparty risk, or whether an allowed transaction is a good idea.
 

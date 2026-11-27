@@ -5,7 +5,7 @@ You · apps · agents        ask (send a Safe transaction, or an agent call thro
 Your Safe                  holds the funds; runs FengceGuard as transaction guard and module guard
 FengceGuard                decides: decodes the call into facts, runs the rules, asks the pinned circuit
 TapeOut circuits (pinned)  the rule logic: NAND #2 (max per buy, and on v3 quiet hours, hold lock, agent caps),
-                           counter #7 (trades per hour, Tilt-shield buys in a window), the Tilt-shield latch
+                           counter #7 (trades per hour, Tilt-shield buys in the same half hour), the Tilt-shield latch
 X Layer                    enforces: a refused call reverts (or is recorded as Denied for agents)
 ```
 

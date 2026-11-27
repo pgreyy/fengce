@@ -27,47 +27,6 @@ export const WALLETS: WalletRow[] = [
     install: ["Run the preflight below (existing approvals)", "Import the Transaction Builder JSON into the Safe", "Sign: configure, setGuard, setModuleGuard"],
   },
   {
-    key: "safe7579",
-    wallet: "Safe + Safe7579 v1.0.0",
-    onXLayer: "Safe yes, Safe7579 adapter no",
-    adapter: "FengceHook, with FengceGuard for Safe owner transactions",
-    owner: { state: "checked", text: "checked" },
-    agents: { state: "checked", text: "FengceGuard as module guard" },
-    removal: { state: "gap", text: "Safe7579 does not run the hook on its own uninstall" },
-    tests: "test/FengceHook7579.t.sol, test/FengceSafe7579Admin.t.sol",
-  },
-  {
-    key: "kernel",
-    wallet: "ZeroDev Kernel v3.3",
-    onXLayer: "yes (v3.1 also deployed, not tested)",
-    adapter: "FengceHook as the root validation's hook",
-    owner: { state: "checked", text: "root user operations" },
-    agents: { state: "not tested", text: "only validations or executors installed with FengceHook as their hook" },
-    removal: { state: "checked", text: "hook uninstall waits 2 days; root validator changes and validator installs are scheduled admin actions (2 days)" },
-    tests: "test/wallets/FengceKernel.t.sol",
-    install: ["Create the account with FengceHook as the root validation's hook (1-byte flag, then abi.encode(pinId, layout, bindings))", "Admin changes: execute scheduleAdmin(keccak256(call)) on the hook, wait 2 days, then send the exact call"],
-  },
-  {
-    key: "nexus",
-    wallet: "Biconomy Nexus 1.2.0",
-    onXLayer: "no",
-    adapter: "FengceHook (global hook)",
-    owner: { state: "checked", text: "checked" },
-    agents: { state: "not tested", text: "executors go through executeFromExecutor, which runs the hook (from source)" },
-    removal: { state: "gap", text: "uninstall waits 2 days, but emergencyUninstallHook (owner-signed, 1-day timelock) skips the hook (from source)" },
-    tests: "test/wallets/FengceNexus.t.sol",
-  },
-  {
-    key: "etherspot",
-    wallet: "Etherspot ModularEtherspotWallet v1.0.0",
-    onXLayer: "no",
-    adapter: "FengceHook (global hook)",
-    owner: { state: "checked", text: "checked" },
-    agents: { state: "not tested", text: "not tested" },
-    removal: { state: "gap", text: "uninstallModule does not run the hook: removable at once" },
-    tests: "test/wallets/FengceEtherspot.t.sol",
-  },
-  {
     key: "mav2",
     wallet: "Alchemy Modular Account v2 (ERC-6900)",
     onXLayer: "yes",
@@ -105,7 +64,7 @@ export const WALLETS: WalletRow[] = [
     onXLayer: "not checked",
     adapter: "not sure which contract it delegates to",
     owner: { state: "not restricted", text: "not restricted" },
-    agents: { state: "not tested", text: "if it delegates to an ERC-7579 or ERC-6900 account, the matching adapter applies" },
+    agents: { state: "not tested", text: "if it delegates to an ERC-6900 account, the matching adapter applies" },
     removal: { state: "not tested", text: "not tested" },
     tests: "none",
   },
@@ -145,7 +104,6 @@ export const WALLETS: WalletRow[] = [
 /** Wallet types offered in the Install picker. */
 export const INSTALL_TYPES: { key: string; label: string }[] = [
   { key: "safe", label: "Safe" },
-  { key: "kernel", label: "Kernel" },
   { key: "mav2", label: "Modular Account v2" },
   { key: "7702", label: "7702 / agent" },
   { key: "coinbase", label: "Coinbase / agent" },
@@ -160,10 +118,6 @@ export type Coverage = "Full" | "Partial" | "Agent only" | "Not integrated";
 /** Coverage per wallet, from the status column of docs/WALLETS.md (Mainnet and Fork-tested = Full). */
 export const COVERAGE: Record<string, Coverage> = {
   safe: "Full",
-  safe7579: "Partial",
-  kernel: "Full",
-  nexus: "Partial",
-  etherspot: "Partial",
   mav2: "Full",
   "7702": "Agent only",
   coinbase: "Agent only",
@@ -173,12 +127,8 @@ export const COVERAGE: Record<string, Coverage> = {
   light: "Not integrated",
 };
 /** Which deployed adapter a wallet uses, for the "Check a wallet" step (null: nothing to read). */
-export const CHECK_ADAPTER: Record<string, "guard" | "hook7579" | "hook6900" | "agentOwner" | null> = {
+export const CHECK_ADAPTER: Record<string, "guard" | "hook6900" | "agentOwner" | null> = {
   safe: "guard",
-  safe7579: "hook7579",
-  kernel: "hook7579",
-  nexus: "hook7579",
-  etherspot: "hook7579",
   mav2: "hook6900",
   "7702": "hook6900",
   coinbase: "agentOwner",

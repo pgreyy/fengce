@@ -687,8 +687,8 @@
       ]
     },
     {
-      "id": "wallet-types-8",
-      "claim": "Adapters have a passing test on 8 wallet types: Safe, Safe + Safe7579, Kernel, Nexus, Etherspot and Modular Account v2 (enforced; permanent only on Safe), and EIP-7702 (SemiModularAccount7702) and Coinbase Smart Wallet (agents only).",
+      "id": "wallet-types-4",
+      "claim": "Adapters have a passing test on 4 wallet types: Safe and Modular Account v2 (enforced; permanent only on Safe), and EIP-7702 (SemiModularAccount7702) and Coinbase Smart Wallet (agents only).",
       "status": "fork-tested",
       "network": "X Layer mainnet fork (Safe also on X Layer mainnet)",
       "release": "v2",
@@ -696,22 +696,6 @@
         {
           "label": "Safe v1.5.0: test_ownerSend150Blocked",
           "url": "contracts/test/FengceGuard.t.sol#L32"
-        },
-        {
-          "label": "Safe + Safe7579 v1.0.0: test_7579AccountBlockedOverLimit",
-          "url": "contracts/test/FengceHook7579.t.sol#L86"
-        },
-        {
-          "label": "ZeroDev Kernel v3.3: test_kernelOverLimitBlocked",
-          "url": "contracts/test/wallets/FengceKernel.t.sol#L78"
-        },
-        {
-          "label": "Biconomy Nexus 1.2.0: test_nexusOverLimitBlocked",
-          "url": "contracts/test/wallets/FengceNexus.t.sol#L51"
-        },
-        {
-          "label": "Etherspot ModularEtherspotWallet v1.0.0: test_etherspotOverLimitBlocked",
-          "url": "contracts/test/wallets/FengceEtherspot.t.sol#L44"
         },
         {
           "label": "Alchemy Modular Account v2 (ERC-6900): test_mav2OverLimitBlocked",
@@ -727,74 +711,7 @@
         },
         {
           "label": "list with status per wallet",
-          "url": "docs/WALLETS.md#wallet-types-with-a-tested-adapter-8"
-        }
-      ]
-    },
-    {
-      "id": "wallet-kernel",
-      "claim": "ZeroDev Kernel v3.3: FengceHook blocks over-limit transfers and hidden batches; uninstall waits 2 days; validator and root changes are timelocked admin actions.",
-      "status": "fork-tested",
-      "network": "X Layer mainnet fork (live Kernel v3.3 code)",
-      "release": "v2",
-      "evidence": [
-        {
-          "label": "test_kernelOverLimitBlocked",
-          "url": "contracts/test/wallets/FengceKernel.t.sol#L78"
-        },
-        {
-          "label": "test_kernelBatchHidingOverLimitBlocked",
-          "url": "contracts/test/wallets/FengceKernel.t.sol#L85"
-        },
-        {
-          "label": "test_kernelHookUninstall",
-          "url": "contracts/test/wallets/FengceKernel.t.sol#L93"
-        },
-        {
-          "label": "test_kernelValidatorChangesTimelocked",
-          "url": "contracts/test/wallets/FengceKernel.t.sol#L109"
-        }
-      ]
-    },
-    {
-      "id": "wallet-nexus",
-      "claim": "Biconomy Nexus 1.2.0: FengceHook blocks over-limit transfers and hidden batches; uninstall waits 2 days.",
-      "status": "fork-tested",
-      "network": "X Layer mainnet fork with Nexus code from Base",
-      "release": "v2",
-      "evidence": [
-        {
-          "label": "test_nexusOverLimitBlocked",
-          "url": "contracts/test/wallets/FengceNexus.t.sol#L51"
-        },
-        {
-          "label": "test_nexusBatchHidingOverLimitBlocked",
-          "url": "contracts/test/wallets/FengceNexus.t.sol#L59"
-        },
-        {
-          "label": "test_nexusHookUninstall",
-          "url": "contracts/test/wallets/FengceNexus.t.sol#L68"
-        }
-      ]
-    },
-    {
-      "id": "wallet-etherspot",
-      "claim": "Etherspot modular wallet: FengceHook blocks over-limit transfers and hidden batches; known gap: uninstall does not run the hook.",
-      "status": "fork-tested",
-      "network": "X Layer mainnet fork with Etherspot code from Base",
-      "release": "v2",
-      "evidence": [
-        {
-          "label": "test_etherspotOverLimitBlocked",
-          "url": "contracts/test/wallets/FengceEtherspot.t.sol#L44"
-        },
-        {
-          "label": "test_etherspotBatchHidingOverLimitBlocked",
-          "url": "contracts/test/wallets/FengceEtherspot.t.sol#L52"
-        },
-        {
-          "label": "test_etherspotSkipsHookOnUninstall",
-          "url": "contracts/test/wallets/FengceEtherspot.t.sol#L62"
+          "url": "docs/WALLETS.md#wallet-types-with-a-tested-adapter-4"
         }
       ]
     },
@@ -842,27 +759,6 @@
         {
           "label": "test_coinbaseAgentThroughCircuit",
           "url": "contracts/test/wallets/FengceAgentOwner.t.sol#L47"
-        }
-      ]
-    },
-    {
-      "id": "wallet-safe7579",
-      "claim": "Safe + Safe7579: FengceHook blocks over-limit and hidden batches; known gap: Safe7579 skips the hook on its own uninstall; module changes are timelocked on four routes.",
-      "status": "fork-tested",
-      "network": "X Layer mainnet fork with Safe7579 code from Base",
-      "release": "v2",
-      "evidence": [
-        {
-          "label": "test_7579AccountBlockedOverLimit",
-          "url": "contracts/test/FengceHook7579.t.sol#L86"
-        },
-        {
-          "label": "test_7579BatchHiding150Blocked",
-          "url": "contracts/test/FengceHook7579.t.sol#L99"
-        },
-        {
-          "label": "test_safe7579SkipsHookOnItsOwnUninstall",
-          "url": "contracts/test/FengceHook7579.t.sol#L119"
         }
       ]
     }

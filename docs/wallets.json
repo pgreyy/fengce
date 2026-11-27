@@ -21,8 +21,8 @@
     "knownBypasses": "known ways around the check",
     "evidence": "claim ids in docs/claims.json"
   },
-  "testedWalletTypes": 8,
-  "testedWalletTypesNote": "wallets whose adapter has a passing test (tests != \"none\"); see docs/CLAIMS.md#wallet-types-8",
+  "testedWalletTypes": 4,
+  "testedWalletTypesNote": "wallets whose adapter has a passing test (tests != \"none\"); see docs/CLAIMS.md#wallet-types-4",
   "wallets": [
     {
       "key": "safe",
@@ -44,78 +44,6 @@
         "no-quiet-swap",
         "outcome-check",
         "verifiable"
-      ]
-    },
-    {
-      "key": "safe7579",
-      "wallet": "Safe + Safe7579 v1.0.0",
-      "status": "Partial",
-      "adapter": "FengceHook, with FengceGuard for Safe owner transactions",
-      "adapterLiveOnMainnet": "0xE538979145E67935B85D1912904ce8d5bF19669b",
-      "testEnvironment": "X Layer mainnet fork with Safe7579 code from Base",
-      "preExecutionCheck": "yes",
-      "outcomeCheck": "yes (FengceInspector, Safe-based)",
-      "safeConfigInvariants": "yes (Safe-based)",
-      "uninstallAdminProtection": "module changes timelocked on four routes",
-      "agentOnly": "no",
-      "isBound": "no",
-      "knownBypasses": "Safe7579 does not run a hook on its own uninstall",
-      "evidence": [
-        "wallet-safe7579"
-      ]
-    },
-    {
-      "key": "kernel",
-      "wallet": "ZeroDev Kernel v3.3",
-      "status": "Fork-tested",
-      "adapter": "FengceHook (root validation hook)",
-      "adapterLiveOnMainnet": "0xE538979145E67935B85D1912904ce8d5bF19669b",
-      "testEnvironment": "X Layer mainnet fork, live Kernel v3.3 code",
-      "preExecutionCheck": "yes",
-      "outcomeCheck": "available (setInspector), not tested on Kernel",
-      "safeConfigInvariants": "no (code hash only)",
-      "uninstallAdminProtection": "hook uninstall waits 2 days; validator, executor, fallback installs, root validator changes and upgrades are scheduled admin actions (2 days)",
-      "agentOnly": "no",
-      "isBound": "no",
-      "knownBypasses": "installing another hook is not checked; validations installed without FengceHook do not run it",
-      "evidence": [
-        "wallet-kernel"
-      ]
-    },
-    {
-      "key": "nexus",
-      "wallet": "Biconomy Nexus 1.2.0",
-      "status": "Partial",
-      "adapter": "FengceHook (global hook)",
-      "adapterLiveOnMainnet": "0xE538979145E67935B85D1912904ce8d5bF19669b",
-      "testEnvironment": "X Layer mainnet fork with Nexus code from Base",
-      "preExecutionCheck": "yes",
-      "outcomeCheck": "available, not tested on Nexus",
-      "safeConfigInvariants": "no (code hash only)",
-      "uninstallAdminProtection": "hook uninstall waits 2 days",
-      "agentOnly": "no",
-      "isBound": "no",
-      "knownBypasses": "emergencyUninstallHook (owner-signed, Nexus's own 1-day timelock) removes the hook without running it (from source, not tested)",
-      "evidence": [
-        "wallet-nexus"
-      ]
-    },
-    {
-      "key": "etherspot",
-      "wallet": "Etherspot ModularEtherspotWallet v1.0.0",
-      "status": "Partial",
-      "adapter": "FengceHook (global hook)",
-      "adapterLiveOnMainnet": "0xE538979145E67935B85D1912904ce8d5bF19669b",
-      "testEnvironment": "X Layer mainnet fork with Etherspot code from Base",
-      "preExecutionCheck": "yes",
-      "outcomeCheck": "available, not tested on Etherspot",
-      "safeConfigInvariants": "no (code hash only)",
-      "uninstallAdminProtection": "none: uninstallModule does not run the hook",
-      "agentOnly": "no",
-      "isBound": "no",
-      "knownBypasses": "uninstallModule removes the hook at once",
-      "evidence": [
-        "wallet-etherspot"
       ]
     },
     {

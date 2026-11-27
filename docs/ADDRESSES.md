@@ -73,7 +73,7 @@ Processor entry point: `eval(uint256,bytes)`, selector `0x934d06ea`.
 
 ## Not deployed on X Layer (from the blueprint sweep)
 
-Safe7579 adapter (canonical address) and ZeroDev Kernel v3 factory. Fengce deploys the Safe7579 adapter itself.
+ZeroDev Kernel v3 factory.
 
 ## DeFi protocols on X Layer (checked 2026-11-18, read-only)
 

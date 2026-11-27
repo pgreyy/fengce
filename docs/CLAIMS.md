@@ -40,14 +40,10 @@ property of the code or setup). Test links point at the test function in this re
 | [delegatecall-blocked](#delegatecall-blocked) | fork-tested | X Layer mainnet fork | v2 |
 | [no-prompt-input](#no-prompt-input) | documented | n/a | v2 |
 | [incident-sources](#incident-sources) | documented | n/a | n/a |
-| [wallet-types-8](#wallet-types-8) | fork-tested | X Layer mainnet fork (Safe also on X Layer mainnet) | v2 |
-| [wallet-kernel](#wallet-kernel) | fork-tested | X Layer mainnet fork (live Kernel v3.3 code) | v2 |
-| [wallet-nexus](#wallet-nexus) | fork-tested | X Layer mainnet fork with Nexus code from Base | v2 |
-| [wallet-etherspot](#wallet-etherspot) | fork-tested | X Layer mainnet fork with Etherspot code from Base | v2 |
+| [wallet-types-4](#wallet-types-4) | fork-tested | X Layer mainnet fork (Safe also on X Layer mainnet) | v2 |
 | [wallet-mav2](#wallet-mav2) | fork-tested | X Layer mainnet fork (live Modular Account v2 code) | v2 |
 | [wallet-7702](#wallet-7702) | fork-tested | X Layer mainnet fork (live SemiModularAccount7702) | v2 |
 | [wallet-coinbase](#wallet-coinbase) | fork-tested | X Layer mainnet fork with Coinbase Smart Wallet code from Base | v2 |
-| [wallet-safe7579](#wallet-safe7579) | fork-tested | X Layer mainnet fork with Safe7579 code from Base | v2 |
 
 ## binds-owners
 
@@ -365,52 +361,17 @@ Status: **documented** · Network: n/a · Release: n/a
 - [Freysa](https://www.theblock.co/post/328747/human-player-outwits-freysa-ai-agent-in-47000-crypto-challenge)
 - [AIXBT](https://www.theblock.co/post/346911/ai-crypto-bot-aixbt-lost-eth-hack-unauthorized-dashboard-access)
 
-## wallet-types-8
+## wallet-types-4
 
-Adapters have a passing test on 8 wallet types: Safe, Safe + Safe7579, Kernel, Nexus, Etherspot and Modular Account v2 (enforced; permanent only on Safe), and EIP-7702 (SemiModularAccount7702) and Coinbase Smart Wallet (agents only).
+Adapters have a passing test on 4 wallet types: Safe and Modular Account v2 (enforced; permanent only on Safe), and EIP-7702 (SemiModularAccount7702) and Coinbase Smart Wallet (agents only).
 
 Status: **fork-tested** · Network: X Layer mainnet fork (Safe also on X Layer mainnet) · Release: v2
 
 - Safe v1.5.0: [test_ownerSend150Blocked](../contracts/test/FengceGuard.t.sol#L32)
-- Safe + Safe7579 v1.0.0: [test_7579AccountBlockedOverLimit](../contracts/test/FengceHook7579.t.sol#L86)
-- ZeroDev Kernel v3.3: [test_kernelOverLimitBlocked](../contracts/test/wallets/FengceKernel.t.sol#L78)
-- Biconomy Nexus 1.2.0: [test_nexusOverLimitBlocked](../contracts/test/wallets/FengceNexus.t.sol#L51)
-- Etherspot ModularEtherspotWallet v1.0.0: [test_etherspotOverLimitBlocked](../contracts/test/wallets/FengceEtherspot.t.sol#L44)
 - Alchemy Modular Account v2 (ERC-6900): [test_mav2OverLimitBlocked](../contracts/test/wallets/FengceModularAccountV2.t.sol#L45)
 - EIP-7702 EOA (SemiModularAccount7702): [test_7702AgentGoesThroughCircuitOwnerKeyDoesNot](../contracts/test/wallets/Fengce7702.t.sol#L52)
 - Coinbase Smart Wallet v1.1: [test_coinbaseAgentThroughCircuit](../contracts/test/wallets/FengceAgentOwner.t.sol#L47)
-- [list with status per wallet](WALLETS.md#wallet-types-with-a-tested-adapter-8)
-
-## wallet-kernel
-
-ZeroDev Kernel v3.3: FengceHook blocks over-limit transfers and hidden batches; uninstall waits 2 days; validator and root changes are timelocked admin actions.
-
-Status: **fork-tested** · Network: X Layer mainnet fork (live Kernel v3.3 code) · Release: v2
-
-- [test_kernelOverLimitBlocked](../contracts/test/wallets/FengceKernel.t.sol#L78)
-- [test_kernelBatchHidingOverLimitBlocked](../contracts/test/wallets/FengceKernel.t.sol#L85)
-- [test_kernelHookUninstall](../contracts/test/wallets/FengceKernel.t.sol#L93)
-- [test_kernelValidatorChangesTimelocked](../contracts/test/wallets/FengceKernel.t.sol#L109)
-
-## wallet-nexus
-
-Biconomy Nexus 1.2.0: FengceHook blocks over-limit transfers and hidden batches; uninstall waits 2 days.
-
-Status: **fork-tested** · Network: X Layer mainnet fork with Nexus code from Base · Release: v2
-
-- [test_nexusOverLimitBlocked](../contracts/test/wallets/FengceNexus.t.sol#L51)
-- [test_nexusBatchHidingOverLimitBlocked](../contracts/test/wallets/FengceNexus.t.sol#L59)
-- [test_nexusHookUninstall](../contracts/test/wallets/FengceNexus.t.sol#L68)
-
-## wallet-etherspot
-
-Etherspot modular wallet: FengceHook blocks over-limit transfers and hidden batches; known gap: uninstall does not run the hook.
-
-Status: **fork-tested** · Network: X Layer mainnet fork with Etherspot code from Base · Release: v2
-
-- [test_etherspotOverLimitBlocked](../contracts/test/wallets/FengceEtherspot.t.sol#L44)
-- [test_etherspotBatchHidingOverLimitBlocked](../contracts/test/wallets/FengceEtherspot.t.sol#L52)
-- [test_etherspotSkipsHookOnUninstall](../contracts/test/wallets/FengceEtherspot.t.sol#L62)
+- [list with status per wallet](WALLETS.md#wallet-types-with-a-tested-adapter-4)
 
 ## wallet-mav2
 
@@ -437,13 +398,3 @@ Coinbase Smart Wallet: agents act through FengceAgentOwner and are checked; owne
 Status: **fork-tested** · Network: X Layer mainnet fork with Coinbase Smart Wallet code from Base · Release: v2
 
 - [test_coinbaseAgentThroughCircuit](../contracts/test/wallets/FengceAgentOwner.t.sol#L47)
-
-## wallet-safe7579
-
-Safe + Safe7579: FengceHook blocks over-limit and hidden batches; known gap: Safe7579 skips the hook on its own uninstall; module changes are timelocked on four routes.
-
-Status: **fork-tested** · Network: X Layer mainnet fork with Safe7579 code from Base · Release: v2
-
-- [test_7579AccountBlockedOverLimit](../contracts/test/FengceHook7579.t.sol#L86)
-- [test_7579BatchHiding150Blocked](../contracts/test/FengceHook7579.t.sol#L99)
-- [test_safe7579SkipsHookOnItsOwnUninstall](../contracts/test/FengceHook7579.t.sol#L119)

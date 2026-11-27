@@ -113,60 +113,18 @@ unless the override flag is set. Approvals for tokens or spenders not listed are
 `setGuard` / `setModuleGuard` is not caught, so install in one batch (the SDK's `buildInstall` also refuses a
 Safe with modules). After install, enabling a module needs the admin timelock.
 
-### Agents, ERC-7579, Tick and Catalog
+### Agents, Tick and Catalog
 
 - **AgentExecutor**: an agent key acts only through `execTransactionFromModule`, so the Safe's module guard
   (Fengce) checks every call; the executor refuses to act if FengceGuard is not the module guard. Any single
   owner can revoke an agent at once. Adding an agent needs an allowlisted Safe transaction
   (`contracts/test/AgentExecutor.t.sol`).
-- **ERC-7579 module changes (Safe7579 + FengceGuard)**: the guarantee below holds only for a Safe that runs
-  Rhinestone's Safe7579 adapter v1.0.0 **with FengceGuard as both transaction guard and module guard**.
-  `installModule` / `uninstallModule` are timelocked admin calls on every route: an owner transaction, a
-  validator-approved user operation (the adapter's helper delegatecall is allowed only for a matured schedule),
-  another module (always refused), and bundles of module changes in one MultiSend or one 7579 batch (always
-  refused; each change must be made on its own) (`contracts/test/FengceSafe7579Admin.t.sol`). The schedule covers
-  (install or uninstall, module type, module), not the init data. The helper and MultiSendCallOnly are checked
-  by runtime code hash, not only by address. With FengceGuard as module guard, Safe7579 batch executions are
-  refused (they delegatecall the adapter's helper); use single executions. If `FengceHook` is also installed,
-  its `preCheck` call must be allowlisted on the guard.
-- **ERC-7579 (`FengceHook`)**: executions (`execute`, `executeFromExecutor`, single and batch) go through the
-  same policy; delegatecall and unknown modes are denied (`contracts/test/FengceHook7579.t.sol`, on Safe7579). Limits:
-  Safe7579 v1.0.0 does not run a hook when that same hook is being uninstalled, so on Safe7579 the hook's
-  uninstall delay never applies and whoever can authorise `uninstallModule` (validators, or the Safe itself)
-  can remove it at once. Since v2, installing or removing validator, executor and fallback modules, account
-  upgrades, and Kernel validation changes are timelocked admin actions where the account runs the hook on them
-  (Kernel v3.3: `contracts/test/wallets/FengceKernel.t.sol`); installing other hooks is not checked.
-  Per-wallet uninstall behaviour (Kernel, Nexus, Etherspot) and the ERC-6900 and EIP-7702 limits are listed in
-  `docs/WALLETS.md`.
-- **Tick**: state lives in the Tick contract per policy group (several Safes or agents can share one budget),
-  resets to zero at each period boundary (period index = floor(timestamp / period), Unix-epoch aligned), and
-  advances only when the circuit allows (`contracts/test/FengceTick.t.sol`). FengceGuard advances the Safe's group on
-  every checked call, on the owner and module paths, so an agent cannot skip it; if the Safe reports the
-  execution failed, the guard rolls the advance back (`contracts/test/FengceTickGuard.t.sol`). Off-chain signed approvals
-  (the signature verifier path) do not advance Tick. A group's admin controls membership: removing a Safe makes
-  its guarded transactions fail closed until the Safe reconfigures (timelocked).
-- **Catalog**: a listing runs every test vector in its manifest through the pinned circuit on-chain and reverts
-  on any mismatch; the entry records how many allow and deny vectors passed, the maximum evaluation gas measured
-  on-chain, and the tier from that gas (thresholds in `sdk/src/tiers.json`, shared with the SDK)
-  (`contracts/test/FengceCatalog.t.sol`). Vectors prove behaviour only on the inputs listed, not on all inputs. The
-  Catalog tier is measured on the circuit evaluation; Quote's tier is measured on the full Safe path, so the two
-  can differ near a threshold. The description and URI are the lister's text. Install fees are split 80% to the
-  designer and 20% to the treasury and withdrawn by each (pull payments). On X Layer the Catalog's treasury (fixed at deployment) is
-  a Safe 1.5.0 created by the deployment script (salt `fengce.treasury.v2.0.0` in v2, `fengce.treasury.v0.2.0` in v1), owned by the deployer key with
-  threshold 1; adding owners or raising the threshold is done on that Safe and needs no redeployment. Its address
-  is in `deployments/manifest-xlayer-196-v2.json` (v1: `deployments/manifest-xlayer-196.json`).
-
-### App
-
-The app in `app/` only reads chain data and builds calldata; it never signs or sends. Blocked transactions are
-not visible on its status page: a transaction the guard blocks reverts and leaves no event (agent calls through
-AgentExecutor are the exception: they are recorded as `Denied` events and shown). The app runs on Next 16
-(built with webpack, `npm run build`); `npm audit` reports no vulnerabilities.
+- The ERC-6900 and EIP-7702 limits are listed in `docs/WALLETS.md`.
 
 ### Outcome facts (FengceInspector)
 
 For Safes that connect an Inspector (`configureInspector`), every policy-checked execution on the owner and
-module paths, and every ERC-7579 execution through `FengceHook`, is checked after it runs
+module paths is checked after it runs
 (`contracts/test/FengceInspector.t.sol`):
 - a change to owners, threshold, modules (first 64), guard, module guard or fallback handler outside the admin
   path reverts the transaction;

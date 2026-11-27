@@ -1,6 +1,6 @@
 # Policy interface
 
-Every Fengce adapter (the Safe guard, the ERC-7579 hook, the signature verifier, Tick) turns an action into one
+Every Fengce adapter (the Safe guard, the ERC-6900 hook, the signature verifier, Tick) turns an action into one
 **canonical policy context** and feeds it to a pinned circuit through a schema. This document fixes that
 context so circuits, schemas and decoders written today keep their meaning.
 
@@ -12,8 +12,8 @@ context so circuits, schemas and decoders written today keep their meaning.
 | Field | Type | Meaning |
 |---|---|---|
 | `kind` | `Kind` | `Native` 0, `Transfer` 1, `Approval` 2, `Call` 3 (allowlisted), `Swap` 4, `Lending` 5 |
-| `account` | address | The wallet whose policy applies (the Safe or 7579 account) |
-| `actor` | address | Who initiated it: the owner transaction's sender, the module (an agent executor, Safe7579), or 0 if unknown (signature path) |
+| `account` | address | The wallet whose policy applies (the Safe or smart account) |
+| `actor` | address | Who initiated it: the owner transaction's sender, the module (an agent executor), or 0 if unknown (signature path) |
 | `to` | address | Recipient (transfer), spender (approval), or call target (call, swap, lending) |
 | `value` | uint256 | Native value sent |
 | `token` | address | Token moved or approved; swap `tokenIn`; lending asset |
