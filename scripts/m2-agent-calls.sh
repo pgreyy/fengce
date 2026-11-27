@@ -18,6 +18,6 @@ echo "AgentExecutorV3:  $EXEC"
 echo "Safe:             $SAFE"
 echo
 echo "Both calls are the same (0.3 USDT0 each); the first is allowed, the second is refused (AGENT_CAP)."
-echo "to:   $EXEC"
-echo "data: $CALL"
-echo "value: 0, chain: X Layer (196)"
+echo "Run this twice from the agentic wallet (it returns 'confirming' first; re-run with --force after you confirm):"
+echo
+echo "onchainos wallet contract-call --chain xlayer --to $EXEC --input-data $CALL --from $AGENT"

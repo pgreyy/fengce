@@ -110,7 +110,7 @@ function Agents() {
         </div>
         <div className="grid2" style={{ alignItems: "start" }}>
           <CodeCard title="1. print the call (in the repo, Ubuntu)" code={"scripts/m2-agent-calls.sh"} />
-          <CodeCard title="2. send it from the agentic wallet, twice" code={"onchainos wallet contract-call \\\n  --chain 196 \\\n  --to <AgentExecutorV3> \\\n  --data <data printed in step 1>"} />
+          <CodeCard title="2. send it from the agentic wallet, twice" code={"onchainos wallet contract-call \\\n  --chain xlayer \\\n  --to <AgentExecutorV3> \\\n  --input-data <data printed in step 1>"} />
         </div>
         {M2?.agentExecutor && (
           <div className="small" style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "center" }}>
@@ -119,7 +119,7 @@ function Agents() {
             {M2.agent && <span>Agent key <Addr value={M2.agent} label="Copy agent address" /></span>}
           </div>
         )}
-        <span className="small">Flag names of the onchainos CLI follow its own help (onchainos wallet contract-call --help); the call itself is just "to" and "data" on X Layer (196), value 0.</span>
+        <span className="small">onchainos 4.6.13: contract-call first returns "confirming"; after you confirm, the same command with --force sends it. Value 0, X Layer (196).</span>
       </section>
 
       <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
