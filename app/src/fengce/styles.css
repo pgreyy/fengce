@@ -513,3 +513,18 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .imp-map .mono { width: 34px; font-size: 12.5px; }
 .imp-warn { padding: 12px 14px; border: 1px solid var(--deny); border-radius: 8px; font-size: 14px; line-height: 1.5; background: color-mix(in srgb, var(--deny) 8%, transparent); }
 .imp-warn b { font-weight: 500; color: var(--deny); }
+
+/* Limits → Templates: ready-made setups */
+.tpl-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.tpl-card { display: flex; flex-direction: column; gap: 12px; padding: 20px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); min-width: 0; }
+.tpl-h { display: flex; flex-direction: column; gap: 4px; }
+.tpl-name { font-size: 20px; }
+.tpl-tag { font-size: 14px; color: var(--accent); }
+.tpl-sec { display: flex; flex-direction: column; gap: 6px; }
+.tpl-sec ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 14px; line-height: 1.45; }
+.tpl-fields { display: flex; gap: 12px; flex-wrap: wrap; }
+.tpl-fields .cat-f { flex: 1 1 140px; min-width: 0; }
+.tpl-gap { font-size: 12.5px; border-left: 2px solid var(--line); padding-left: 10px; }
+.tpl-card .pill { margin-top: auto; }
+@media (max-width: 1000px) { .tpl-grid { grid-template-columns: minmax(0, 1fr); } }
+

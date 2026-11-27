@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BuildPanel } from "../fengce/BuildPanel";
 import { CatalogPanel } from "../fengce/CatalogPanel";
 import { LimitsEditor } from "../fengce/LimitsEditor";
+import { TemplatesPanel } from "../fengce/TemplatesPanel";
 import { readInstalled, type Installed } from "../fengce/reads";
 import { href, mount, param, short, StartLink } from "../fengce/ui";
 import { useWallet } from "../fengce/wallet";
@@ -33,6 +34,7 @@ function Limits() {
           <button key={k} type="button" role="tab" aria-selected={tab === k} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
+      {tab === "tpl" && <TemplatesPanel installed={installed} onDone={setInstalled} />}
       {tab === "tpl" && (loading ? <p className="body">Reading your Safe from X Layer…</p> : <LimitsEditor key={`${installed?.safe}:${installed?.set}`} installed={installed} onDone={setInstalled} />)}
       {tab === "add" && <CatalogPanel />}
       {tab === "build" && <BuildPanel />}

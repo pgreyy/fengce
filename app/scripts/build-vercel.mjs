@@ -48,6 +48,8 @@ writeFileSync(
         { src: "^/(?!api/)(.*)$", has: [{ type: "host", value: "getokun.vercel.app" }], status: 308, headers: { Location: "https://getfengce.vercel.app/$1" } },
         { src: "^/api/circuit/([^/]+)/([^/]+)/?$", dest: "/api/circuit?processor=$1&id=$2" },
         { src: "^/api/safe/([^/]+)/?$", dest: "/api/safe?address=$1" },
+        // Safe{Wallet} reads the manifest and icon from its own origin when the app is added as a custom app
+        { src: "^/(manifest\\.json|favicon\\.svg)$", headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Methods": "GET", "Access-Control-Allow-Headers": "X-Requested-With, content-type, Authorization" }, continue: true },
         { handle: "filesystem" },
       ],
     },

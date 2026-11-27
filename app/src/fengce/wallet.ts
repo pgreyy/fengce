@@ -1,5 +1,6 @@
 // Browser wallets (EIP-6963: OKX Wallet, MetaMask and any other injected wallet), the X Layer network, and the Safe the
 // connected owner uses. Nothing here holds keys: the wallet signs, this code only builds and simulates calls.
+import { detectSafeApp, safeAppSession, sendThroughSafeApp } from "./safeApp";
 import { useEffect, useState } from "react";
 import { createWalletClient, custom, decodeErrorResult, getAddress, isAddress, parseAbi, type Abi, type Address, type Hex } from "viem";
 import { FengceGuardArtifact, TickArtifact } from "@fengce/sdk";
@@ -59,6 +60,16 @@ if (typeof window !== "undefined") {
     void reconnect();
   });
   window.dispatchEvent(new Event("eip6963:requestProvider"));
+  // Inside Safe{Wallet}: connect to that Safe on its own (fengce/safeApp.ts)
+  void detectSafeApp().then((sa) => {
+    if (!sa) return;
+    const provider: Eip1193 = { request: async ({ method }: { method: string }) => (method === "eth_chainId" ? XLAYER.hex : method === "eth_accounts" || method === "eth_requestAccounts" ? [sa.safe] : null) } as unknown as Eip1193;
+    store.wallet = { uuid: "safe-app", name: "Safe{Wallet}", icon: "", rdns: "safe-app", provider };
+    store.account = sa.owners[0]; // an owner, for reading and simulating; Safe{Wallet} collects the real signatures
+    store.safe = sa.safe;
+    store.chainOk = true;
+    emit();
+  });
   // Wallets that predate EIP-6963 only expose window.ethereum.
   setTimeout(() => {
     const eth = (window as unknown as { ethereum?: Eip1193 & { isOkxWallet?: boolean; isMetaMask?: boolean } }).ethereum;
@@ -260,6 +271,12 @@ export async function simulateSafeTx(owner: Address, safe: Address, tx: { to: Ad
 /** Sends a call from the connected wallet and waits for it. `gas` forces sending a transaction the node expects to revert
  * (to record a refusal on chain). */
 export async function sendFromWallet(to: Address, data: Hex, gas?: bigint, value?: bigint): Promise<{ hash: Hex; status: "success" | "reverted" }> {
+  const sa = safeAppSession();
+  if (sa && store.wallet?.uuid === "safe-app") {
+    const hash = await sendThroughSafeApp(sa, to, data, value ?? 0n);
+    const r = await client.waitForTransactionReceipt({ hash });
+    return { hash, status: r.status };
+  }
   const w = store.wallet;
   const account = store.account;
   if (!w || !account) throw new Error("Connect a wallet first");

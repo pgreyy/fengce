@@ -80,6 +80,8 @@ export interface V3Settings {
   quietStart: number; // UTC hour
   quietEnd: number; // UTC hour, exclusive
   holdHours: number; // 0 = off
+  /** optional partner: can approve a scheduled change early; loosening then waits 7 days unless they approve */
+  partner?: Address;
 }
 export const V3_DEFAULTS: Omit<V3Settings, "maxPerBuy" | "tradesPerHour"> = { tiltOn: true, tiltAfter: 4, tiltCooldownHours: 6, quietOn: false, quietStart: 1, quietEnd: 7, holdHours: 0 };
 
@@ -131,7 +133,7 @@ export function v3InstallCalls(safe: Address, s: V3Settings, prepared: Prepared,
     { to: ENGINE.tick, value: 0n, label: "Tilt-shield: add this Safe to the count (Tick.setMember)", data: encodeFunctionData({ abi: tickAbi, functionName: "setMember", args: [countGroup(safe), safe, true] }) },
     { to: ENGINE.tick, value: 0n, label: "Tilt-shield: the pause latch circuit (Tick.createGroup)", data: encodeFunctionData({ abi: tickAbi, functionName: "createGroup", args: [TILT_LATCH_SALT, V3.latchPin, LATCH_PERIOD, toLayout(latchSchema(V3.latchNetlistHash)), [...kind, ...kind, ...kind]] }) },
     { to: ENGINE.tick, value: 0n, label: "Tilt-shield: add this Safe to the latch (Tick.setMember)", data: encodeFunctionData({ abi: tickAbi, functionName: "setMember", args: [latchGroup(safe), safe, true] }) },
-    { to: G, value: 0n, label: "Quiet hours, hold lock and Tilt-shield (FengceGuardV3.setRules)", data: encodeFunctionData({ abi: v3Abi, functionName: "setRules", args: [rulesFor(safe, s)] }) },
+    { to: G, value: 0n, label: s.partner ? "Rules and your partner (FengceGuardV3.setRules)" : "Quiet hours, hold lock and Tilt-shield (FengceGuardV3.setRules)", data: encodeFunctionData({ abi: v3Abi, functionName: "setRules", args: [rulesFor(safe, s, s.partner)] }) },
     { to: safe, value: 0n, label: "Turn on the guard (Safe.setGuard)", data: encodeFunctionData({ abi: safeAbi, functionName: "setGuard", args: [G] }) },
     { to: safe, value: 0n, label: "Guard modules and agents too (Safe.setModuleGuard)", data: encodeFunctionData({ abi: safeAbi, functionName: "setModuleGuard", args: [G] }) },
   );
