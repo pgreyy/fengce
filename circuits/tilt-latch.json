@@ -1,0 +1,31 @@
+{
+  "name": "Tilt-shield latch",
+  "description": "Pauses buys after a trip. A buy is refused while the latch is set; sells and sends pass. Set by trip, cleared by clear (cooldown over or partner).",
+  "nIn": 3,
+  "nOut": 1,
+  "nState": 1,
+  "gates": 6,
+  "latches": 1,
+  "inputs": {
+    "isBuy": {
+      "offset": 0,
+      "width": 1
+    },
+    "trip": {
+      "offset": 1,
+      "width": 1
+    },
+    "clear": {
+      "offset": 2,
+      "width": 1
+    }
+  },
+  "state": {
+    "paused": {
+      "offset": 0,
+      "width": 1
+    }
+  },
+  "checked": "16 cases (every input and state) against the reference, with the SDK's TAP-02 evaluator",
+  "netlist": "0x0100000a000000040000040000000500000600000007000007000000030000030000000900000700000002000008"
+}
