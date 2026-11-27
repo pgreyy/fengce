@@ -12,11 +12,12 @@ export function startVinyl(canvas, opts) {
     canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.width = W + "px"; canvas.style.height = H + "px";
     narrow = W < 768;
     if (narrow) {
-      // phones: the record sits low on the right and the arm stays in the bottom-right corner, below and beside the text
-      cx = W * 1.02; cy = H * 1.18; rMin = Math.min(W, H) * 0.36; rMax = Math.hypot(cx, cy) + 20;
-      var nxp = W * 0.86, nyp = H * 0.9;
+      // phones: the record fills the lower right, between the buttons (top) and the chips (bottom), behind the content;
+      // its centre sits at the bottom-right corner and the arm reaches in from the right edge
+      cx = W * 0.98; cy = H * 0.97; rMin = W * 0.15; rMax = Math.min(Math.hypot(cx, cy) + 20, H * 0.56);
+      var nxp = W * 0.6, nyp = H * 0.72;
       thetaN = Math.atan2(nyp - cy, nxp - cx); tipR = Math.hypot(nxp - cx, nyp - cy);
-      pvx = W * 0.97; pvy = nyp - Math.min(90, H * 0.12);
+      pvx = W * 0.94; pvy = H * 0.5;
     } else {
       cx = W * 0.74; cy = H * 1.32; rMin = H * 0.42; rMax = Math.hypot(cx, cy) + 20;
       thetaN = -1.3; tipR = rMin + (rMax - rMin) * 0.22; pvx = W * 0.95; pvy = -H * 0.02;

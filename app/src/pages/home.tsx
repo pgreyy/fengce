@@ -62,6 +62,7 @@ function Hero() {
           <b>any app that routes through your Safe</b>
         </div>
       </div>
+      <span className="hero-cue" aria-hidden="true" />
     </div>
   );
 }
