@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en" data-theme="dark-cobalt">
+  <head>
+    <meta name="robots" content="noindex, nofollow" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+    <title>Fengce · Verdict</title>
+    <meta name="description" content="Verdict: prediction markets on X Layer that settle on a pinned TapeOut circuit. Next, in progress." />
+    <script>
+      /* Theme before first paint: saved choice, else the system preference; dark when nothing is known. */
+      (function () {
+        var t = null;
+        try { t = localStorage.getItem("fengce-theme"); } catch (e) {}
+        if (t !== "light" && t !== "dark") t = window.matchMedia && matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", t === "light" ? "light-cobalt" : "dark-cobalt");
+      })();
+      /* Entrance and scroll animations only for people: not for automated or headless browsers (screenshot and preview
+         tools must see the finished page), and not with reduced motion. Content is fully visible without this class. */
+      (function () {
+        try {
+          var bot = navigator.webdriver || /HeadlessChrome|Headless|Lighthouse|bot|crawl|spider|screenshot|preview/i.test(navigator.userAgent);
+          var reduce = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+          if (!bot && !reduce) document.documentElement.classList.add("anim");
+        } catch (e) {}
+      })();
+    </script>
+    <script type="module" crossorigin src="../assets/verdict/index-Z9QlrIRu.js"></script>
+    <link rel="modulepreload" crossorigin href="../assets/vendor-CXWrGAdT.js">
+    <link rel="modulepreload" crossorigin href="../assets/kit-D89moJJf.js">
+    <link rel="stylesheet" crossorigin href="../assets/kit-BwVIGAYh.css">
+  </head>
+  <body><div role="note" style="position:relative;z-index:2147483647;margin:0;padding:8px 16px;background:#141414;color:#e9e9e4;font:13px/1.45 system-ui,-apple-system,Segoe UI,sans-serif;text-align:center;border-bottom:1px solid #333">Archived earlier version of Fengce. The current site is at <a href="https://getfengce.vercel.app/" style="color:#f0533f;text-decoration:underline">getfengce.vercel.app</a>.</div>
+    <div id="root"></div>
+  </body>
+</html>

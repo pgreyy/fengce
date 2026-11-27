@@ -10,7 +10,7 @@ import { MAX_BUY_CIRCUIT, COUNTER } from "../fengce/engine";
 import { PREPARED } from "../fengce/reads";
 import { IncidentGrid } from "../fengce/incidents";
 import { Ruled, type Tone } from "../fengce/Ruled";
-import { Addr, CIRCUIT, CodeCard, circuitHref, mount, param, short } from "../fengce/ui";
+import { Addr, CIRCUIT, CodeCard, circuitHref, mount, oldHref, param, short } from "../fengce/ui";
 
 type Tab = "how" | "inc" | "cmp" | "devs" | "contracts" | "circuits" | "judges";
 const TABS: [Tab, string][] = [
@@ -306,6 +306,7 @@ function Docs() {
             <div className="addr-row"><span>Processor #180</span><Addr value={DEWEB.processor} link={`${EXPLORER}/address/${DEWEB.processor}`} label="Copy processor address" /></div>
             <div className="addr-row"><span>Site container</span><Addr value={DEWEB.container} link={`${EXPLORER}/address/${DEWEB.container}`} label="Copy container address" /></div>
             <div className="addr-row"><span>Open it</span><a className="code-link mono" style={{ fontSize: 13 }} href="https://6-2-180.tapekit.org/" target="_blank" rel="noreferrer noopener">6-2-180.tapekit.org</a></div>
+            <div className="addr-row"><span>Earlier version</span><a className="code-link mono" style={{ fontSize: 13 }} href={oldHref()}>/old/ · the site as first published on {TAPE_NAME}, archived</a></div>
           </div>
           <div id={CIRCUIT.catalog} className="anchor">
             <span className="lbl" style={{ display: "block", paddingBottom: 8 }}>Catalog circuits</span>

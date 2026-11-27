@@ -13,6 +13,8 @@ export function href(page: Page, q?: Record<string, string>, hash?: string) {
   const base = DEPTH === 0 ? "./" : "../";
   return `${base}${page ? `${page}/` : ""}${q ? `?${new URLSearchParams(q)}` : ""}${hash ? `#${hash}` : ""}`;
 }
+/** The archived earlier site (static, under /old/; not in the main nav). */
+export const oldHref = () => `${DEPTH === 0 ? "./" : "../"}old/`;
 export function param(name: string) {
   return new URLSearchParams(location.search).get(name);
 }
@@ -473,7 +475,7 @@ function Footer() {
           </div>
         </div>
         {col("Product", [["Limits", href("limits")], ["Try", href("try")], ["Tilt-shield", href("tilt-shield")], ["Wallet", href("wallet")]])}
-        {col("Build", [["Docs", href("docs")], ["Agents", href("agents")], ["Catalog", href("limits", { tab: "add" })], ["GitHub", REPO, true]])}
+        {col("Build", [["Docs", href("docs")], ["Agents", href("agents")], ["Catalog", href("limits", { tab: "add" })], ["GitHub", REPO, true], ["Earlier version", oldHref()]])}
         {col("Proof", [["Contracts", href("docs", { tab: "contracts" })], ["Circuits", href("docs", { tab: "circuits" })], ["Incidents", href("docs", { tab: "inc" })], ["For judges", href("docs", { tab: "judges" })]])}
       </div>
     </footer>
