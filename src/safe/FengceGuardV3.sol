@@ -464,11 +464,12 @@ contract FengceGuardV3 is PolicyEngine, SafeAdmin, ITransactionGuard, IModuleGua
         if (b.holdA) _nand(FengceRulesV3.HOLD_LOCK, b.holdB, safe, to);
         if (b.capA) _nand(FengceRulesV3.AGENT_CAP, b.capB, safe, to);
         _policy(safe, c, f, to);
-        _advanceTick(safe, c, f);
+        // Tilt-shield before trades per hour: a paused buy is reported as TILT_SHIELD
         if (b.buy) {
             uint8 t = FengceRulesV3.tilt(tiltTick, safe, f, b);
             if (t != 0) revert FengceRefused(t, safe, to);
         }
+        _advanceTick(safe, c, f);
         FengceRulesV3.record(safe, f, agentKey);
     }
 

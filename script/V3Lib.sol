@@ -32,6 +32,9 @@ library V3Lib {
         bytes32 latchNetlistHash;
         uint32 tiltCooldown;
         uint16 tiltMultX10;
+        // trades per clock hour (0 = off): counter circuit #7 with N = tradesPerHour, through Tick
+        uint256 tradesPerHour;
+        bytes32 tradesPin;
         // other rules
         bool quietOn;
         uint8 quietStart;
@@ -102,16 +105,25 @@ library V3Lib {
         for (uint256 i; i < 4; i++) {
             b = abi.encodePacked(b, _call(G, abi.encodeCall(FengceGuardV3.setDecoder, (OkunLib.ROUTER, sels[i], OkunLib.V3_DECODER))));
         }
+        TxFacts.Binding[] memory one = new TxFacts.Binding[](1);
+        one[0] = TxFacts.Binding(TxFacts.Source.Kind, 0);
+        if (p.tiltAfter != 0 || p.tradesPerHour != 0) b = abi.encodePacked(b, _call(OkunLib.TICK, abi.encodeCall(Tick.setRelayer, (G, true))));
+        if (p.tradesPerHour != 0) {
+            bytes32 tg = OkunLib.tickGroupId(p.safe);
+            b = abi.encodePacked(
+                b,
+                _call(OkunLib.TICK, abi.encodeCall(Tick.createGroup, (OkunLib.TICK_SALT, p.tradesPin, OkunLib.TRADE_PERIOD, OkunLib.counterLayout(p.counterNetlistHash, p.tradesPerHour), one))),
+                _call(OkunLib.TICK, abi.encodeCall(Tick.setMember, (tg, p.safe, true))),
+                _call(G, abi.encodeCall(FengceGuardV3.configureTick, (OkunLib.TICK, tg)))
+            );
+        }
         if (p.tiltAfter != 0) {
-            TxFacts.Binding[] memory one = new TxFacts.Binding[](1);
-            one[0] = TxFacts.Binding(TxFacts.Source.Kind, 0);
             TxFacts.Binding[] memory three = new TxFacts.Binding[](3);
             for (uint256 i; i < 3; i++) {
                 three[i] = TxFacts.Binding(TxFacts.Source.Kind, 0); // unused: the guard drives the latch with raw bits
             }
             b = abi.encodePacked(
                 b,
-                _call(OkunLib.TICK, abi.encodeCall(Tick.setRelayer, (G, true))),
                 _call(OkunLib.TICK, abi.encodeCall(Tick.createGroup, (TILT_COUNT_SALT, p.counterPin, TILT_WINDOW, OkunLib.counterLayout(p.counterNetlistHash, p.tiltAfter - 1), one))),
                 _call(OkunLib.TICK, abi.encodeCall(Tick.setMember, (countGroup(p.safe), p.safe, true))),
                 _call(OkunLib.TICK, abi.encodeCall(Tick.createGroup, (TILT_LATCH_SALT, p.latchPin, LATCH_PERIOD, latchLayout(p.latchNetlistHash), three))),
