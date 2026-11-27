@@ -2,14 +2,14 @@ import { useEffect, useState } from "react";
 import { PRODUCT_NAME, REPO, TAPE_NAME } from "../brand";
 import { DEPLOYMENT, EXPLORER } from "../lib/chain";
 import DEWEB from "../../../deployments/deweb-xlayer-196.json";
-import TILT_LATCH from "../../../circuits/tilt-latch.json";
+import TILT_LATCH from "../../../contracts/circuits/tilt-latch.json";
 import { keccak256 } from "viem";
 const TILT_LATCH_HASH = keccak256(TILT_LATCH.netlist as `0x${string}`);
-import { MAX_BUY_CIRCUIT, COUNTER } from "../okun/engine";
-import { PREPARED } from "../okun/reads";
-import { IncidentGrid } from "../okun/incidents";
-import { Ruled, type Tone } from "../okun/Ruled";
-import { Addr, CIRCUIT, CodeCard, circuitHref, mount, param, short } from "../okun/ui";
+import { MAX_BUY_CIRCUIT, COUNTER } from "../fengce/engine";
+import { PREPARED } from "../fengce/reads";
+import { IncidentGrid } from "../fengce/incidents";
+import { Ruled, type Tone } from "../fengce/Ruled";
+import { Addr, CIRCUIT, CodeCard, circuitHref, mount, param, short } from "../fengce/ui";
 
 type Tab = "how" | "inc" | "cmp" | "devs" | "contracts" | "circuits" | "judges";
 const TABS: [Tab, string][] = [
@@ -47,6 +47,52 @@ const STEPS = [
   ["03", "Check", "Each transaction is turned into facts (kind, recipient, token, amount) and run through the pinned circuit before it executes.", "PolicyEngine · decoders"],
   ["04", "Settle", "Optional on Safe: what actually left the wallet is checked again after execution, and any break reverts the whole transaction.", "Inspector · X Layer"],
 ];
+
+/** Safes with a FengceGuard configuration: Configured events, from the snapshot at once, then the live history. */
+function Installs() {
+  const rows = useInstalls(true);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <span className="lbl">Installs read from chain{rows ? ` · ${rows.length}` : ""}</span>
+      {!rows && <span className="small">Reading FengceGuard Configured events…</span>}
+      {rows?.map((r) => (
+        <div key={r.safe} className="addr-row">
+          <span style={{ display: "inline-flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <Addr value={r.safe} link={`${EXPLORER}/address/${r.safe}`} label="Copy Safe address" />
+            <a className="alink" href={`../wallet/?safe=${r.safe}`}>Open</a>
+          </span>
+          <span className="small">
+            installed at block {Number(r.block).toLocaleString("en-US")} · <a className="code-link mono" href={`${EXPLORER}/tx/${r.tx}`} target="_blank" rel="noreferrer noopener">{short(r.tx)}</a>
+          </span>
+        </div>
+      ))}
+      <span className="small">New testers: <a className="alink" href="../onboard/">onboarding</a>.</span>
+    </div>
+  );
+}
+
+function useInstalls(on: boolean) {
+  const [rows, setRows] = useState<{ safe: string; tx: string; block: string }[] | null>(null);
+  useEffect(() => {
+    if (!on) return;
+    let live = true;
+    const pick = (events: { source: string; event: string; safe: string | null; tx: string; block: string }[]) => {
+      const seen = new Map<string, { safe: string; tx: string; block: string }>();
+      for (const e of events) if (e.source === "guard" && e.event === "Configured" && e.safe && !seen.has(e.safe.toLowerCase())) seen.set(e.safe.toLowerCase(), { safe: e.safe, tx: e.tx, block: e.block });
+      return [...seen.values()].sort((a, b) => Number(BigInt(b.block) - BigInt(a.block)));
+    };
+    (async () => {
+      const { loadSnapshot } = await import("../fengce/reads");
+      const { syncHistory } = await import("../lib/events");
+      const snap = await loadSnapshot();
+      if (live && snap) setRows(pick(snap.events as never));
+      const h = await syncHistory(snap);
+      if (live) setRows(pick(h.events as never));
+    })().catch(() => undefined);
+    return () => void (live = false);
+  }, [on]);
+  return rows;
+}
 
 function Docs() {
   const [tab, setTab] = useState<Tab>((TABS.find(([k]) => k === param("tab"))?.[0] as Tab) ?? "how");
@@ -231,6 +277,8 @@ function Docs() {
           </div>
         </div>
       )}
+
+      {tab === "judges" && <Installs />}
 
       {tab === "judges" && (
         <div>
