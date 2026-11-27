@@ -223,7 +223,7 @@ export function BuildPanel() {
           </span>
         )}
         {msg && <span className={msg.ok ? "mono" : "err"} style={{ fontSize: 14, color: msg.ok ? "var(--allow)" : undefined }}>{msg.text}</span>}
-        <span className="small">Designers can list a pinned circuit in the Fengce Catalog with its test vectors and an install fee, and earn 80% of each install.</span>
+        <span className="small">Designers can list a pinned circuit in the Fengce Catalog with its test vectors and, optionally, an install fee: 80% of each fee goes to the designer (listings are free during launch).</span>
       </div>
     </div>
   );

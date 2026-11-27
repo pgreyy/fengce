@@ -104,7 +104,7 @@ export const PRESETS: PolicyPreset[] = [
     processor: "0xE2a6c6393b5A8B99cb481035eB8e244C66641cd7",
     id: 18n,
     stateful: true,
-    description: "Allows one spend per period; the budget resets at the start of each period.",
+    description: "Allows one transaction per period; the budget resets at the start of each period.",
     construction:
       "A stateful toggle with one LATCH (5 gates): new state = state XOR spend, output = new state. Tick keeps the state per policy group, resets it to zero each period, and stores it only when the step allows.",
     schema: () => ({

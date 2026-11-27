@@ -453,7 +453,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .cat-imp-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .cat-imp-row .field { flex: 1 1 320px; min-width: 0; font-size: 14px; }
 .cat-imp-row .pill { min-height: 44px; }
-.cat { --cols: minmax(300px, 3fr) 52px 84px 136px 100px 108px 128px 100px; min-width: 1080px; }
+.cat { --cols: minmax(280px, 3fr) 52px 84px 136px 140px 108px 128px 100px; min-width: 1080px; }
 .cat-r { display: grid; grid-template-columns: var(--cols); column-gap: 20px; align-items: center; border-bottom: 1px solid var(--line); }
 .cat-r > span { min-width: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cat-r > span.r { text-align: right; overflow: visible; }
@@ -482,6 +482,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .csheet { width: min(620px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 24px 60px rgba(0, 0, 0, .25); }
 .cat-sec { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
 .cat-f { display: flex; flex-direction: column; gap: 6px; }
+.cat-ack { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid var(--accent); border-radius: 8px; font-size: 14px; line-height: 1.45; cursor: pointer; }
+.cat-ack input { margin-top: 3px; accent-color: var(--accent); }
+.cat-ack b { font-weight: 500; }
 @media (max-width: 767px) {
   .cat-x { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .cat-top .field { width: 100% !important; }

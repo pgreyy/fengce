@@ -14,6 +14,7 @@ import { ENGINE, multiSend, type Call } from "./engine";
 import { parseAmount } from "./LimitsEditor";
 import { PREPARED, readInstalled, type Installed } from "./reads";
 import { Addr, CIRCUIT, circuitHref, href, openWallet, short } from "./ui";
+import { GUARD_V3 } from "./addSafe";
 import { EXPLORER_TX, sendFromWallet, simulateSafeTx, useWallet } from "./wallet";
 
 const evalAbi = parseAbi(["function eval(uint256 id, bytes input) view returns (bytes)"]);
@@ -29,7 +30,7 @@ interface Row {
 const PERIODS: [string, bigint][] = [["1 hour", 3_600n], ["1 day", 86_400n], ["1 week", 604_800n]];
 const usesCap = (p?: PolicyPreset) => !!p && JSON.stringify(p.schema(1n)).includes("AmountGt");
 const gasK = (g: bigint) => `${Math.round(Number(g) / 1000)}k gas`;
-const fee = (f: bigint) => (f > 0n ? `${formatEther(f)} OKB` : "Free");
+const fee = (f: bigint) => (f > 0n ? `${formatEther(f)} OKB` : "Free during launch");
 const errText = (e: unknown) => (e as { shortMessage?: string }).shortMessage ?? (e as Error).message;
 
 /** What this Safe runs from the Catalog: its policy pin and the pin behind its Tick group. */
@@ -48,6 +49,16 @@ async function readSafeState(safe: Address): Promise<SafeState> {
   }
   const relayerSet = (await client.readContract({ address: ENGINE.tick, abi: TickArtifact.abi as any, functionName: "relayers", args: [safe, ENGINE.guard] })) as boolean;
   return { inst, tickPin, relayerSet };
+}
+
+/** What the Safe's one Tick slot (guard v2) runs now, by name; null when it is free. */
+function occupantOf(st: SafeState | null, rows: Row[]): string | null {
+  if (!st?.inst.tick || !st.tickPin) return null;
+  const pin = st.tickPin.toLowerCase();
+  const n = PREPARED ? Object.entries(PREPARED.counterPins).find(([, p]) => p.toLowerCase() === pin)?.[0] : undefined;
+  if (n) return `trades per hour (${n} per hour)`;
+  const r = rows.find((x) => x.entry.pinId.toLowerCase() === pin);
+  return r ? `${r.preset?.name ?? "a Catalog circuit"} (#${r.id})` : `the stateful circuit on pin ${short(st.tickPin, 6)}`;
 }
 
 /** Import by ID: a circuit number (18 or #18), a processor address, or a pin id. */
@@ -134,7 +145,7 @@ export function CatalogPanel() {
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <div className="cat-top">
         <p className="body" style={{ maxWidth: 640 }}>
-          Circuits already taped out on X Layer and listed by their designers, with test vectors checked on chain. Open one to see what it reads; add it to your Safe with one signature. The designer earns 80% of each install fee.
+          Circuits already taped out on X Layer and listed by their designers, with test vectors checked on chain. Open one to see what it reads; add it to your Safe with one signature. Listings are free during launch; when a designer sets a fee, Catalog.payInstall sends 80% to the designer and 20% to the treasury.
         </p>
         <input className="field" style={{ width: 240 }} aria-label="Search circuits" placeholder="Search circuits" value={search} onChange={(e) => (setSearch(e.target.value), setFound(null))} />
       </div>
@@ -216,7 +227,7 @@ export function CatalogPanel() {
           })}
         </div>
       </div>
-      {sheet && <Sheet row={sheet.row} mode={sheet.mode} st={st} onClose={() => setSheet(null)} onDone={() => setTick((t) => t + 1)} />}
+      {sheet && <Sheet row={sheet.row} mode={sheet.mode} st={st} occupant={occupantOf(st, rows ?? [])} onClose={() => setSheet(null)} onDone={() => setTick((t) => t + 1)} />}
     </div>
   );
 }
@@ -278,7 +289,7 @@ function Details({ row }: { row: Row }) {
 }
 
 /** Confirm sheet: what the rule does, its values, the fee and its split, the calls, then the signature(s). */
-function Sheet({ row, mode, st, onClose, onDone }: { row: Row; mode: "add" | "remove"; st: SafeState | null; onClose: () => void; onDone: () => void }) {
+function Sheet({ row, mode, st, occupant, onClose, onDone }: { row: Row; mode: "add" | "remove"; st: SafeState | null; occupant: string | null; onClose: () => void; onDone: () => void }) {
   const w = useWallet();
   const p = row.preset!;
   const [cap, setCap] = useState("2");
@@ -288,6 +299,7 @@ function Sheet({ row, mode, st, onClose, onDone }: { row: Row; mode: "add" | "re
   const [busy, setBusy] = useState<string | null>(null);
   const [done, setDone] = useState<{ text: string; txs: Hex[] } | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [ack, setAck] = useState(false);
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && !busy && onClose();
@@ -299,6 +311,7 @@ function Sheet({ row, mode, st, onClose, onDone }: { row: Row; mode: "add" | "re
   const baseN = parseAmount(base);
   const set = !!st?.inst.set;
   const needsBase = p.stateful && !set;
+  const replaces = mode === "add" && !!p.stateful && !!occupant && st?.tickPin?.toLowerCase() !== row.entry.pinId.toLowerCase();
 
   useEffect(() => {
     if (mode === "remove" || !w.safe || !st) return setPlan(null);
@@ -336,7 +349,9 @@ function Sheet({ row, mode, st, onClose, onDone }: { row: Row; mode: "add" | "re
         ? "The connected wallet is not an owner of this Safe."
         : st.inst.threshold > 1
           ? `This Safe needs ${st.inst.threshold} owner signatures; one-signature install is for 1-of-1 Safes.`
-          : !set && st.inst.raw?.guard && String(st.inst.raw.guard) !== ZERO && !st.inst.guardOn
+          : GUARD_V3 && String(st.inst.raw?.guard ?? "").toLowerCase() === GUARD_V3.toLowerCase()
+            ? "This Safe runs Fengce guard v3 (Tilt-shield and its other rules). This page adds Catalog circuits to guard v2 Safes for now, so nothing on this Safe is changed."
+            : !set && st.inst.raw?.guard && String(st.inst.raw.guard) !== ZERO && !st.inst.guardOn
             ? `This Safe runs another guard (${short(String(st.inst.raw.guard))}). Install Fengce from Limits first, where replacing it is confirmed.`
             : null;
 
@@ -403,7 +418,6 @@ function Sheet({ row, mode, st, onClose, onDone }: { row: Row; mode: "add" | "re
             <div className="cat-sec">
               <span className="lbl">What it does</span>
               <span className="body" style={{ fontSize: 15 }}>{p.description}</span>
-              {p.stateful && <span className="small">Every transaction your Safe makes counts as one spend in the period.</span>}
             </div>
 
             {(usesCap(p) || p.stateful) && (
@@ -422,8 +436,13 @@ function Sheet({ row, mode, st, onClose, onDone }: { row: Row; mode: "add" | "re
                   {needsBase && field("Max per buy (USDT0)", base, setBase, baseN === null)}
                 </div>
                 {needsBase && <span className="small">Your Safe has no Fengce yet. The guard needs one stateless limit as its base, so this also sets max per buy (circuit #2); Tick runs the budget next to it.</span>}
-                {p.stateful && st?.inst.tick && st.tickPin?.toLowerCase() !== row.entry.pinId.toLowerCase() && (
-                  <span className="small" style={{ color: "var(--accent)" }}>A Safe runs one Tick circuit at a time: this replaces your current one (such as trades per hour) once it applies.</span>
+                {replaces && (
+                  <label className="cat-ack">
+                    <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />
+                    <span>
+                      Switch off <b>{occupant}</b>. Your Safe has one Tick slot for a stateful rule, and {p.name} takes it {set ? "when the change applies (after 1 day)" : "now"}.
+                    </span>
+                  </label>
                 )}
               </div>
             )}
@@ -435,7 +454,7 @@ function Sheet({ row, mode, st, onClose, onDone }: { row: Row; mode: "add" | "re
                   {fee(row.entry.installFee)} once: {formatEther(designerCut)} OKB (80%) to the designer {short(row.entry.designer)}, {formatEther(row.entry.installFee - designerCut)} OKB (20%) to the Fengce treasury.
                 </span>
               ) : (
-                <span className="body" style={{ fontSize: 15 }}>Free listing: 0 OKB. If it had a fee, 80% would go to the designer {short(row.entry.designer)} and 20% to the Fengce treasury.</span>
+                <span className="body" style={{ fontSize: 15 }}>Free during launch: 0 OKB. When a listing sets a fee, Catalog.payInstall splits it 80% to the designer ({short(row.entry.designer)}) and 20% to the Fengce treasury.</span>
               )}
             </div>
           </>
@@ -474,7 +493,7 @@ function Sheet({ row, mode, st, onClose, onDone }: { row: Row; mode: "add" | "re
             </span>
           </div>
         ) : (
-          <button type="button" className="pill accent big" disabled={!!busy || !!blocker || !st || steps.length === 0} onClick={sign}>
+          <button type="button" className="pill accent big" disabled={!!busy || !!blocker || !st || steps.length === 0 || (replaces && !ack)} onClick={sign}>
             {busy ?? (!st ? "Reading your Safe…" : steps.length === 0 && !blocker && !(plan && "error" in plan) ? "Preparing the transaction…" : steps.length > 1 ? `Sign ${steps.length} transactions` : mode === "remove" ? "Sign to schedule the removal" : set ? "Sign to schedule" : row.entry.installFee > 0n ? `Pay ${fee(row.entry.installFee)} and add` : "Sign and add")}
           </button>
         )}

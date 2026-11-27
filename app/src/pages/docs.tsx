@@ -39,7 +39,7 @@ const USES = [
   ["Shared team budget", "One budget per period across several wallets and agents."],
   ["Company floor", "A company-wide cap teams can tighten, never loosen."],
   ["Agent allowances", "Caps for the agents acting on one Safe."],
-  ["Your own circuit", "Design any TapeOut circuit, list it with test vectors, earn 80% of install fees."],
+  ["Your own circuit", "Design any TapeOut circuit, list it with test vectors; when you set an install fee, you earn 80% of it (listings are free during launch)."],
 ];
 const STEPS = [
   ["01", "Bind", "FengceGuard is installed on your Safe as its transaction guard and module guard. Nothing moves; you keep your wallet and keys.", "FengceGuard · SafeAdmin"],
