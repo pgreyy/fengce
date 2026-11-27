@@ -1,10 +1,10 @@
-// Writes test/vectors/okun-install.json: the exact bytes the app sends for a one-signature install and for two swaps,
-// for a fixed Safe and placeholder pins. test/fork/OkunInstall.t.sol rebuilds the same bytes in Solidity, checks they
-// are equal, then runs them on a fork with real pins. Usage: npx tsx scripts/okun-vectors.mts
+// Writes test/vectors/limits-install.json: the exact bytes the app sends for a one-signature install and for two swaps,
+// for a fixed Safe and placeholder pins. test/fork/LimitsInstall.t.sol rebuilds the same bytes in Solidity, checks they
+// are equal, then runs them on a fork with real pins. Usage: npx tsx scripts/limits-vectors.mts
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { getAddress, keccak256, toHex, type Hex } from "viem";
-import { TOKENS, counterSchemaHash, execCalldata, installCalls, maxBuySchemaHash, multiSend, swapCalls, tickGroupId, type Prepared } from "../src/okun/engine";
+import { TOKENS, counterSchemaHash, execCalldata, installCalls, maxBuySchemaHash, multiSend, swapCalls, tickGroupId, type Prepared } from "../src/fengce/engine";
 
 const safe = getAddress("0x0000000000000000000000000000000000004f4b");
 const owner = getAddress("0x00000000000000000000000000000000000a11ce");
@@ -33,5 +33,5 @@ const out = {
   swapIn: swap(500_000n).data,
   swapOver: swap(1_500_000n).data,
 };
-writeFileSync(resolve(import.meta.dirname, "../../test/vectors/okun-install.json"), JSON.stringify(out, null, 2) + "\n");
-console.log("wrote test/vectors/okun-install.json", { installBytes: (install.data.length - 2) / 2, calls: installCalls(safe, limits, prepared).length });
+writeFileSync(resolve(import.meta.dirname, "../../contracts/test/vectors/limits-install.json"), JSON.stringify(out, null, 2) + "\n");
+console.log("wrote test/vectors/limits-install.json", { installBytes: (install.data.length - 2) / 2, calls: installCalls(safe, limits, prepared).length });

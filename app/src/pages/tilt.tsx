@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CIRCUIT, circuitHref, mount } from "../okun/ui";
+import { CIRCUIT, circuitHref, mount } from "../fengce/ui";
 
 /** The simulator follows FengceGuardV3 (src/safe/FengceRulesV3.sol): the buy that makes N buys within 30 minutes, or a
  * buy of 3x the usual size, goes through and trips the shield; later buys are refused (TILT_SHIELD) until the cooldown

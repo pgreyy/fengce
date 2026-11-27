@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { getAddress, isAddress, parseAbi, parseUnits, type Address, type Hex } from "viem";
 import { DEPLOYMENT, client } from "../lib/chain";
 import { check } from "@fengce/sdk";
-import { ActivityTable, useActivity } from "../okun/ActivityTable";
-import { record } from "../okun/activity";
-import { TOKENS, multiSend, sendCall, swapCalls } from "../okun/engine";
-import { readInstalled, usdt0, type Installed } from "../okun/reads";
-import { Addr, href, mount, short, StartLink } from "../okun/ui";
-import { EXPLORER_TX, balances, sendFromWallet, simulateSafeTx, useWallet } from "../okun/wallet";
+import { ActivityTable, useActivity } from "../fengce/ActivityTable";
+import { record } from "../fengce/activity";
+import { TOKENS, multiSend, sendCall, swapCalls } from "../fengce/engine";
+import { readInstalled, usdt0, type Installed } from "../fengce/reads";
+import { Addr, href, mount, short, StartLink } from "../fengce/ui";
+import { EXPLORER_TX, balances, sendFromWallet, simulateSafeTx, useWallet } from "../fengce/wallet";
 
 type Sym = keyof typeof TOKENS;
 const SYMS: Sym[] = ["USDT0", "WOKB", "USDC"];

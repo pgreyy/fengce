@@ -2,12 +2,12 @@ import { useEffect, useState } from "react";
 import { decodeFunctionData, encodeFunctionData, getAddress, isAddress, parseAbi, type Address, type Hex } from "viem";
 import { FengceGuardArtifact } from "@fengce/sdk";
 import { DEPLOYMENT, client } from "../lib/chain";
-import { ActivityTable, useActivity } from "../okun/ActivityTable";
-import { attempts, type Attempt } from "../okun/activity";
-import { ENGINE } from "../okun/engine";
-import { readInstalled, safeHistory, usdt0, type Installed } from "../okun/reads";
-import { CopyButton, href, mount, param, short } from "../okun/ui";
-import { EXPLORER_TX, sendFromWallet, simulateSafeTx, useWallet } from "../okun/wallet";
+import { ActivityTable, useActivity } from "../fengce/ActivityTable";
+import { attempts, type Attempt } from "../fengce/activity";
+import { ENGINE } from "../fengce/engine";
+import { readInstalled, safeHistory, usdt0, type Installed } from "../fengce/reads";
+import { CopyButton, href, mount, param, short } from "../fengce/ui";
+import { EXPLORER_TX, sendFromWallet, simulateSafeTx, useWallet } from "../fengce/wallet";
 
 const regAbi = parseAbi(["function isPinned(bytes32) view returns (bool)"]);
 const guardAbi = FengceGuardArtifact.abi as any;
@@ -127,7 +127,7 @@ function Wallet() {
       {err && <p className="err">{err}</p>}
       <div className="scroll-x">
         <div className="metrics" style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(170px, 1fr))", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)" }}>
-          {metric("Max buy", inst ? usdt0(inst.maxPerBuy) : "…", inst?.okunPolicy === false && inst?.set ? "USDT0 per send (demo policy)" : "USDT0 per buy", false, 0)}
+          {metric("Max buy", inst ? usdt0(inst.maxPerBuy) : "…", inst?.limitsPolicy === false && inst?.set ? "USDT0 per send (demo policy)" : "USDT0 per buy", false, 0)}
           {metric("Quiet hours", "Soon", "next engine release", false, 1)}
           {metric("Per hour", inst?.trades ? `${inst.trades.usedThisHour} / ${inst.trades.perHour}` : "Off", inst?.trades ? `swaps this hour · resets ${new Date(inst.trades.resetsAt * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "no hourly limit", false, 2)}
           {metric("Tilt-shield", "Soon", "next engine release", false, 3)}

@@ -54,7 +54,7 @@ encodeInputs(schema, { overLimit: true }); // "0x03": strict, LSB first, never t
 toLayout(schema);                          // the Schema.Layout struct for contract calls
 ```
 
-File format and binding sources: see `src/schema.ts` and `docs/INTEGRATION.md`. Examples:
+File format and binding sources: see `contracts/src/schema.ts` and `docs/INTEGRATION.md`. Examples:
 `examples/nand-limit.schema.json`, `examples/comparator16.schema.json`, `examples/encode.ts`.
 
 ## Install calldata for a Safe
@@ -80,7 +80,7 @@ fengce-quote <processor> <circuitId> [--rpc URL] [--port N] [--out FILE] [--inpu
 
 Needs `anvil` (Foundry) on PATH. Starts a local fork of X Layer, deploys PinRegistry and FengceGuard on it,
 measures gas on the full Safe path (Safe execution overhead, pre-check and outcome check, reported separately),
-assigns a tier from the full Safe path (`src/tiers.json`: Green up to 1M gas, Amber up to 3.5M, Red above), pins the circuit on the fork with the resulting `certificateHash` and checks what
+assigns a tier from the full Safe path (`contracts/src/tiers.json`: Green up to 1M gas, Amber up to 3.5M, Red above), pins the circuit on the fork with the resulting `certificateHash` and checks what
 the registry stored. Nothing is sent to the real chain. Programmatic use: `quote(env, processor, id, options)`.
 
 The certificate hash is keccak256 of the certificate's canonical JSON (`canonicalJson`: keys sorted, no
@@ -110,8 +110,8 @@ The interpreter follows TAP-02 (NAND, LATCH with state, REF sub-circuits) on the
 |---|---|
 | `npm test` | Unit tests |
 | `npm run typecheck` | Type check |
-| `npm run sync-artifacts` | Refresh `src/artifacts.ts` after `forge build` in the repository root |
-| `npx tsx scripts/gen-vectors.ts` | Refresh `test/vectors/hashes.json` (read-only RPC calls) |
+| `npm run sync-artifacts` | Refresh `contracts/src/artifacts.ts` after `forge build` in the repository root |
+| `npx tsx scripts/gen-vectors.ts` | Refresh `contracts/test/vectors/hashes.json` (read-only RPC calls) |
 
 ## License
 

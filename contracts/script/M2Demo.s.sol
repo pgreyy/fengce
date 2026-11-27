@@ -10,9 +10,9 @@ import {Schema} from "../src/core/Schema.sol";
 import {Tick} from "../src/core/Tick.sol";
 import {FengceGuardV3} from "../src/safe/FengceGuardV3.sol";
 import {AgentExecutorV3} from "../src/safe/AgentExecutorV3.sol";
-import {OkunLib} from "./OkunLib.sol";
+import {LimitsLib} from "./LimitsLib.sol";
 import {V3Lib} from "./V3Lib.sol";
-import {ICircuitProcessor, ITransistors} from "./PrepareOkun.s.sol";
+import {ICircuitProcessor, ITransistors} from "./PrepareLimits.s.sol";
 
 interface IFactoryM2 {
     function createProxyWithNonce(address singleton, bytes memory initializer, uint256 saltNonce) external returns (address);
@@ -37,7 +37,7 @@ contract M2Demo is Script {
     IFactoryM2 constant FACTORY = IFactoryM2(0x14F2982D601c9458F93bd70B218933A6f8165e7b);
     address constant SAFE_L2 = 0xEdd160fEBBD92E350D4D398fb636302fccd67C7e;
     address constant FALLBACK = 0x3EfCBb83A4A7AfcB4F68D501E2c2203a38be77f4;
-    PinRegistry constant REG = PinRegistry(OkunLib.PIN_REGISTRY);
+    PinRegistry constant REG = PinRegistry(LimitsLib.PIN_REGISTRY);
     uint256 constant BUY = 200_000; // 0.2 USDT0
 
     function run() external {
@@ -64,7 +64,7 @@ contract M2Demo is Script {
     }
 
     function _pins() internal view returns (bytes32 maxBuyPin, bytes32[] memory counterPins, bytes32 counterNetlistHash) {
-        string memory j = vm.readFile("deployments/okun-xlayer-196.json");
+        string memory j = vm.readFile("../deployments/limits-xlayer-196.json");
         maxBuyPin = vm.parseJsonBytes32(j, ".maxBuyPin");
         counterNetlistHash = vm.parseJsonBytes32(j, ".counterNetlistHash");
         counterPins = new bytes32[](15);
@@ -78,14 +78,14 @@ contract M2Demo is Script {
     function _deploy() internal {
         (bytes32 maxBuyPin, bytes32[] memory counterPins,) = _pins();
         bytes memory netlist = vm.parseJsonBytes(vm.readFile("circuits/tilt-latch.json"), ".netlist");
-        ICircuitProcessor cpu = ICircuitProcessor(OkunLib.COUNTER_CPU);
+        ICircuitProcessor cpu = ICircuitProcessor(LimitsLib.COUNTER_CPU);
         ITransistors t = ITransistors(cpu.transistorsContract());
         vm.startBroadcast();
         t.mint{value: t.protocolFee()}(t.NAND(), 6);
         t.mint{value: t.protocolFee()}(t.LATCH(), 1);
         uint256 id = cpu.tapeout{value: cpu.TAPEOUT_FEE()}(netlist, 3, 1);
-        bytes32 latchPin = REG.pin(OkunLib.COUNTER_CPU, id, Schema.hash(V3Lib.latchLayout(keccak256(netlist))), bytes32(0));
-        FengceGuardV3 guard = new FengceGuardV3(REG, V3Lib.EVAL_GAS_CAP, counterPins, maxBuyPin, Tick(OkunLib.TICK));
+        bytes32 latchPin = REG.pin(LimitsLib.COUNTER_CPU, id, Schema.hash(V3Lib.latchLayout(keccak256(netlist))), bytes32(0));
+        FengceGuardV3 guard = new FengceGuardV3(REG, V3Lib.EVAL_GAS_CAP, counterPins, maxBuyPin, Tick(LimitsLib.TICK));
         AgentExecutorV3 exec = new AgentExecutorV3(address(guard));
         vm.stopBroadcast();
         require(REG.isPinned(latchPin), "latch not pinned");
@@ -124,7 +124,7 @@ contract M2Demo is Script {
             p.agentCapPerDay = 500_000; // 0.5 USDT0
         }
         bool ok = ISafe(payable(safe)).execTransaction(
-            OkunLib.MSCO, 0, V3Lib.installMultiSend(p), Enum.Operation.DelegateCall, 0, 0, 0, address(0), payable(address(0)), OkunLib.ownerSignature(owner)
+            LimitsLib.MSCO, 0, V3Lib.installMultiSend(p), Enum.Operation.DelegateCall, 0, 0, 0, address(0), payable(address(0)), LimitsLib.ownerSignature(owner)
         );
         vm.stopBroadcast();
         require(ok, "install");
@@ -137,21 +137,21 @@ contract M2Demo is Script {
         address safe = _addr("safe");
         uint256 amount = vm.envOr("FUND", uint256(1_500_000));
         vm.startBroadcast();
-        require(IERC20M2(OkunLib.USDT0).transfer(safe, amount), "fund");
+        require(IERC20M2(LimitsLib.USDT0).transfer(safe, amount), "fund");
         vm.stopBroadcast();
         console.log("M2 funded", amount);
     }
 
     function _exec(address safe, bytes memory data) internal returns (bool) {
         return ISafe(payable(safe)).execTransaction(
-            OkunLib.MSCO, 0, data, Enum.Operation.DelegateCall, 0, 0, 0, address(0), payable(address(0)), OkunLib.ownerSignature(msg.sender)
+            LimitsLib.MSCO, 0, data, Enum.Operation.DelegateCall, 0, 0, 0, address(0), payable(address(0)), LimitsLib.ownerSignature(msg.sender)
         );
     }
 
     function _swap() internal {
         address safe = _addr("safe");
         vm.startBroadcast();
-        require(_exec(safe, OkunLib.swapMultiSend(safe, OkunLib.USDT0, OkunLib.WOKB, BUY, 0)), "swap");
+        require(_exec(safe, LimitsLib.swapMultiSend(safe, LimitsLib.USDT0, LimitsLib.WOKB, BUY, 0)), "swap");
         vm.stopBroadcast();
         console.log("M2 swapped", BUY);
     }
@@ -160,7 +160,7 @@ contract M2Demo is Script {
         address safe = _addr("safe");
         vm.startBroadcast();
         for (uint256 i; i < 4; i++) {
-            require(_exec(safe, OkunLib.swapMultiSend(safe, OkunLib.USDT0, OkunLib.WOKB, BUY, 0)), "tilt buy");
+            require(_exec(safe, LimitsLib.swapMultiSend(safe, LimitsLib.USDT0, LimitsLib.WOKB, BUY, 0)), "tilt buy");
         }
         vm.stopBroadcast();
         bytes32 slot = keccak256(abi.encode(safe, uint256(FengceRulesV3Location.LOCATION) + 4));
@@ -173,10 +173,10 @@ contract M2Demo is Script {
     function _refuse(uint256 amount, uint8 wantCode) internal {
         address safe = _addr("safe");
         FengceGuardV3 guard = FengceGuardV3(_addr("guard"));
-        bytes memory buy = OkunLib.swapMultiSend(safe, OkunLib.USDT0, OkunLib.WOKB, amount, 0);
+        bytes memory buy = LimitsLib.swapMultiSend(safe, LimitsLib.USDT0, LimitsLib.WOKB, amount, 0);
         vm.recordLogs();
         vm.startBroadcast();
-        guard.recordRefusal(safe, OkunLib.MSCO, 0, buy, Enum.Operation.DelegateCall);
+        guard.recordRefusal(safe, LimitsLib.MSCO, 0, buy, Enum.Operation.DelegateCall);
         vm.stopBroadcast();
         // the simulated run tells which reason was recorded
         uint8 code;

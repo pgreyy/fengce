@@ -41,35 +41,36 @@ Demo Safe `0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707`, demo agent `0x81DeB61C44
 
 ## Interfaces
 
-- Solidity: [src/core](src/core) (PinRegistry, Schema, PolicyEngine, TxFacts, Catalog, Tick, FengceFloors),
-  [src/safe](src/safe) (FengceGuard, AgentExecutor, FengceInspector, signature verifier), [src/erc7579](src/erc7579)
-  (FengceHook), [src/erc6900](src/erc6900) (FengceHook6900), [src/agent](src/agent) (FengceAgentOwner),
-  [src/binding](src/binding) (FengceBinding, BoundOnly). Policy context: [docs/POLICY-INTERFACE.md](docs/POLICY-INTERFACE.md).
+- Solidity: [src/core](contracts/src/core) (PinRegistry, Schema, PolicyEngine, TxFacts, Catalog, Tick, FengceFloors),
+  [src/safe](contracts/src/safe) (FengceGuard, AgentExecutor, FengceInspector, signature verifier), [src/erc7579](contracts/src/erc7579)
+  (FengceHook), [src/erc6900](contracts/src/erc6900) (FengceHook6900), [src/agent](contracts/src/agent) (FengceAgentOwner),
+  [src/binding](contracts/src/binding) (FengceBinding, BoundOnly). Policy context: [docs/POLICY-INTERFACE.md](docs/POLICY-INTERFACE.md).
 - SDK: [sdk/README.md](sdk/README.md) (schemas, Quote, install calldata, local evaluation and `evaluateTrace`).
 - HTTP API: [docs/API.md](docs/API.md), [docs/openapi.yaml](docs/openapi.yaml).
 - MCP server for agents: [mcp/README.md](mcp/README.md); OnchainOS skill: [skills/fengce/SKILL.md](skills/fengce/SKILL.md).
 - App: [app/](app), the Fengce app (static pages reading X Layer from the browser): home, /start (connect, choose a
   Safe, set limits), /limits, /wallet (installed limits read back from chain), /try (real swaps and sends through the Safe),
-  /tilt, /agents, /docs (contracts, circuits, incidents, judges). Old URLs redirect (/fengce goes to /docs). One-signature install: app/src/okun/engine.ts, mirrored by
-  script/OkunLib.sol and checked byte for byte by test/fork/OkunInstall.t.sol.
+  /tilt, /agents, /docs (contracts, circuits, incidents, judges). Old URLs redirect (/fengce goes to /docs). One-signature install: app/src/fengce/engine.ts, mirrored by
+  script/LimitsLib.sol and checked byte for byte by test/fork/LimitsInstall.t.sol.
 - Limits: max per buy (deployed NAND circuit #2 on processor 0x839b, new pin) and trades per hour (counter circuit
-  circuits/trade-counter.json on processor #180 through Tick). script/PrepareOkun.s.sol tapes out and pins them and writes
-  deployments/okun-xlayer-196.json.
+  circuits/trade-counter.json on processor #180 through Tick). script/PrepareLimits.s.sol tapes out and pins them and writes
+  deployments/limits-xlayer-196.json.
 
 ## Running the checks
 
 ```sh
 git submodule update --init --recursive
+cd contracts
 forge build
-forge test --match-path 'test/unit/*.t.sol'                              # unit tests, no network (44 for the v2 release, plus later additions)
+forge test --match-path 'test/unit/*.t.sol'                              # unit tests, no network
 forge test --match-path 'test/{PinNand,Fengce*,AgentExecutor}.t.sol'      # fork tests against X Layer mainnet state
-forge test --match-path 'test/fork/*.t.sol'
+forge test --match-path 'test/fork/*.t.sol'                              # includes FengceGuardV3 (GuardV3.t.sol)
 forge test --match-path 'test/wallets/*.t.sol'                           # also reads wallet code from the public Base RPC
-cd sdk && npm ci && npm run typecheck && npm test
-cd app && npm ci && npm run build
+cd ../sdk && npm ci && npm run typecheck && npm test
+cd ../app && npm ci && npm run build
 ```
 
-Fork tests need the `xlayer` RPC alias in [foundry.toml](foundry.toml) to answer (the public endpoint works; CI uses a
+Fork tests need the `xlayer` RPC alias in [foundry.toml](contracts/foundry.toml) to answer (the public endpoint works; CI uses a
 private one through the `XLAYER_RPC_URL` secret). Nothing in the test suite sends a transaction.
 
 ## Evidence levels
@@ -94,4 +95,4 @@ private one through the `XLAYER_RPC_URL` secret). Nothing in the test suite send
 - Catalog install fees, Tick groups and FengceFloors are deployed but unused on mainnet so far.
 - Explorer verification on OKX: not done (the API rejected every submission); Sourcify is complete.
 - The app is published on TapeOut DeWeb as `6.2.180.tape` ([deployments/deweb-xlayer-196.json](deployments/deweb-xlayer-196.json));
-  republish changed files with [script/DeployDeWeb.s.sol](script/DeployDeWeb.s.sol), check with `app/scripts/deweb-check.mts`.
+  republish changed files with [script/DeployDeWeb.s.sol](contracts/script/DeployDeWeb.s.sol), check with `app/scripts/deweb-check.mts`.

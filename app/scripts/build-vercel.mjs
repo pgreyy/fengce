@@ -42,7 +42,7 @@ writeFileSync(
     {
       version: 3,
       routes: [
-        // getfengce.vercel.app is the main domain. The Okun-era name redirects every page to the same path there; the HTTP
+        // getfengce.vercel.app is the main domain. The old name redirects every page to the same path there; the HTTP
         // API keeps answering on both names (vercel.json has the same rule for git-based deploys; this prebuilt output
         // does not read vercel.json).
         { src: "^/(?!api/)(.*)$", has: [{ type: "host", value: "getokun.vercel.app" }], status: 308, headers: { Location: "https://getfengce.vercel.app/$1" } },

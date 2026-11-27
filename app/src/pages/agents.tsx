@@ -1,6 +1,6 @@
-import { Ruled, type Tone } from "../okun/Ruled";
-import { Addr, CodeCard, mount } from "../okun/ui";
-import { EXPLORER_TX } from "../okun/wallet";
+import { Ruled, type Tone } from "../fengce/Ruled";
+import { Addr, CodeCard, mount } from "../fengce/ui";
+import { EXPLORER_TX } from "../fengce/wallet";
 import { DEPLOYMENT, EXPLORER } from "../lib/chain";
 
 const AGENT_COLS = ["Prompt rules", "Wallet warnings", "Vendor policy", "Fengce"];

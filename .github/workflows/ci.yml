@@ -15,6 +15,9 @@ jobs:
   contracts-unit:
     name: Contracts (build, unit and fuzz tests)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
     steps:
       - uses: actions/checkout@v5
         with:
@@ -29,6 +32,9 @@ jobs:
   contracts-fork:
     name: Contracts (fork tests on X Layer)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
     env:
       XLAYER_RPC_URL: ${{ secrets.XLAYER_RPC_URL }}
     steps:

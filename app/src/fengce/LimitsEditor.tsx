@@ -133,7 +133,7 @@ export function LimitsEditor({ installed, onDone }: { installed: Installed | nul
           ? "The connected wallet is not an owner of this Safe."
           : installed && installed.threshold > 1
             ? `This Safe needs ${installed.threshold} owner signatures. One-signature install is for 1-of-1 Safes; use the Safe app for this one.`
-            : installed && installed.guardOn && !installed.okunPolicy && alreadySet
+            : installed && installed.guardOn && !installed.limitsPolicy && alreadySet
               ? "This Safe already runs a Fengce policy that the Limits page did not set."
               : otherGuard && !replaceOk
                 ? "This Safe runs another guard. Confirm above to replace it with Fengce."

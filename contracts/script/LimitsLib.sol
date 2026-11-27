@@ -6,9 +6,9 @@ import {TxFacts} from "../src/core/TxFacts.sol";
 import {Tick} from "../src/core/Tick.sol";
 import {FengceGuard} from "../src/safe/FengceGuard.sol";
 
-/// @notice Okun on Fengce: the limits a Safe installs with one signature, built the same way as the app
-/// (app/src/okun/engine.ts). test/fork/OkunInstall.t.sol checks both produce the same bytes.
-library OkunLib {
+/// @notice Fengce limits: what a Safe installs with one signature, built the same way as the app
+/// (app/src/fengce/engine.ts). test/fork/LimitsInstall.t.sol checks both produce the same bytes.
+library LimitsLib {
     // Release v2 contracts (deployments/xlayer-196-v2.json)
     address internal constant GUARD = 0x9D2A482fFA86fa3193F85c451A44576E2f1C8E6e;
     address internal constant TICK = 0xFEb6FD15F8724bfC69a119C0448f480a7D7e5370;

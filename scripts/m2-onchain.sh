@@ -15,6 +15,7 @@
 #         AGENT=0x... scripts/m2-onchain.sh (also sets that agent key on the Safe; see /agents)
 set -euo pipefail
 cd "$(dirname "$0")/.."
+ROOT=$(pwd)
 
 DEPLOYER=0x6eAC9821430aCa193a717a7C17D68f8033D46087
 ACCOUNT=fengce-deployer
@@ -83,12 +84,12 @@ step() {
   echo "== $name"
   local log
   if [[ $DRY == 1 ]]; then
-    log=$(STEP=$name STATE=$STATE forge script script/M2Demo.s.sol --rpc-url $RPC "${SIGN[@]}" --broadcast --slow 2>&1) || { echo "$log" | tail -25; exit 1; }
+    log=$(cd contracts && STEP=$name STATE="$ROOT/$STATE" forge script script/M2Demo.s.sol --rpc-url $RPC "${SIGN[@]}" --broadcast --slow 2>&1) || { echo "$log" | tail -25; exit 1; }
   else
     # the password reaches forge through a pipe (process substitution): never on disk, never in the process list
-    log=$(STEP=$name STATE=$STATE forge script script/M2Demo.s.sol --rpc-url $RPC "${SIGN[@]}" --password-file <(printf '%s' "$PW") --broadcast --slow 2>&1) || { echo "$log" | tail -25; exit 1; }
+    log=$(cd contracts && STEP=$name STATE="$ROOT/$STATE" forge script script/M2Demo.s.sol --rpc-url $RPC "${SIGN[@]}" --password-file <(printf '%s' "$PW") --broadcast --slow 2>&1) || { echo "$log" | tail -25; exit 1; }
   fi
-  local run=broadcast/M2Demo.s.sol/196/run-latest.json
+  local run=contracts/broadcast/M2Demo.s.sol/196/run-latest.json
   python3 -c "$RECORD" "$STATE" "$name" "$run" <<<"$log"
 }
 

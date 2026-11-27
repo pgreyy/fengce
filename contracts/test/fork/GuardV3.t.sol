@@ -10,9 +10,9 @@ import {Tick} from "../../src/core/Tick.sol";
 import {FengceGuardV3} from "../../src/safe/FengceGuardV3.sol";
 import {FengceRulesV3} from "../../src/safe/FengceRulesV3.sol";
 import {AgentExecutorV3} from "../../src/safe/AgentExecutorV3.sol";
-import {OkunLib} from "../../script/OkunLib.sol";
+import {LimitsLib} from "../../script/LimitsLib.sol";
 import {V3Lib} from "../../script/V3Lib.sol";
-import {ICircuitProcessor, ITransistors} from "../../script/PrepareOkun.s.sol";
+import {ICircuitProcessor, ITransistors} from "../../script/PrepareLimits.s.sol";
 
 interface IFactoryV3 {
     function createProxyWithNonce(address singleton, bytes memory initializer, uint256 saltNonce) external returns (address);
@@ -31,8 +31,8 @@ contract GuardV3ForkTest is Test {
     IFactoryV3 constant FACTORY = IFactoryV3(0x14F2982D601c9458F93bd70B218933A6f8165e7b);
     address constant SAFE_L2 = 0xEdd160fEBBD92E350D4D398fb636302fccd67C7e;
     address constant FALLBACK = 0x3EfCBb83A4A7AfcB4F68D501E2c2203a38be77f4;
-    PinRegistry constant REG = PinRegistry(OkunLib.PIN_REGISTRY);
-    Tick constant TICK = Tick(OkunLib.TICK);
+    PinRegistry constant REG = PinRegistry(LimitsLib.PIN_REGISTRY);
+    Tick constant TICK = Tick(LimitsLib.TICK);
 
     address owner = makeAddr("owner");
     address partner = makeAddr("partner");
@@ -49,7 +49,7 @@ contract GuardV3ForkTest is Test {
 
     function setUp() public {
         vm.createSelectFork("xlayer");
-        string memory j = vm.readFile("deployments/okun-xlayer-196.json");
+        string memory j = vm.readFile("../deployments/limits-xlayer-196.json");
         maxBuyPin = vm.parseJsonBytes32(j, ".maxBuyPin");
         counterNetlistHash = vm.parseJsonBytes32(j, ".counterNetlistHash");
         for (uint256 n = 1; n <= 15; n++) {
@@ -60,7 +60,7 @@ contract GuardV3ForkTest is Test {
         exec = new AgentExecutorV3(address(guard));
         bytes memory init = abi.encodeCall(ISafe.setup, (_one(owner), 1, address(0), "", FALLBACK, address(0), 0, payable(address(0))));
         safe = ISafe(payable(FACTORY.createProxyWithNonce(SAFE_L2, init, uint256(keccak256("fengce.v3.fork")))));
-        deal(OkunLib.USDT0, address(safe), 20_000_000); // 20 USDT0
+        deal(LimitsLib.USDT0, address(safe), 20_000_000); // 20 USDT0
     }
 
     function _one(address a) internal pure returns (address[] memory o) {
@@ -75,12 +75,12 @@ contract GuardV3ForkTest is Test {
         address d = makeAddr("deployer");
         vm.deal(d, 1 ether);
         vm.startPrank(d);
-        ICircuitProcessor cpu = ICircuitProcessor(OkunLib.COUNTER_CPU);
+        ICircuitProcessor cpu = ICircuitProcessor(LimitsLib.COUNTER_CPU);
         ITransistors t = ITransistors(cpu.transistorsContract());
         t.mint{value: t.protocolFee()}(t.NAND(), 6);
         t.mint{value: t.protocolFee()}(t.LATCH(), 1);
         uint256 id = cpu.tapeout{value: cpu.TAPEOUT_FEE()}(netlist, 3, 1);
-        latchPin = REG.pin(OkunLib.COUNTER_CPU, id, Schema.hash(V3Lib.latchLayout(latchNetlistHash)), bytes32(0));
+        latchPin = REG.pin(LimitsLib.COUNTER_CPU, id, Schema.hash(V3Lib.latchLayout(latchNetlistHash)), bytes32(0));
         vm.stopPrank();
     }
 
@@ -102,20 +102,20 @@ contract GuardV3ForkTest is Test {
     }
 
     function _install(V3Lib.Install memory p) internal {
-        assertTrue(_exec(OkunLib.MSCO, V3Lib.installMultiSend(p), Enum.Operation.DelegateCall), "install");
+        assertTrue(_exec(LimitsLib.MSCO, V3Lib.installMultiSend(p), Enum.Operation.DelegateCall), "install");
     }
 
     function _exec(address to, bytes memory data, Enum.Operation op) internal returns (bool) {
         vm.prank(owner);
-        return safe.execTransaction(to, 0, data, op, 0, 0, 0, address(0), payable(address(0)), OkunLib.ownerSignature(owner));
+        return safe.execTransaction(to, 0, data, op, 0, 0, 0, address(0), payable(address(0)), LimitsLib.ownerSignature(owner));
     }
 
     function _buy(uint256 usdt) internal returns (bool) {
-        return _exec(OkunLib.MSCO, OkunLib.swapMultiSend(address(safe), OkunLib.USDT0, OkunLib.WOKB, usdt, 0), Enum.Operation.DelegateCall);
+        return _exec(LimitsLib.MSCO, LimitsLib.swapMultiSend(address(safe), LimitsLib.USDT0, LimitsLib.WOKB, usdt, 0), Enum.Operation.DelegateCall);
     }
 
     function _sell(uint256 wokb) internal returns (bool) {
-        return _exec(OkunLib.MSCO, OkunLib.swapMultiSend(address(safe), OkunLib.WOKB, OkunLib.USDT0, wokb, 0), Enum.Operation.DelegateCall);
+        return _exec(LimitsLib.MSCO, LimitsLib.swapMultiSend(address(safe), LimitsLib.WOKB, LimitsLib.USDT0, wokb, 0), Enum.Operation.DelegateCall);
     }
 
     function _refused(uint8 code, address to) internal pure returns (bytes memory) {
@@ -135,10 +135,10 @@ contract GuardV3ForkTest is Test {
         p.quietStart = h;
         p.quietEnd = uint8((h + 1) % 24);
         _install(p);
-        _expectRefused(FengceRulesV3.QUIET_HOURS, OkunLib.ROUTER);
+        _expectRefused(FengceRulesV3.QUIET_HOURS, LimitsLib.ROUTER);
         _buy(200_000);
         // a send is not a swap: quiet hours do not apply
-        assertTrue(_exec(OkunLib.USDT0, abi.encodeWithSignature("transfer(address,uint256)", payee, 100_000), Enum.Operation.Call), "send");
+        assertTrue(_exec(LimitsLib.USDT0, abi.encodeWithSignature("transfer(address,uint256)", payee, 100_000), Enum.Operation.Call), "send");
         vm.warp((block.timestamp / 1 hours + 1) * 1 hours); // the next hour is outside the window
         assertTrue(_buy(200_000), "after quiet hours");
     }
@@ -148,9 +148,9 @@ contract GuardV3ForkTest is Test {
         p.holdSeconds = 1 hours;
         _install(p);
         assertTrue(_buy(300_000), "buy");
-        uint256 wokb = IERC20V3(OkunLib.WOKB).balanceOf(address(safe));
+        uint256 wokb = IERC20V3(LimitsLib.WOKB).balanceOf(address(safe));
         assertGt(wokb, 0);
-        _expectRefused(FengceRulesV3.HOLD_LOCK, OkunLib.ROUTER);
+        _expectRefused(FengceRulesV3.HOLD_LOCK, LimitsLib.ROUTER);
         _sell(wokb);
         vm.warp(block.timestamp + 1 hours);
         assertTrue(_sell(wokb), "sell after the hold");
@@ -167,11 +167,11 @@ contract GuardV3ForkTest is Test {
         assertTrue(_buy(200_000), "4th buy goes through and trips");
         (uint256 trippedAt,,) = _tilt();
         assertEq(trippedAt, block.timestamp, "latch set");
-        _expectRefused(FengceRulesV3.TILT_SHIELD, OkunLib.ROUTER);
+        _expectRefused(FengceRulesV3.TILT_SHIELD, LimitsLib.ROUTER);
         _buy(200_000);
         // sells and sends still work while paused
-        assertTrue(_sell(IERC20V3(OkunLib.WOKB).balanceOf(address(safe)) / 2), "sell while paused");
-        assertTrue(_exec(OkunLib.USDT0, abi.encodeWithSignature("transfer(address,uint256)", payee, 100_000), Enum.Operation.Call), "send");
+        assertTrue(_sell(IERC20V3(LimitsLib.WOKB).balanceOf(address(safe)) / 2), "sell while paused");
+        assertTrue(_exec(LimitsLib.USDT0, abi.encodeWithSignature("transfer(address,uint256)", payee, 100_000), Enum.Operation.Call), "send");
         vm.warp(block.timestamp + 6 hours); // cooldown over: the latch circuit is cleared by the next buy
         assertTrue(_buy(200_000), "after cooldown");
         (trippedAt,,) = _tilt();
@@ -188,7 +188,7 @@ contract GuardV3ForkTest is Test {
         }
         vm.warp(block.timestamp + 31 minutes);
         assertTrue(_buy(600_000), "3x the usual goes through and trips");
-        _expectRefused(FengceRulesV3.TILT_SHIELD, OkunLib.ROUTER);
+        _expectRefused(FengceRulesV3.TILT_SHIELD, LimitsLib.ROUTER);
         _buy(200_000);
         vm.prank(partner);
         guard.partnerClearTilt(address(safe));
@@ -199,33 +199,33 @@ contract GuardV3ForkTest is Test {
         _install(_params());
         bytes memory pay = abi.encodeWithSignature("transfer(address,uint256)", payee, 300_000);
         vm.prank(agent);
-        exec.execute(address(safe), OkunLib.USDT0, 0, pay); // 0.3 of 0.5
-        assertEq(IERC20V3(OkunLib.USDT0).balanceOf(payee), 300_000);
+        exec.execute(address(safe), LimitsLib.USDT0, 0, pay); // 0.3 of 0.5
+        assertEq(IERC20V3(LimitsLib.USDT0).balanceOf(payee), 300_000);
         vm.recordLogs();
         vm.prank(agent);
-        exec.execute(address(safe), OkunLib.USDT0, 0, pay); // 0.6 > 0.5: refused, recorded as Denied
-        assertEq(IERC20V3(OkunLib.USDT0).balanceOf(payee), 300_000, "second payment not made");
+        exec.execute(address(safe), LimitsLib.USDT0, 0, pay); // 0.6 > 0.5: refused, recorded as Denied
+        assertEq(IERC20V3(LimitsLib.USDT0).balanceOf(payee), 300_000, "second payment not made");
         Vm.Log[] memory logs = vm.getRecordedLogs();
         bytes memory reason;
         for (uint256 i; i < logs.length; i++) {
             if (logs[i].topics[0] == AgentExecutorV3.Denied.selector) (,, reason) = abi.decode(logs[i].data, (address, bytes32, bytes));
         }
-        assertEq(reason, abi.encodeWithSelector(FengceGuardV3.FengceRefused.selector, FengceRulesV3.AGENT_CAP, address(safe), OkunLib.USDT0));
+        assertEq(reason, abi.encodeWithSelector(FengceGuardV3.FengceRefused.selector, FengceRulesV3.AGENT_CAP, address(safe), LimitsLib.USDT0));
         vm.warp(block.timestamp + 1 days); // a new UTC day
         vm.prank(agent);
-        exec.execute(address(safe), OkunLib.USDT0, 0, pay);
-        assertEq(IERC20V3(OkunLib.USDT0).balanceOf(payee), 600_000, "new day");
+        exec.execute(address(safe), LimitsLib.USDT0, 0, pay);
+        assertEq(IERC20V3(LimitsLib.USDT0).balanceOf(payee), 600_000, "new day");
     }
 
     function test_maxPerBuy_andRecordRefusal() public {
         _install(_params());
-        _expectRefused(FengceRulesV3.CIRCUIT, OkunLib.USDT0);
+        _expectRefused(FengceRulesV3.CIRCUIT, LimitsLib.USDT0);
         _buy(6_000_000); // over 5: the approve is the first call refused
-        bytes memory over = OkunLib.swapMultiSend(address(safe), OkunLib.USDT0, OkunLib.WOKB, 6_000_000, 0);
+        bytes memory over = LimitsLib.swapMultiSend(address(safe), LimitsLib.USDT0, LimitsLib.WOKB, 6_000_000, 0);
         vm.expectEmit(true, true, true, true, address(guard));
-        emit FengceGuardV3.Refused(address(safe), owner, FengceRulesV3.CIRCUIT, OkunLib.MSCO, keccak256(over));
+        emit FengceGuardV3.Refused(address(safe), owner, FengceRulesV3.CIRCUIT, LimitsLib.MSCO, keccak256(over));
         vm.prank(owner);
-        guard.recordRefusal(address(safe), OkunLib.MSCO, 0, over, Enum.Operation.DelegateCall);
+        guard.recordRefusal(address(safe), LimitsLib.MSCO, 0, over, Enum.Operation.DelegateCall);
     }
 
     // ------------------------------------------------------------------ timing
@@ -236,7 +236,7 @@ contract GuardV3ForkTest is Test {
         _install(p);
         // tighten: a lower max per buy and a longer hold apply at once
         assertTrue(_exec(address(guard), abi.encodeCall(FengceGuardV3.configure, (_cfg(1_000_000))), Enum.Operation.Call), "lower cap");
-        _expectRefused(FengceRulesV3.CIRCUIT, OkunLib.USDT0);
+        _expectRefused(FengceRulesV3.CIRCUIT, LimitsLib.USDT0);
         _buy(2_000_000);
         p.holdSeconds = 2 hours;
         assertTrue(_exec(address(guard), abi.encodeCall(FengceGuardV3.setRules, (V3Lib.rules(p))), Enum.Operation.Call), "longer hold");

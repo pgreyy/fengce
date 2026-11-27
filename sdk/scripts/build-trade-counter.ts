@@ -95,7 +95,7 @@ for (let k = 0; k < 8; k++)
       checked++;
     }
 
-const out = resolve(import.meta.dirname, "../../circuits/trade-counter.json");
+const out = resolve(import.meta.dirname, "../../contracts/circuits/trade-counter.json");
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(
   out,

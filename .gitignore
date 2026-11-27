@@ -26,7 +26,7 @@ sdk/LICENSE
 .vercel
 .env*
 
-# Design handoff (local source of truth for the Okun rebuild; not published)
+# Design handoff (local design sources; not published)
 design/
 
 # local dry run of scripts/m2-onchain.sh (a fork, not mainnet)

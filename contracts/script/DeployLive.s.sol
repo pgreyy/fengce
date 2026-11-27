@@ -185,7 +185,7 @@ contract DeployLive is Script {
     }
 
     function _cert(string memory file) internal view returns (bytes32) {
-        return vm.parseJsonBytes32(vm.readFile(string.concat("sdk/quotes/", file, ".json")), ".certificateHash");
+        return vm.parseJsonBytes32(vm.readFile(string.concat("../sdk/quotes/", file, ".json")), ".certificateHash");
     }
 
     function _layout(address cpu, uint256 id, Schema.Field[] memory fields) internal view returns (Schema.Layout memory l) {
@@ -407,7 +407,7 @@ contract DeployLive is Script {
         vm.serializeAddress(root, "treasurySafe", treasury);
         vm.serializeString(root, "pins", pinsJson);
         string memory out = vm.serializeString(root, "contracts", contractsJson);
-        vm.writeJson(out, "deployments/xlayer-196-v2.json");
+        vm.writeJson(out, "../deployments/xlayer-196-v2.json");
     }
 
     function _status() internal view returns (string memory) {
@@ -564,6 +564,6 @@ contract DeployLive is Script {
         vm.serializeString(root, "circuits", cJson);
         vm.serializeString(root, "roles", _rolesEntry());
         string memory out = vm.serializeString(root, "demo", _demoEntry());
-        vm.writeJson(out, "deployments/manifest-xlayer-196-v2.json");
+        vm.writeJson(out, "../deployments/manifest-xlayer-196-v2.json");
     }
 }

@@ -1,6 +1,6 @@
 # Threat model
 
-Scope: `src/core`, `src/safe` (FengceGuard on Safe v1.5.0) and the SDK, on X Layer mainnet (chain 196).
+Scope: `contracts/src/core`, `contracts/src/safe` (FengceGuard on Safe v1.5.0) and the SDK, on X Layer mainnet (chain 196).
 Version 0.1.0. Not independently reviewed.
 
 ## What Fengce protects
@@ -22,23 +22,23 @@ inside MultiSend batches.
 
 | Property | How | Test |
 |---|---|---|
-| The pinned circuit has not changed | Every evaluation re-checks processor code hashes, factory registration, the beacon implementation and its code hash for every processor in the dependency closure, and the chain id | `test/unit/PinRegistry.t.sol` |
-| Dependencies are pinned too | At pin time the registry walks every REF record recursively and hashes the closure; processors in it are checked on every call | `test/fork/RefClosure.t.sol` |
-| No lenient input | Schema rejects oversized values, unmapped and overlapping bits; PolicyEngine requires exact input and output lengths with zero padding | `test/unit/Schema.t.sol`, `test/unit/PolicyEngine.t.sol` |
-| Fail closed | Any revert, out-of-gas, malformed return data or pin mismatch denies the transaction | `test/unit/PolicyEngine.t.sol`, `test/FengceGuard.t.sol` |
-| Module path covered | The same policy runs as the Safe's module guard; modules cannot reach admin functions, recovery or the timelock | `test/FengceGuard.t.sol` |
-| Batches covered | Delegatecall only to MultiSendCallOnly v1.5.0, decoded strictly; every inner call is checked; inner calls to the Safe or the guard are denied | `test/FengceGuard.t.sol` |
-| Approvals covered | `approve`, `increaseAllowance` (as the new total), Permit2 `approve` go through the policy; ERC-721 `approve` and `setApprovalForAll(true)` also need the allowlist | `test/FengceApprovals.t.sol`, `test/FengceBatchB.t.sol` |
-| Signed approvals covered | Permit2 `PermitSingle` / `PermitBatch` and EIP-2612 `Permit` signatures go through the policy; Strict mode refuses unknown domains | `test/FengceSignatures.t.sol` |
-| Unknown calls denied | Only recognised calls and allowlisted (contract, function) pairs reach the circuit | `test/FengceApprovals.t.sol` |
-| A broken circuit cannot lock the Safe | Recovery is checked before any circuit or registry call | `test/FengceGuard.t.sol` |
+| The pinned circuit has not changed | Every evaluation re-checks processor code hashes, factory registration, the beacon implementation and its code hash for every processor in the dependency closure, and the chain id | `contracts/test/unit/PinRegistry.t.sol` |
+| Dependencies are pinned too | At pin time the registry walks every REF record recursively and hashes the closure; processors in it are checked on every call | `contracts/test/fork/RefClosure.t.sol` |
+| No lenient input | Schema rejects oversized values, unmapped and overlapping bits; PolicyEngine requires exact input and output lengths with zero padding | `contracts/test/unit/Schema.t.sol`, `contracts/test/unit/PolicyEngine.t.sol` |
+| Fail closed | Any revert, out-of-gas, malformed return data or pin mismatch denies the transaction | `contracts/test/unit/PolicyEngine.t.sol`, `contracts/test/FengceGuard.t.sol` |
+| Module path covered | The same policy runs as the Safe's module guard; modules cannot reach admin functions, recovery or the timelock | `contracts/test/FengceGuard.t.sol` |
+| Batches covered | Delegatecall only to MultiSendCallOnly v1.5.0, decoded strictly; every inner call is checked; inner calls to the Safe or the guard are denied | `contracts/test/FengceGuard.t.sol` |
+| Approvals covered | `approve`, `increaseAllowance` (as the new total), Permit2 `approve` go through the policy; ERC-721 `approve` and `setApprovalForAll(true)` also need the allowlist | `contracts/test/FengceApprovals.t.sol`, `contracts/test/FengceBatchB.t.sol` |
+| Signed approvals covered | Permit2 `PermitSingle` / `PermitBatch` and EIP-2612 `Permit` signatures go through the policy; Strict mode refuses unknown domains | `contracts/test/FengceSignatures.t.sol` |
+| Unknown calls denied | Only recognised calls and allowlisted (contract, function) pairs reach the circuit | `contracts/test/FengceApprovals.t.sol` |
+| A broken circuit cannot lock the Safe | Recovery is checked before any circuit or registry call | `contracts/test/FengceGuard.t.sol` |
 
 ## Known limits and open issues
 
 ### Off-chain signatures
 
 Safe owners can sign messages that move assets without any Safe transaction (EIP-2612 `permit`, Permit2
-`permit`, other EIP-1271 messages). Fengce covers this with two pieces (`test/FengceSignatures.t.sol`):
+`permit`, other EIP-1271 messages). Fengce covers this with two pieces (`contracts/test/FengceSignatures.t.sol`):
 
 - **FengceSignatureVerifier**, registered on the Safe's fallback handler as the verifier for the Permit2 domain
   and for EIP-2612 token domains. It decodes Permit2 `PermitSingle` / `PermitBatch` and EIP-2612 `Permit` into
@@ -65,9 +65,9 @@ Owners holding every signature can schedule recovery and, after the recovery del
 window, replace or remove either guard. Owners holding the normal threshold can, through the admin timelock,
 add modules, change owners or threshold, or change the fallback handler after the admin delay. Fengce makes
 these changes slow and public (events `RecoveryScheduled`, `AdminScheduled`), not impossible. The delays are
-chosen by the Safe at configuration, but `configure` enforces minimums (`src/safe/FengceLimits.sol`): admin
+chosen by the Safe at configuration, but `configure` enforces minimums (`contracts/src/safe/FengceLimits.sol`): admin
 timelock at least 1 day, recovery delay at least 2 days, recovery window at least 1 day
-(`test/FengceLimits.t.sol`).
+(`contracts/test/FengceLimits.t.sol`).
 
 ### Processor beacon upgrades
 
@@ -109,7 +109,7 @@ unless the override flag is set. Approvals for tokens or spenders not listed are
 
 `configure` reads the Safe's enabled modules (`getModulesPaginated`) and reverts if there are any, unless the
 `acceptExistingModules` flag is set, in which case it emits `ExistingModuleAccepted` for each module
-(`test/FengceLimits.t.sol`). The check runs when `configure` runs: a module enabled after `configure` but before
+(`contracts/test/FengceLimits.t.sol`). The check runs when `configure` runs: a module enabled after `configure` but before
 `setGuard` / `setModuleGuard` is not caught, so install in one batch (the SDK's `buildInstall` also refuses a
 Safe with modules). After install, enabling a module needs the admin timelock.
 
@@ -118,37 +118,37 @@ Safe with modules). After install, enabling a module needs the admin timelock.
 - **AgentExecutor**: an agent key acts only through `execTransactionFromModule`, so the Safe's module guard
   (Fengce) checks every call; the executor refuses to act if FengceGuard is not the module guard. Any single
   owner can revoke an agent at once. Adding an agent needs an allowlisted Safe transaction
-  (`test/AgentExecutor.t.sol`).
+  (`contracts/test/AgentExecutor.t.sol`).
 - **ERC-7579 module changes (Safe7579 + FengceGuard)**: the guarantee below holds only for a Safe that runs
   Rhinestone's Safe7579 adapter v1.0.0 **with FengceGuard as both transaction guard and module guard**.
   `installModule` / `uninstallModule` are timelocked admin calls on every route: an owner transaction, a
   validator-approved user operation (the adapter's helper delegatecall is allowed only for a matured schedule),
   another module (always refused), and bundles of module changes in one MultiSend or one 7579 batch (always
-  refused; each change must be made on its own) (`test/FengceSafe7579Admin.t.sol`). The schedule covers
+  refused; each change must be made on its own) (`contracts/test/FengceSafe7579Admin.t.sol`). The schedule covers
   (install or uninstall, module type, module), not the init data. The helper and MultiSendCallOnly are checked
   by runtime code hash, not only by address. With FengceGuard as module guard, Safe7579 batch executions are
   refused (they delegatecall the adapter's helper); use single executions. If `FengceHook` is also installed,
   its `preCheck` call must be allowlisted on the guard.
 - **ERC-7579 (`FengceHook`)**: executions (`execute`, `executeFromExecutor`, single and batch) go through the
-  same policy; delegatecall and unknown modes are denied (`test/FengceHook7579.t.sol`, on Safe7579). Limits:
+  same policy; delegatecall and unknown modes are denied (`contracts/test/FengceHook7579.t.sol`, on Safe7579). Limits:
   Safe7579 v1.0.0 does not run a hook when that same hook is being uninstalled, so on Safe7579 the hook's
   uninstall delay never applies and whoever can authorise `uninstallModule` (validators, or the Safe itself)
   can remove it at once. Since v2, installing or removing validator, executor and fallback modules, account
   upgrades, and Kernel validation changes are timelocked admin actions where the account runs the hook on them
-  (Kernel v3.3: `test/wallets/FengceKernel.t.sol`); installing other hooks is not checked.
+  (Kernel v3.3: `contracts/test/wallets/FengceKernel.t.sol`); installing other hooks is not checked.
   Per-wallet uninstall behaviour (Kernel, Nexus, Etherspot) and the ERC-6900 and EIP-7702 limits are listed in
   `docs/WALLETS.md`.
 - **Tick**: state lives in the Tick contract per policy group (several Safes or agents can share one budget),
   resets to zero at each period boundary (period index = floor(timestamp / period), Unix-epoch aligned), and
-  advances only when the circuit allows (`test/FengceTick.t.sol`). FengceGuard advances the Safe's group on
+  advances only when the circuit allows (`contracts/test/FengceTick.t.sol`). FengceGuard advances the Safe's group on
   every checked call, on the owner and module paths, so an agent cannot skip it; if the Safe reports the
-  execution failed, the guard rolls the advance back (`test/FengceTickGuard.t.sol`). Off-chain signed approvals
+  execution failed, the guard rolls the advance back (`contracts/test/FengceTickGuard.t.sol`). Off-chain signed approvals
   (the signature verifier path) do not advance Tick. A group's admin controls membership: removing a Safe makes
   its guarded transactions fail closed until the Safe reconfigures (timelocked).
 - **Catalog**: a listing runs every test vector in its manifest through the pinned circuit on-chain and reverts
   on any mismatch; the entry records how many allow and deny vectors passed, the maximum evaluation gas measured
   on-chain, and the tier from that gas (thresholds in `sdk/src/tiers.json`, shared with the SDK)
-  (`test/FengceCatalog.t.sol`). Vectors prove behaviour only on the inputs listed, not on all inputs. The
+  (`contracts/test/FengceCatalog.t.sol`). Vectors prove behaviour only on the inputs listed, not on all inputs. The
   Catalog tier is measured on the circuit evaluation; Quote's tier is measured on the full Safe path, so the two
   can differ near a threshold. The description and URI are the lister's text. Install fees are split 80% to the
   designer and 20% to the treasury and withdrawn by each (pull payments). On X Layer the Catalog's treasury (fixed at deployment) is
@@ -167,7 +167,7 @@ AgentExecutor are the exception: they are recorded as `Denied` events and shown)
 
 For Safes that connect an Inspector (`configureInspector`), every policy-checked execution on the owner and
 module paths, and every ERC-7579 execution through `FengceHook`, is checked after it runs
-(`test/FengceInspector.t.sol`):
+(`contracts/test/FengceInspector.t.sol`):
 - a change to owners, threshold, modules (first 64), guard, module guard or fallback handler outside the admin
   path reverts the transaction;
 - the decrease of watched balances and the increase of allowances to listed spenders are evaluated by the same
@@ -180,7 +180,7 @@ transaction fail; transactions on the admin path (calls to the Safe or the guard
 
 A Safe can connect a floor: a minimum rule set once by the Safe, naming a floor owner and a change delay (at
 least 1 day). Every evaluation requires the floor circuit to be in the policy's REF closure (checked once per
-policy by walking the pinned netlists) and evaluates floor AND policy (`test/FengceFloors.t.sol`). Only the floor
+policy by walking the pinned netlists) and evaluates floor AND policy (`contracts/test/FengceFloors.t.sol`). Only the floor
 owner can change or remove the floor, after its delay; the Safe cannot detach the floors contract while a floor
 is set. Limits: owners holding every signature can still remove the guard through recovery; after the Safe
 changes its own policy, transactions fail until someone calls `verifyPolicy` for the new policy, and fail for
@@ -197,7 +197,7 @@ good if the new policy does not contain the floor.
 
 ## Static analysis
 
-Slither 0.11.3 runs on `src/` in CI on every push (`.github/workflows/slither.yml`) and fails the build on any
+Slither 0.11.3 runs on `contracts/src/` in CI on every push (`.github/workflows/slither.yml`) and fails the build on any
 High finding. First run (commit `6b4cf8a`): **0 High**, 115 findings in total, reviewed as follows.
 
 | Impact | Check | Count | Assessment |

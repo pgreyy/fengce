@@ -4,7 +4,7 @@ This guide takes a TapeOut circuit from selection to a running policy on a Safe 
 day-to-day operation, configuration changes and recovery. Read [THREAT-MODEL.md](THREAT-MODEL.md) first.
 
 Addresses used below are in [ADDRESSES.md](ADDRESSES.md). Fengce's own contracts are not deployed yet; see
-`script/` for the deployment script and `deployments/` for the address file.
+`contracts/script/` for the deployment script and `deployments/` for the address file.
 
 ## 1. Choose and quote a circuit
 
@@ -127,7 +127,7 @@ signatures: {
 ```
 
 Signers then wrap Permit2 / EIP-2612 permits in the verifier format described in
-`src/safe/FengceSignatureVerifier.sol`; the verifier applies the Safe's policy before checking owner signatures.
+`contracts/src/safe/FengceSignatureVerifier.sol`; the verifier applies the Safe's policy before checking owner signatures.
 
 ## 6. Operate
 
@@ -225,7 +225,7 @@ installed, whether the pin still holds, pending admin calls, recovery state, and
 time any guard, policy or admin change could execute (the shorter of the admin and recovery delays from now,
 or earlier if something is already scheduled). `isBound(account, policyHash, minNotice)` is true only if all of
 it holds and `earliestChange >= now + minNotice`. A Safe whose delays are shorter than `minNotice` is never bound.
-`src/binding/BoundVault.sol` is a complete example (minimum notice 1 day).
+`contracts/src/binding/BoundVault.sol` is a complete example (minimum notice 1 day).
 
 ## Policy floors
 
@@ -237,7 +237,7 @@ closure. Every transaction must then pass both circuits. The floor owner changes
 
 ## Using the core without a Safe
 
-`src/core` has no Safe dependency. To evaluate a pinned circuit from your own contract, inherit `PolicyEngine`
+`contracts/src/core` has no Safe dependency. To evaluate a pinned circuit from your own contract, inherit `PolicyEngine`
 (or call a deployed one through `IPolicyEngine`):
 
 ```solidity
@@ -251,4 +251,4 @@ contract MyRule is PolicyEngine {
 }
 ```
 
-Interfaces: `src/core/interfaces/IPinRegistry.sol`, `IPolicyEngine.sol`, `ITapeOut.sol`.
+Interfaces: `contracts/src/core/interfaces/IPinRegistry.sol`, `IPolicyEngine.sol`, `ITapeOut.sol`.

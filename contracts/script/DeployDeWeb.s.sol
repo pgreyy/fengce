@@ -69,7 +69,7 @@ contract DeployDeWeb is Script {
     uint256 constant NAND = 0;
     uint256 constant CHUNK = 24_000;
     uint256 constant AREA_XLAYER = 2;
-    string constant DIST = "app/dist";
+    string constant DIST = "../app/dist";
     /// One NAND gate of inputs 0 and 1 (signals 2 and 3), TAP-02 record 0x00 | u24 a | u24 b.
     bytes constant NETLIST = hex"00000002000003";
 
@@ -259,6 +259,6 @@ contract DeployDeWeb is Script {
         vm.serializeAddress(root, "domainBinding", address(BINDING));
         vm.serializeBool(root, "nameLive", BINDING.isLive(name, container));
         string memory out = vm.serializeString(root, "files", filesJson);
-        vm.writeJson(out, "deployments/deweb-xlayer-196.json");
+        vm.writeJson(out, "../deployments/deweb-xlayer-196.json");
     }
 }

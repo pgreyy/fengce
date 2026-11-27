@@ -29,14 +29,14 @@ Alchemy MultiOwnerLightAccount v2 (agent-only, not tested) and the three not-int
 
 | # | Wallet | Status | Test |
 |---|---|---|---|
-| 1 | Safe v1.5.0 | **Mainnet** | [`test_ownerSend150Blocked`](../test/FengceGuard.t.sol#L32) in `test/FengceGuard.t.sol` (plus the v2 mainnet demo) |
-| 2 | Safe + Safe7579 v1.0.0 | **Partial** | [`test_7579AccountBlockedOverLimit`](../test/FengceHook7579.t.sol#L86) in `test/FengceHook7579.t.sol` (admin routes: test/FengceSafe7579Admin.t.sol) |
-| 3 | ZeroDev Kernel v3.3 | **Fork-tested** | [`test_kernelOverLimitBlocked`](../test/wallets/FengceKernel.t.sol#L78) in `test/wallets/FengceKernel.t.sol` |
-| 4 | Biconomy Nexus 1.2.0 | **Partial** | [`test_nexusOverLimitBlocked`](../test/wallets/FengceNexus.t.sol#L51) in `test/wallets/FengceNexus.t.sol` |
-| 5 | Etherspot ModularEtherspotWallet v1.0.0 | **Partial** | [`test_etherspotOverLimitBlocked`](../test/wallets/FengceEtherspot.t.sol#L44) in `test/wallets/FengceEtherspot.t.sol` |
-| 6 | Alchemy Modular Account v2 (ERC-6900) | **Fork-tested** | [`test_mav2OverLimitBlocked`](../test/wallets/FengceModularAccountV2.t.sol#L45) in `test/wallets/FengceModularAccountV2.t.sol` |
-| 7 | EIP-7702 EOA (SemiModularAccount7702) | **Agent-only** | [`test_7702AgentGoesThroughCircuitOwnerKeyDoesNot`](../test/wallets/Fengce7702.t.sol#L52) in `test/wallets/Fengce7702.t.sol` |
-| 8 | Coinbase Smart Wallet v1.1 | **Agent-only** | [`test_coinbaseAgentThroughCircuit`](../test/wallets/FengceAgentOwner.t.sol#L47) in `test/wallets/FengceAgentOwner.t.sol` |
+| 1 | Safe v1.5.0 | **Mainnet** | [`test_ownerSend150Blocked`](../contracts/test/FengceGuard.t.sol#L32) in `contracts/test/FengceGuard.t.sol` (plus the v2 mainnet demo) |
+| 2 | Safe + Safe7579 v1.0.0 | **Partial** | [`test_7579AccountBlockedOverLimit`](../contracts/test/FengceHook7579.t.sol#L86) in `contracts/test/FengceHook7579.t.sol` (admin routes: test/FengceSafe7579Admin.t.sol) |
+| 3 | ZeroDev Kernel v3.3 | **Fork-tested** | [`test_kernelOverLimitBlocked`](../contracts/test/wallets/FengceKernel.t.sol#L78) in `contracts/test/wallets/FengceKernel.t.sol` |
+| 4 | Biconomy Nexus 1.2.0 | **Partial** | [`test_nexusOverLimitBlocked`](../contracts/test/wallets/FengceNexus.t.sol#L51) in `contracts/test/wallets/FengceNexus.t.sol` |
+| 5 | Etherspot ModularEtherspotWallet v1.0.0 | **Partial** | [`test_etherspotOverLimitBlocked`](../contracts/test/wallets/FengceEtherspot.t.sol#L44) in `contracts/test/wallets/FengceEtherspot.t.sol` |
+| 6 | Alchemy Modular Account v2 (ERC-6900) | **Fork-tested** | [`test_mav2OverLimitBlocked`](../contracts/test/wallets/FengceModularAccountV2.t.sol#L45) in `contracts/test/wallets/FengceModularAccountV2.t.sol` |
+| 7 | EIP-7702 EOA (SemiModularAccount7702) | **Agent-only** | [`test_7702AgentGoesThroughCircuitOwnerKeyDoesNot`](../contracts/test/wallets/Fengce7702.t.sol#L52) in `contracts/test/wallets/Fengce7702.t.sol` |
+| 8 | Coinbase Smart Wallet v1.1 | **Agent-only** | [`test_coinbaseAgentThroughCircuit`](../contracts/test/wallets/FengceAgentOwner.t.sol#L47) in `contracts/test/wallets/FengceAgentOwner.t.sol` |
 
 ## Matrix
 
@@ -59,10 +59,10 @@ Alchemy MultiOwnerLightAccount v2 (agent-only, not tested) and the three not-int
 
 | Contract | Accounts | Install |
 |---|---|---|
-| `FengceGuard` (`src/safe`) | Safe v1.5.0 | `configure`, then `setGuard` and `setModuleGuard` (the app's Protect page, Install step, builds the Safe Transaction Builder JSON) |
-| `FengceHook` (`src/erc7579`) | ERC-7579 accounts with a hook slot | `installModule(4, hook, abi.encode(pinId, layout, bindings))`; on Kernel as the validation's hook, with a 1-byte flag before the data. Admin changes: `scheduleAdmin(keccak256(call))`, wait 2 days |
-| `FengceHook6900` (`src/erc6900`) | ERC-6900 v0.8 accounts (Modular Account v2, SemiModularAccount7702) | `installExecution(hook, hook.executionManifest(), abi.encode(pinId, layout, bindings))` |
-| `FengceAgentOwner` (`src/agent`) | wallets that accept extra owners and expose `execute(address,uint256,bytes)` | add as owner, then from the wallet `configure(pinId, layout, bindings)` and `addAgent(agent, expiresAt)` |
+| `FengceGuard` (`contracts/src/safe`) | Safe v1.5.0 | `configure`, then `setGuard` and `setModuleGuard` (the app's Protect page, Install step, builds the Safe Transaction Builder JSON) |
+| `FengceHook` (`contracts/src/erc7579`) | ERC-7579 accounts with a hook slot | `installModule(4, hook, abi.encode(pinId, layout, bindings))`; on Kernel as the validation's hook, with a 1-byte flag before the data. Admin changes: `scheduleAdmin(keccak256(call))`, wait 2 days |
+| `FengceHook6900` (`contracts/src/erc6900`) | ERC-6900 v0.8 accounts (Modular Account v2, SemiModularAccount7702) | `installExecution(hook, hook.executionManifest(), abi.encode(pinId, layout, bindings))` |
+| `FengceAgentOwner` (`contracts/src/agent`) | wallets that accept extra owners and expose `execute(address,uint256,bytes)` | add as owner, then from the wallet `configure(pinId, layout, bindings)` and `addAgent(agent, expiresAt)` |
 
 ## FengceBinding (`isBound`)
 

@@ -1,8 +1,8 @@
 // Fengce limits: the transactions the app asks a Safe owner to sign, built as pure functions so the same bytes are
-// checked by the fork test (test/fork/OkunInstall.t.sol reads test/vectors/okun-install.json, written from here).
+// checked by the fork test (test/fork/LimitsInstall.t.sol reads test/vectors/limits-install.json, written from here).
 import { concat, encodeFunctionData, encodePacked, getAddress, keccak256, padHex, parseAbi, size, type Address, type Hex } from "viem";
 import { FengceGuardArtifact, TickArtifact, schemaHash, toLayout, type SchemaFile } from "@fengce/sdk";
-import counter from "../../../circuits/trade-counter.json";
+import counter from "../../../contracts/circuits/trade-counter.json";
 import deployment from "../../../deployments/xlayer-196-v2.json";
 
 export const ENGINE = {
@@ -67,7 +67,7 @@ export function counterSchema(n: number): SchemaFile {
 export const maxBuySchemaHash = () => schemaHash(maxBuySchema());
 export const counterSchemaHash = (n: number) => schemaHash(counterSchema(n));
 
-/** What script/PrepareOkun.s.sol writes to deployments/okun-xlayer-196.json after the owner broadcasts it. */
+/** What script/PrepareLimits.s.sol writes to deployments/limits-xlayer-196.json after the owner broadcasts it. */
 export interface Prepared {
   counterProcessor: Address;
   counterCircuitId: string;

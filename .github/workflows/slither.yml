@@ -12,6 +12,9 @@ jobs:
   slither:
     name: Slither (src/)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: contracts
     steps:
       - uses: actions/checkout@v5
         with:
@@ -33,7 +36,7 @@ jobs:
           FOUNDRY_DYNAMIC_TEST_LINKING: "false"
         run: |
           slither . \
-            --filter-paths "lib/|app/|sdk/" \
+            --filter-paths "lib/|archive/" \
             --exclude-dependencies \
             --json slither.json --sarif slither.sarif || true
           python3 - <<'PY'
@@ -53,7 +56,7 @@ jobs:
         with:
           name: slither
           path: |
-            slither.json
-            slither.sarif
+            contracts/slither.json
+            contracts/slither.sarif
       - name: Fail on High findings
         run: test "$(cat high.count)" = "0"

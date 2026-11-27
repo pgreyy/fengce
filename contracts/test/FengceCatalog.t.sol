@@ -59,7 +59,7 @@ contract FengceCatalogForkTest is Test {
         assertGt(e.measuredGas, 0);
         assertEq(e.certificateHash, keccak256("certificate"));
         // The Quote certificate for this circuit (sdk/quotes/nand-839bdd-2.json) says Green.
-        string memory quoteTier = vm.parseJsonString(vm.readFile("sdk/quotes/nand-839bdd-2.json"), ".certificate.tier");
+        string memory quoteTier = vm.parseJsonString(vm.readFile("../sdk/quotes/nand-839bdd-2.json"), ".certificate.tier");
         assertEq(quoteTier, "Green");
         assertEq(uint256(e.tier), uint256(Catalog.Tier.Green));
     }

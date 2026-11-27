@@ -36,7 +36,7 @@ if (coverage.failed) {
 }
 // Activity seed: for every Safe bound to the guard, its decoded Safe transactions, owner refusals recorded on chain
 // and agent calls up to the head, so /wallet and /try paint at once and only search blocks after `head`.
-const { agentRowsFrom, collect, mergeRows, refusalsSince, withTimes } = await import("../src/okun/chainActivity");
+const { agentRowsFrom, collect, mergeRows, refusalsSince, withTimes } = await import("../src/fengce/chainActivity");
 type Seed = { head: string; nonce: string; rows: unknown[] };
 const prevActivity = ((prev as unknown as { activity?: Record<string, Seed> })?.activity ?? {}) as Record<string, Seed>;
 const allEvents = [...(prev?.events ?? []), ...events];

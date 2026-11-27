@@ -7,8 +7,8 @@ import { safeConfig, safeEvents } from "../lib/data";
 import { syncHistory, type History, type Snapshot } from "../lib/events";
 import { ENGINE, TOKENS, type Prepared } from "./engine";
 
-/** deployments/okun-xlayer-196.json, if script/PrepareOkun.s.sol has been broadcast (read at build time). */
-const found = import.meta.glob("../../../deployments/okun-xlayer-196.json", { eager: true, import: "default" }) as Record<string, Prepared>;
+/** deployments/limits-xlayer-196.json, if script/PrepareLimits.s.sol has been broadcast (read at build time). */
+const found = import.meta.glob("../../../deployments/limits-xlayer-196.json", { eager: true, import: "default" }) as Record<string, Prepared>;
 export const PREPARED: Prepared | null = Object.values(found)[0] ?? null;
 
 /** FengceGuard storage (forge inspect FengceGuard storageLayout): _configs at slot 5; Config.bindings at +5, Binding = 2 slots. */
@@ -51,7 +51,7 @@ export interface Installed {
   /** The max per buy (or the cap of an earlier AmountGt policy), USDT0 base units */
   maxPerBuy: bigint | null;
   /** true when the pin is the Limits page's max-per-buy pin */
-  okunPolicy: boolean;
+  limitsPolicy: boolean;
   adminDelay: bigint;
   recoveryDelay: bigint;
   tick: Address | null;
@@ -90,7 +90,7 @@ export async function readInstalled(safe: Address): Promise<Installed> {
     set,
     pinId: set ? f.pinId : null,
     maxPerBuy: amountGt ? amountGt.param : null,
-    okunPolicy: !!PREPARED && set && String(f.pinId).toLowerCase() === PREPARED.maxBuyPin.toLowerCase(),
+    limitsPolicy: !!PREPARED && set && String(f.pinId).toLowerCase() === PREPARED.maxBuyPin.toLowerCase(),
     adminDelay: set ? BigInt(f.adminDelay) : 0n,
     recoveryDelay: set ? BigInt(f.recoveryDelay) : 0n,
     tick,

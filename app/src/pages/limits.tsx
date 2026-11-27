@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
-import { BuildPanel } from "../okun/BuildPanel";
-import { CatalogPanel } from "../okun/CatalogPanel";
-import { LimitsEditor } from "../okun/LimitsEditor";
-import { readInstalled, type Installed } from "../okun/reads";
-import { href, mount, param, short, StartLink } from "../okun/ui";
-import { useWallet } from "../okun/wallet";
+import { BuildPanel } from "../fengce/BuildPanel";
+import { CatalogPanel } from "../fengce/CatalogPanel";
+import { LimitsEditor } from "../fengce/LimitsEditor";
+import { readInstalled, type Installed } from "../fengce/reads";
+import { href, mount, param, short, StartLink } from "../fengce/ui";
+import { useWallet } from "../fengce/wallet";
 
 type Tab = "tpl" | "add" | "build";
 

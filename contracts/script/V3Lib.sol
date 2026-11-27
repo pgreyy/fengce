@@ -6,7 +6,7 @@ import {TxFacts} from "../src/core/TxFacts.sol";
 import {Tick} from "../src/core/Tick.sol";
 import {FengceRulesV3} from "../src/safe/FengceRulesV3.sol";
 import {FengceGuardV3} from "../src/safe/FengceGuardV3.sol";
-import {OkunLib} from "./OkunLib.sol";
+import {LimitsLib} from "./LimitsLib.sol";
 
 /// @notice FengceGuardV3 install, built the same way for the fork tests (test/fork/GuardV3.t.sol) and the mainnet
 /// script (script/M2Demo.s.sol). One owner transaction (MultiSendCallOnly) on a Safe with no guard yet:
@@ -74,7 +74,7 @@ library V3Lib {
         r.tiltLatchGroup = p.tiltAfter != 0 ? latchGroup(p.safe) : bytes32(0);
         r.tiltMultX10 = p.tiltMultX10;
         r.tiltCooldown = p.tiltCooldown;
-        r.quoteToken = OkunLib.USDT0;
+        r.quoteToken = LimitsLib.USDT0;
         r.partner = p.partner;
     }
 
@@ -84,17 +84,17 @@ library V3Lib {
 
     function configureInput(uint256 maxPerBuy, bytes32 maxBuyPin) internal pure returns (FengceRulesV3.ConfigInput memory c) {
         c.pinId = maxBuyPin;
-        c.layout = OkunLib.maxBuyLayout();
+        c.layout = LimitsLib.maxBuyLayout();
         c.bindings = new TxFacts.Binding[](2);
         c.bindings[0] = TxFacts.Binding(TxFacts.Source.AmountGt, maxPerBuy);
-        c.bindings[1] = TxFacts.Binding(TxFacts.Source.TokenIs, uint256(uint160(OkunLib.USDT0)));
-        c.recoveryDelay = OkunLib.RECOVERY_DELAY;
-        c.recoveryWindow = OkunLib.RECOVERY_WINDOW;
-        c.adminDelay = OkunLib.ADMIN_DELAY;
+        c.bindings[1] = TxFacts.Binding(TxFacts.Source.TokenIs, uint256(uint160(LimitsLib.USDT0)));
+        c.recoveryDelay = LimitsLib.RECOVERY_DELAY;
+        c.recoveryWindow = LimitsLib.RECOVERY_WINDOW;
+        c.adminDelay = LimitsLib.ADMIN_DELAY;
         c.preflightTokens = new address[](1);
-        c.preflightTokens[0] = OkunLib.USDT0;
+        c.preflightTokens[0] = LimitsLib.USDT0;
         c.preflightSpenders = new address[](1);
-        c.preflightSpenders[0] = OkunLib.ROUTER;
+        c.preflightSpenders[0] = LimitsLib.ROUTER;
     }
 
     /// MultiSendCallOnly payload of the v3 install.
@@ -103,18 +103,18 @@ library V3Lib {
         bytes memory b = _call(G, abi.encodeCall(FengceGuardV3.configure, (configureInput(p.maxPerBuy, p.maxBuyPin))));
         bytes4[4] memory sels = [bytes4(0x04e45aaf), 0xb858183f, 0x5023b4df, 0x09b81346];
         for (uint256 i; i < 4; i++) {
-            b = abi.encodePacked(b, _call(G, abi.encodeCall(FengceGuardV3.setDecoder, (OkunLib.ROUTER, sels[i], OkunLib.V3_DECODER))));
+            b = abi.encodePacked(b, _call(G, abi.encodeCall(FengceGuardV3.setDecoder, (LimitsLib.ROUTER, sels[i], LimitsLib.V3_DECODER))));
         }
         TxFacts.Binding[] memory one = new TxFacts.Binding[](1);
         one[0] = TxFacts.Binding(TxFacts.Source.Kind, 0);
-        if (p.tiltAfter != 0 || p.tradesPerHour != 0) b = abi.encodePacked(b, _call(OkunLib.TICK, abi.encodeCall(Tick.setRelayer, (G, true))));
+        if (p.tiltAfter != 0 || p.tradesPerHour != 0) b = abi.encodePacked(b, _call(LimitsLib.TICK, abi.encodeCall(Tick.setRelayer, (G, true))));
         if (p.tradesPerHour != 0) {
-            bytes32 tg = OkunLib.tickGroupId(p.safe);
+            bytes32 tg = LimitsLib.tickGroupId(p.safe);
             b = abi.encodePacked(
                 b,
-                _call(OkunLib.TICK, abi.encodeCall(Tick.createGroup, (OkunLib.TICK_SALT, p.tradesPin, OkunLib.TRADE_PERIOD, OkunLib.counterLayout(p.counterNetlistHash, p.tradesPerHour), one))),
-                _call(OkunLib.TICK, abi.encodeCall(Tick.setMember, (tg, p.safe, true))),
-                _call(G, abi.encodeCall(FengceGuardV3.configureTick, (OkunLib.TICK, tg)))
+                _call(LimitsLib.TICK, abi.encodeCall(Tick.createGroup, (LimitsLib.TICK_SALT, p.tradesPin, LimitsLib.TRADE_PERIOD, LimitsLib.counterLayout(p.counterNetlistHash, p.tradesPerHour), one))),
+                _call(LimitsLib.TICK, abi.encodeCall(Tick.setMember, (tg, p.safe, true))),
+                _call(G, abi.encodeCall(FengceGuardV3.configureTick, (LimitsLib.TICK, tg)))
             );
         }
         if (p.tiltAfter != 0) {
@@ -124,10 +124,10 @@ library V3Lib {
             }
             b = abi.encodePacked(
                 b,
-                _call(OkunLib.TICK, abi.encodeCall(Tick.createGroup, (TILT_COUNT_SALT, p.counterPin, TILT_WINDOW, OkunLib.counterLayout(p.counterNetlistHash, p.tiltAfter - 1), one))),
-                _call(OkunLib.TICK, abi.encodeCall(Tick.setMember, (countGroup(p.safe), p.safe, true))),
-                _call(OkunLib.TICK, abi.encodeCall(Tick.createGroup, (TILT_LATCH_SALT, p.latchPin, LATCH_PERIOD, latchLayout(p.latchNetlistHash), three))),
-                _call(OkunLib.TICK, abi.encodeCall(Tick.setMember, (latchGroup(p.safe), p.safe, true)))
+                _call(LimitsLib.TICK, abi.encodeCall(Tick.createGroup, (TILT_COUNT_SALT, p.counterPin, TILT_WINDOW, LimitsLib.counterLayout(p.counterNetlistHash, p.tiltAfter - 1), one))),
+                _call(LimitsLib.TICK, abi.encodeCall(Tick.setMember, (countGroup(p.safe), p.safe, true))),
+                _call(LimitsLib.TICK, abi.encodeCall(Tick.createGroup, (TILT_LATCH_SALT, p.latchPin, LATCH_PERIOD, latchLayout(p.latchNetlistHash), three))),
+                _call(LimitsLib.TICK, abi.encodeCall(Tick.setMember, (latchGroup(p.safe), p.safe, true)))
             );
         }
         b = abi.encodePacked(b, _call(G, abi.encodeCall(FengceGuardV3.setRules, (rules(p)))));

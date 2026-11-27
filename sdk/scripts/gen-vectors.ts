@@ -26,7 +26,7 @@ for (const c of circuits) {
   const r = await refClosure(client as any, c.processor, c.id, block);
   closures[c.name] = { processor: c.processor, id: Number(c.id), refClosureHash: r.refClosureHash, processors: r.processors };
 }
-const out = resolve(here, "../../test/vectors/hashes.json");
+const out = resolve(here, "../../contracts/test/vectors/hashes.json");
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, JSON.stringify({ generatedBy: "sdk/scripts/gen-vectors.ts", block: block.toString(), schemas, closures }, null, 2) + "\n");
 console.log(readFileSync(out, "utf8"));

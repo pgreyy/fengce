@@ -56,7 +56,7 @@ for (let inp = 0; inp < 8; inp++)
     checked++;
   }
 
-const out = resolve(import.meta.dirname, "../../circuits/tilt-latch.json");
+const out = resolve(import.meta.dirname, "../../contracts/circuits/tilt-latch.json");
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(
   out,
