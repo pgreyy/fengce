@@ -1,5 +1,5 @@
 import { Ruled, type Tone } from "../okun/Ruled";
-import { Addr, mount } from "../okun/ui";
+import { Addr, CodeCard, mount } from "../okun/ui";
 import { EXPLORER_TX } from "../okun/wallet";
 import { DEPLOYMENT, EXPLORER } from "../lib/chain";
 
@@ -11,6 +11,9 @@ const AGENT: [string, ...[string, Tone][]][] = [
 ];
 
 const c = DEPLOYMENT.contracts as Record<string, string>;
+/** deployments/m2-demo-xlayer-196.json (scripts/m2-onchain.sh), once it has been run. */
+const m2found = import.meta.glob("../../../deployments/m2-demo-xlayer-196.json", { eager: true, import: "default" }) as Record<string, { agentExecutor?: string; safe?: string; agent?: string; guard?: string }>;
+const M2 = Object.values(m2found)[0] ?? null;
 
 function Agents() {
   return (
@@ -82,6 +85,41 @@ function Agents() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+        <span className="lbl">With the OKX Agentic Wallet</span>
+        <h2 className="h2" style={{ margin: 0 }}>The agentic wallet is the agent key. The Safe decides.</h2>
+        <p className="body" style={{ maxWidth: 760 }}>
+          The agentic wallet keeps its own key and sends a contract call to AgentExecutorV3. The executor runs it through the Safe as a module, so FengceGuardV3 checks it
+          against the Safe's limits and the agent's own daily cap. A call over the cap does not revert the agent's transaction: it is recorded as Denied, with the reason
+          code AGENT_CAP (6), so the agent can read why.
+        </p>
+        <div className="ts-steps">
+          {[
+            ["01 · Bind", "Add the agent key once", "The Safe's owners add the agentic wallet as an agent on AgentExecutorV3 and set its daily cap (here 0.5 USDT0). scripts/m2-onchain.sh does it in the install."],
+            ["02 · Call", "onchainos wallet contract-call", "The agent sends execute(safe, token, 0, transfer(...)) to AgentExecutorV3. scripts/m2-agent-calls.sh prints the exact to and data."],
+            ["03 · Read the answer", "AgentExecuted or Denied", "0.3 USDT0 goes through; the next 0.3 is over the cap and comes back as Denied with FengceRefused(AGENT_CAP)."],
+          ].map(([k, t, d]) => (
+            <div key={k}>
+              <span className="lbl">{k}</span>
+              <div className="ts-st">{t}</div>
+              <div className="ts-sd">{d}</div>
+            </div>
+          ))}
+        </div>
+        <div className="grid2" style={{ alignItems: "start" }}>
+          <CodeCard title="1. print the call (in the repo, Ubuntu)" code={"scripts/m2-agent-calls.sh"} />
+          <CodeCard title="2. send it from the agentic wallet, twice" code={"onchainos wallet contract-call \\\n  --chain 196 \\\n  --to <AgentExecutorV3> \\\n  --data <data printed in step 1>"} />
+        </div>
+        {M2?.agentExecutor && (
+          <div className="small" style={{ display: "flex", gap: 18, flexWrap: "wrap", alignItems: "center" }}>
+            <span>AgentExecutorV3 <Addr value={M2.agentExecutor} link={`${EXPLORER}/address/${M2.agentExecutor}`} label="Copy executor address" /></span>
+            {M2.safe && <span>Demo Safe <Addr value={M2.safe} link={`${EXPLORER}/address/${M2.safe}`} label="Copy Safe address" /></span>}
+            {M2.agent && <span>Agent key <Addr value={M2.agent} label="Copy agent address" /></span>}
+          </div>
+        )}
+        <span className="small">Flag names of the onchainos CLI follow its own help (onchainos wallet contract-call --help); the call itself is just "to" and "data" on X Layer (196), value 0.</span>
       </section>
 
       <section style={{ display: "flex", flexDirection: "column", gap: 12 }}>
