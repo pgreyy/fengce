@@ -53,18 +53,13 @@ contract LimitsInstallForkTest is Test {
     }
 
     /// What PrepareLimits.s.sol broadcasts, from a funded EOA.
+    /// The pins script/PrepareLimits.s.sol broadcast on mainnet (deployments/limits-xlayer-196.json): max per buy on
+    /// NAND circuit #2 and the counter circuit pinned for N = 2.
     function _prepare() internal {
-        address deployer = makeAddr("deployer");
-        vm.deal(deployer, 1 ether);
-        vm.startPrank(deployer);
-        ICircuitProcessor cpu = ICircuitProcessor(LimitsLib.COUNTER_CPU);
-        ITransistors t = ITransistors(cpu.transistorsContract());
-        t.mint{value: t.protocolFee()}(t.NAND(), 100);
-        t.mint{value: t.protocolFee()}(t.LATCH(), 4);
-        uint256 id = cpu.tapeout{value: cpu.TAPEOUT_FEE()}(netlist, 7, 1);
-        maxBuyPin = REG.pin(LimitsLib.MAX_BUY_CPU, LimitsLib.MAX_BUY_ID, Schema.hash(LimitsLib.maxBuyLayout()), bytes32(0));
-        counterPin = REG.pin(LimitsLib.COUNTER_CPU, id, Schema.hash(LimitsLib.counterLayout(keccak256(netlist), 2)), bytes32(0));
-        vm.stopPrank();
+        string memory j = vm.readFile("../deployments/limits-xlayer-196.json");
+        maxBuyPin = vm.parseJsonBytes32(j, ".maxBuyPin");
+        counterPin = vm.parseJsonBytes32(j, ".counterPins.2");
+        assertEq(vm.parseJsonBytes32(j, ".counterNetlistHash"), keccak256(netlist), "counter netlist");
         assertTrue(REG.isPinned(maxBuyPin) && REG.isPinned(counterPin));
     }
 

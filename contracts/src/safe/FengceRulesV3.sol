@@ -113,6 +113,8 @@ library FengceRulesV3 {
     // ------------------------------------------------------------------ checks
 
     function _inQuiet(Rules storage r, uint256 ts) private view returns (bool) {
+        // hour of day (UTC), not randomness
+        // slither-disable-next-line weak-prng
         uint256 h = (ts / 1 hours) % 24;
         uint256 a = r.quietStart;
         uint256 b = r.quietEnd;
