@@ -1,105 +1,214 @@
 import { useState } from "react";
 import { mount } from "../okun/ui";
 
-type Ev = "buy" | "wait" | "big";
+/** The simulator follows FengceGuardV3 (src/safe/FengceRulesV3.sol): the buy that makes N buys within 30 minutes, or a
+ * buy of 3x the usual size, goes through and trips the shield; later buys are refused (TILT_SHIELD) until the cooldown
+ * ends. Sells and sends are never paused. Time is simulated minutes. */
+type Row = { t: number; text: string; tag: string; tone: "g" | "r" };
 
 function Tilt() {
-  const [after, setAfter] = useState(4);
-  const [cool, setCool] = useState(12);
+  const [n, setN] = useState(4);
+  const [cd, setCd] = useState(12);
   const [clear, setClear] = useState<"partner" | "cooldown">("partner");
-  const [log, setLog] = useState<Ev[]>([]);
+  const [now, setNow] = useState(0);
+  const [buys, setBuys] = useState<{ t: number; s: number }[]>([]);
   const [tripped, setTripped] = useState(false);
+  const [log, setLog] = useState<Row[]>([]);
+  const [msg, setMsg] = useState("Add a few buys and watch the shield.");
 
-  const lastWait = log.lastIndexOf("wait");
-  const buys = log.slice(lastWait + 1).filter((x) => x === "buy" || x === "big").length;
-  const add = (e: Ev) => {
-    const next = [...log, e];
-    if (!tripped) {
-      const lw = next.lastIndexOf("wait");
-      const n = next.slice(lw + 1).filter((x) => x === "buy" || x === "big").length;
-      setTripped(e === "big" || (e === "buy" && n >= after));
+  const win = buys.filter((b) => now - b.t < 30);
+  const biggest = win.reduce((a, b) => Math.max(a, b.s), 0);
+  const add = (rows: Row[]) => setLog((l) => [...rows, ...l].slice(0, 4));
+
+  function buy(s: number) {
+    if (tripped) {
+      add([{ t: now, text: `Buy ${s}× usual`, tag: "TILT_SHIELD", tone: "r" }]);
+      setMsg("Refused: TILT_SHIELD. Sells and sends to you still work.");
+      return;
     }
-    setLog(next);
+    const next = [...buys, { t: now, s }];
+    setBuys(next);
+    const w = next.filter((b) => now - b.t < 30);
+    const big = w.reduce((a, b) => Math.max(a, b.s), 0);
+    if (w.length >= n || big >= 3) {
+      setTripped(true);
+      add([
+        { t: now, text: "Shield trips · safe mode on", tag: "SAFE MODE", tone: "r" },
+        { t: now, text: `Buy ${s}× usual`, tag: "TRIPS SHIELD", tone: "r" },
+      ]);
+      setMsg(big >= 3 ? "One buy at 3× your usual. Buying is paused." : `${n} buys inside 30 minutes. Buying is paused.`);
+    } else {
+      add([{ t: now, text: `Buy ${s}× usual`, tag: "ALLOWED", tone: "g" }]);
+      setMsg("Buy allowed.");
+    }
+  }
+  const wait = () => {
+    setNow((x) => x + 10);
+    if (!tripped) setMsg("Ten minutes pass. Old buys slide out of the window.");
   };
-  const explain = tripped
-    ? `Tripped. Your wallet now refuses buys and any transfer to another address, on every supported app, until the ${cool}-hour cooldown ends${clear === "partner" ? " or your partner clears it" : ""}.`
-    : buys
-      ? `${buys} of ${after} buys in this 30-minute window. Keep going and the latch flips.`
-      : "Add some buys to see when the latch flips.";
-  const opt = (on: boolean) => ({ className: "chip", "aria-pressed": on });
+  const reset = () => {
+    setBuys([]);
+    setNow(0);
+    setTripped(false);
+    setLog([]);
+    setMsg("Add a few buys and watch the shield.");
+  };
+  const pickN = (v: number) => {
+    setN(v);
+    if (!tripped && win.length >= v && win.length > 0) {
+      setTripped(true);
+      add([{ t: now, text: "Shield trips · safe mode on", tag: "SAFE MODE", tone: "r" }]);
+      setMsg(`${v} buys inside 30 minutes. Buying is paused.`);
+    }
+  };
+
+  const seg = <T extends string | number>(value: T, set: (v: T) => void, opts: [T, string][]) => (
+    <div className="ts-seg" role="radiogroup">
+      {opts.map(([v, l]) => (
+        <button key={String(v)} type="button" role="radio" aria-checked={value === v} onClick={() => set(v)}>
+          {l}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
-    <main className="pg w" style={{ paddingTop: 64, paddingBottom: 110, display: "flex", flexDirection: "column", gap: 40 }}>
-      <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 720 }}>
-        <span className="lbl">Tilt-shield</span>
-        <h1 className="disp" style={{ fontSize: 52 }}>Stops the revenge trade</h1>
-        <p className="body" style={{ color: "var(--text)" }}>"Tilt" is when a bad run pushes you into faster, bigger buys to win it back.</p>
-        <p className="body">The shield watches how fast and how big you buy. When it trips, your wallet only sells or pays you back until the cooldown ends.</p>
+    <main className="pg w" style={{ paddingBottom: 88 }}>
+      <div className="ts-top">
+        <div>
+          <span className="lbl">Tilt-shield · Guard v3</span>
+          <h1 className="ts-h1">
+            A circuit breaker
+            <br />
+            for bad nights.
+          </h1>
+        </div>
+        <p className="ts-lead">When you start buying too fast or too big, your Safe stops buying for a while. Selling and sending to yourself still work. It runs on your Safe, so no app can skip it.</p>
       </div>
-      <div className="cols-m" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", borderTop: "1px solid var(--line)" }}>
+
+      <div className="ts-steps">
         {[
-          ["01 · Watches", "How fast and how big you buy", "Only your wallet's own transactions. No price feeds, no servers."],
-          ["02 · Trips", `After ${after} buys in 30 minutes, or a buy 3× your usual`, "A TapeOut latch circuit flips. Its state lives on chain."],
-          ["03 · Safe mode", "Only sells and withdrawals to you", `Until a ${cool}-hour cooldown ends${clear === "partner" ? " or your partner clears it" : ""}.`],
-        ].map(([k, t, d], i) => (
-          <div key={k} style={{ padding: "22px 24px 22px 0", paddingLeft: i ? 24 : 0, borderLeft: i ? "1px solid var(--line)" : undefined, display: "flex", flexDirection: "column", gap: 8 }}>
+          ["01 · Watches", "How fast and how big you buy", "Only your Safe's own transactions. No price feeds, no servers."],
+          ["02 · Trips", `${n} buys in 30 min, or one buy 3× your usual`, "The buy that trips it still goes through. The guard records the pause on chain."],
+          ["03 · Safe mode", "Only sells and sends to you", clear === "partner" ? "Until the cooldown ends, or your partner clears it early." : "Until the cooldown ends."],
+        ].map(([k, t, d]) => (
+          <div key={k}>
             <span className="lbl">{k}</span>
-            <span style={{ fontSize: 18 }}>{t}</span>
-            <span className="small">{d}</span>
+            <div className="ts-st">{t}</div>
+            <div className="ts-sd">{d}</div>
           </div>
         ))}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(0, 380px)", gap: 40, alignItems: "start" }} className="tilt-cols">
-        <section className="panel" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 18 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-            <span className="lbl">Try it</span>
-            <span className="mono" style={{ fontSize: 13, color: tripped ? "var(--deny)" : "var(--allow)" }}>{tripped ? "● TRIPPED · SAFE MODE" : "● OPEN"}</span>
+
+      <section className="ts-panel">
+        <div className="ts-sim">
+          <div className="ts-row">
+            <span className="lbl">Try it · last 30 minutes</span>
+            <span className={`ts-state ${tripped ? "trip" : "open"}`}>
+              <span className="ts-dot" />
+              {tripped ? "SAFE MODE" : "OPEN"}
+            </span>
           </div>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", minHeight: 34 }}>
-            {log.slice(-8).map((x, i) => (
-              <span key={i} className="mono" style={{ padding: "6px 10px", borderRadius: 999, border: "1px solid var(--line)", fontSize: 12, color: x === "buy" ? "var(--text)" : x === "wait" ? "var(--muted)" : "var(--deny)" }}>
-                {x === "buy" ? "buy" : x === "wait" ? "30 min later" : "3× buy"}
-              </span>
+          <div className="ts-big">
+            <div>
+              <div className="ts-n">
+                {win.length}
+                <small> / {n}</small>
+              </div>
+              <div className="lbl">Buys in window</div>
+            </div>
+            <div>
+              <div className="ts-n">
+                {biggest}×<small> usual</small>
+              </div>
+              <div className="lbl">Biggest buy</div>
+            </div>
+            <div>
+              <div className="ts-n">
+                {tripped ? (
+                  <>
+                    {cd}
+                    <small>h</small>
+                  </>
+                ) : (
+                  "–"
+                )}
+              </div>
+              <div className="lbl">Cooldown left</div>
+            </div>
+          </div>
+          <div className="ts-lane" role="img" aria-label={`${win.length} buys in the last 30 minutes; usual size and 3 times usual marked`}>
+            {[0, 5, 10, 15, 20, 25, 30].map((m) => {
+              const x = (m / 30) * 100;
+              return (
+                <span key={m}>
+                  <span className="ts-tick" style={{ left: `${x}%` }} />
+                  <span className="ts-tl" style={{ left: `${Math.min(97, Math.max(3, x))}%` }}>{m === 30 ? "now" : `-${30 - m}m`}</span>
+                </span>
+              );
+            })}
+            <div className="ts-u" style={{ bottom: 54 }}>
+              <span>usual</span>
+            </div>
+            <div className="ts-u x3" style={{ bottom: 114 }}>
+              <span>3×</span>
+            </div>
+            {win.map((b, i) => {
+              const same = win.filter((c, j) => j < i && c.t === b.t).length;
+              const x = Math.min(96, Math.max(4, Math.min(95, ((30 - (now - b.t)) / 30) * 100) - same * 2.4));
+              return <div key={i} className={`ts-buy${b.s >= 3 ? " big3" : ""}`} style={{ left: `${x}%`, height: b.s * 30 }} />;
+            })}
+          </div>
+          <div className="ts-acts">
+            <button type="button" className="ts-b" onClick={() => buy(1)}>Buy normal size</button>
+            <button type="button" className="ts-b" onClick={wait}>Wait 10 min</button>
+            <button type="button" className="ts-b" onClick={() => buy(3)}>Buy 3× usual</button>
+            <button type="button" className="ts-b ghost" onClick={reset}>Reset</button>
+          </div>
+          <div className="ts-log" aria-live="polite">
+            {log.length === 0 && (
+              <div className="ts-lr">
+                <span className="num muted">–</span>
+                <span className="muted">No buys yet</span>
+                <span />
+              </div>
+            )}
+            {log.map((r, i) => (
+              <div key={i} className="ts-lr">
+                <span className="num muted" style={{ fontSize: 12 }}>t+{r.t}m</span>
+                <span>{r.text}</span>
+                <span className={`tag ${r.tone}`}>{r.tag}</span>
+              </div>
             ))}
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button type="button" className="pill line" onClick={() => add("buy")}>Buy (normal size)</button>
-            <button type="button" className="pill line" onClick={() => add("wait")}>Wait 30 minutes</button>
-            <button type="button" className="pill line" onClick={() => add("big")}>Buy 3× my usual</button>
-            <button type="button" className="alink" onClick={() => (setLog([]), setTripped(false))}>Reset</button>
+          <div className="ts-msg">
+            <span>{msg}</span>
+            <span className="mono muted" style={{ fontSize: 11 }}>Runs in your browser · nothing is sent</span>
           </div>
-          <span className="small">{explain}</span>
-          <span className="mono" style={{ fontSize: 12, color: "var(--muted)" }}>This demo runs in your browser. Nothing is sent.</span>
-        </section>
-        <aside style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <span className="lbl">Your settings</span>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <span style={{ fontSize: 15 }}>Trip after</span>
-            <div style={{ display: "flex", gap: 6 }}>
-              {[3, 4, 5].map((n) => <button key={n} type="button" {...opt(after === n)} onClick={() => setAfter(n)}>{n} buys</button>)}
-            </div>
+        </div>
+        <aside className="ts-set">
+          <span className="lbl" style={{ marginBottom: 18 }}>Your settings</span>
+          <div className="ts-f">
+            <div className="ts-t">Trip after</div>
+            {seg(n, pickN, [[3, "3 buys"], [4, "4 buys"], [5, "5 buys"]])}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <span style={{ fontSize: 15 }}>Cooldown</span>
-            <div style={{ display: "flex", gap: 6 }}>
-              {[6, 12, 24].map((n) => <button key={n} type="button" {...opt(cool === n)} onClick={() => setCool(n)}>{n}h</button>)}
-            </div>
+          <div className="ts-f">
+            <div className="ts-t">Cooldown</div>
+            {seg(cd, setCd, [[6, "6h"], [12, "12h"], [24, "24h"]])}
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <span style={{ fontSize: 15 }}>Who can clear it early</span>
-            <div style={{ display: "flex", gap: 6 }}>
-              <button type="button" {...opt(clear === "partner")} onClick={() => setClear("partner")}>Partner or cooldown</button>
-              <button type="button" {...opt(clear === "cooldown")} onClick={() => setClear("cooldown")}>Cooldown only</button>
-            </div>
+          <div className="ts-f">
+            <div className="ts-t">Who can clear it early</div>
+            {seg(clear, setClear, [["partner", "Partner or cooldown"], ["cooldown", "Cooldown only"]])}
           </div>
-          <span className="small">Watch-only for the first 14 days: you see what it would have stopped before it can block. Turning it off waits 1 day.</span>
-          <button type="button" className="pill accent big" disabled title="The Tilt-shield ships with the next Fengce guard">Turn on Tilt-shield</button>
-          <span className="small">Coming with the next engine release, with partners and per-agent caps.</span>
+          <div className="ts-note">Turning it on is instant. Turning it off or loosening it waits 1 day, or 7 days with a partner unless they approve sooner.</div>
+          <button type="button" className="pill accent big ts-cta" disabled title="Tilt-shield runs in FengceGuard v3, which is not deployed yet">
+            Turn on Tilt-shield
+          </button>
+          <div className="ts-soon">Live with Guard v3</div>
         </aside>
-      </div>
-      <style>{`@media (max-width: 900px) { .tilt-cols { grid-template-columns: minmax(0, 1fr) !important; } }`}</style>
+      </section>
     </main>
   );
 }
 
-mount("tilt", 1, <Tilt />);
+mount("tilt-shield", 1, <Tilt />);
