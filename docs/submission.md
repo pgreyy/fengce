@@ -5,7 +5,7 @@
 Set buy caps and trade limits inside your smart wallet. Each limit is a TapeOut circuit on X Layer. It follows your wallet
 across supported apps and transaction paths.
 
-App: [getfengce.vercel.app](https://getfengce.vercel.app) · engine page: [/fengce](https://getfengce.vercel.app/docs/) · also
+App: [getfengce.vercel.app](https://getfengce.vercel.app) · docs: [/docs](https://getfengce.vercel.app/docs/) · for judges: [judges.md](judges.md) · also
 served from X Layer itself as [6.2.180.tape](https://6-2-180.tapekit.org/) · code: [github.com/pgreyy/fengce](https://github.com/pgreyy/fengce)
 
 ## The problem
@@ -34,8 +34,16 @@ Sources and losses as reported: [README, Why Fengce](../README.md#why-fengce).
   combinations, run by Tick and reset each clock hour.
 - **Adapters for other wallets.** ERC-7579 and ERC-6900 accounts are enforced through hooks (not permanent); Coinbase Smart
   Wallet and EIP-7702 accounts for agents.
-- **SDK** [`@fengce/sdk`](https://www.npmjs.com/package/@fengce/sdk), an **MCP server** and an **OnchainOS skill**, so apps
-  and agents can check a transaction before signing.
+- **Guard v3 (built, fork-tested; mainnet deploy by `scripts/m2-onchain.sh`).** Quiet hours, hold lock and per-agent caps
+  decided on NAND circuit #2; Tilt-shield on counter circuit #7 and a new latch circuit (6 NAND + 1 LATCH) through Tick.
+  Tightening applies at once, loosening waits 1 day (7 with a partner, who can approve early). Refusals carry a reason code;
+  owners can record a refusal on chain without a reverted transaction.
+- **Add a circuit and build your own.** Install a Catalog circuit (its install fee goes 80% to the designer), or combine
+  conditions into a new circuit, checked on every input, taped out from your wallet, pinned and used as your policy.
+- **Safe{Wallet} and agents.** A Transaction Builder file installs the guard on any X Layer Safe (`/install`); the OKX
+  Agentic Wallet acts as an agent key through AgentExecutorV3 (`/agents`).
+- **SDK** [`@fengce/sdk`](https://www.npmjs.com/package/@fengce/sdk) with `check(safe, tx)` (allowed or a reason code), an
+  **MCP server** and an **agent skill** (`npx skills add pgreyy/fengce --skill fengce`).
 
 ## Proof
 
@@ -43,7 +51,7 @@ Sources and losses as reported: [README, Why Fengce](../README.md#why-fengce).
 |---|---|
 | An agent's 1.5 USDT0 transfer over a 1 USDT0 cap: **DENIED** by the wallet | [0x9b70…4a1b](https://www.oklink.com/x-layer/tx/0x9b70d386a2782e269ab1d3b1df6de767534a5b5b7904998abd92a651d2584a1b) |
 | The same agent's 0.5 USDT0 transfer: **ALLOWED** | [0x7a70…ccab](https://www.oklink.com/x-layer/tx/0x7a70f5c9713fd9236ecdd81287bcf775253d2cbea19c857524bb1047acfcccab) |
-| One-signature install, in-limit swap passes, over-limit swap reverts, the third swap in an hour reverts, raising the cap waits 1 day | fork test on live X Layer state: [test/fork/OkunInstall.t.sol](../test/fork/OkunInstall.t.sol) |
+| One-signature install, in-limit swap passes, over-limit swap reverts, the third swap in an hour reverts, raising the cap waits 1 day | fork test on live X Layer state: [test/fork/LimitsInstall.t.sol](../contracts/test/fork/LimitsInstall.t.sol) |
 | Source verified | 18/18 v2 contracts on Sourcify, exact match ([list](CLAIMS.md#sourcify-18)) |
 | The app is stored on X Layer | [6.2.180.tape](https://6-2-180.tapekit.org/), every file checked by SHA-256 ([record](../deployments/deweb-xlayer-196.json)) |
 | Tests | 112 in CI for the v2 release commit, plus later unit and fork tests ([CLAIMS.md](CLAIMS.md)) |
@@ -59,14 +67,12 @@ Every claim with its transaction, test or verification link: [CLAIMS.md](CLAIMS.
 | Rule can change quietly | yes | n/a | yes | no: loosening waits 1 day in public |
 | Other contracts can check it | no | no | no | yes (`isBound`) |
 
-Full tables: [README, Why Fengce](../README.md#why-fengce).
+Full tables: [Docs, Compared](https://getfengce.vercel.app/docs/?tab=cmp).
 
 ## What's next
 
-- **One engine upgrade** that adds the time facts for quiet hours and hold locks, the tilt shield latch, an optional partner
-  who co-approves loosening, and per-agent daily caps.
-- **Add a circuit and build your own**: Catalog circuits and your own conditions, taped out from your wallet.
-- **Agents**: the OKX Agentic Wallet as the agent key on a bound Safe, every action through AgentExecutor.
+- **Guard v3 on mainnet** and the move of existing Safes to it (recovery: 2 days, every owner).
+- **Wallet integrations**: limits shown on a wallet's confirm screen through the SDK ([BUSINESS.md](../BUSINESS.md)).
 - **An independent security review** before larger amounts.
 
 ## Links
