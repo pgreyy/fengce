@@ -247,10 +247,10 @@ export function revertData(e: unknown): Hex | undefined {
 }
 
 /** Simulates execTransaction from the owner, as the wallet would send it. */
-export async function simulateSafeTx(owner: Address, safe: Address, tx: { to: Address; data: Hex; operation: 0 | 1 }) {
+export async function simulateSafeTx(owner: Address, safe: Address, tx: { to: Address; data: Hex; operation: 0 | 1 }, msgValue?: bigint) {
   const data = execCalldata(owner, tx);
   try {
-    await client.call({ account: owner, to: safe, data });
+    await client.call({ account: owner, to: safe, data, value: msgValue });
     return { ok: true as const, data };
   } catch (e) {
     return { ok: false as const, data, reason: reasonOf(revertData(e), (e as Error).message) };

@@ -436,3 +436,45 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   .metrics > div:nth-child(even) { padding-left: 12px !important; border-left: 1px solid var(--line); }
   .metrics > div:last-child { grid-column: 1 / -1; border-bottom: 0; }
 }
+
+/* Limits → Add a circuit: the Catalog as one grid, rows expand in place; Add opens a confirm sheet */
+.cat-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.cat-imp { display: flex; flex-direction: column; gap: 8px; padding: 18px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.cat-imp-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.cat-imp-row .field { flex: 1 1 320px; min-width: 0; font-size: 14px; }
+.cat-imp-row .pill { min-height: 44px; }
+.cat { --cols: minmax(300px, 3fr) 52px 84px 136px 100px 108px 128px 100px; min-width: 1080px; }
+.cat-r { display: grid; grid-template-columns: var(--cols); column-gap: 20px; align-items: center; border-bottom: 1px solid var(--line); }
+.cat-r > span { min-width: 0; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cat-r > span.r { text-align: right; overflow: visible; }
+.cat-h > span { padding: 12px 0; font-family: var(--fm); font-size: 11.5px; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.cat-row { min-height: 72px; cursor: pointer; transition: background .15s; }
+.cat-row:hover { background: var(--surface); }
+.cat-row.on { background: var(--panel); border-bottom-color: transparent; }
+.cat-row:focus-visible { outline: 1px solid var(--accent); outline-offset: -1px; }
+.cat-row > span:first-child { padding-left: 12px; }
+.cat-row > span:last-child { padding-right: 12px; }
+.cat-h > span:first-child, .cat-r:not(.cat-row) > span:first-child { padding-left: 12px; }
+.cat-name { display: flex; flex-direction: column; gap: 3px; padding: 12px 0; }
+.cat-t { font-size: 16px; overflow: hidden; text-overflow: ellipsis; }
+.cat-d { font-size: 13px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; }
+.cat-gas { display: inline-flex; gap: 8px; align-items: center; }
+.cat-gas .mono { font-size: 12.5px; }
+.cat-act { display: flex; justify-content: flex-end; }
+.cat-add { min-height: 32px; padding: 0 16px; font-family: var(--fm); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+.cat-added { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.cat-added .alink { font-size: 12.5px; }
+.cat-x { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 32px; padding: 6px 12px 24px; background: var(--panel); border-bottom: 1px solid var(--line); }
+.cat-x-l, .cat-x-r { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.cat-empty { padding: 22px 12px; border-bottom: 1px solid var(--line); }
+.muted { color: var(--muted); }
+.csheet-bg { position: fixed; inset: 0; z-index: 80; background: color-mix(in srgb, var(--bg) 60%, transparent); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; padding: 24px; }
+.csheet { width: min(620px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 16px; padding: 24px; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 24px 60px rgba(0, 0, 0, .25); }
+.cat-sec { display: flex; flex-direction: column; gap: 8px; padding-top: 14px; border-top: 1px solid var(--line); }
+.cat-f { display: flex; flex-direction: column; gap: 6px; }
+@media (max-width: 767px) {
+  .cat-x { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .cat-top .field { width: 100% !important; }
+  .csheet-bg { align-items: flex-end; padding: 0; }
+  .csheet { width: 100%; max-height: 88vh; border-radius: 16px 16px 0 0; padding: 20px var(--pad) 28px; }
+}
