@@ -6,7 +6,7 @@ import { Fragment, useEffect, useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { encodeFunctionData, formatEther, getAddress, isAddress, parseAbi, type Address, type Hex } from "viem";
 import { PinRegistryArtifact, TickArtifact, readCatalog, type CatalogEntry } from "@fengce/sdk";
-import { ADDR, CATALOG, client } from "../lib/chain";
+import { ADDR, AGENT_EXECUTOR, CATALOG, client } from "../lib/chain";
 import { presetFor, type PolicyPreset } from "../lib/policies";
 import { presetSchema } from "../lib/data";
 import { catalogGroupId, catalogPlan, removeTickCall, type CatalogPlan } from "./catalogInstall";
@@ -15,6 +15,11 @@ import { parseAmount } from "./LimitsEditor";
 import { PREPARED, readInstalled, type Installed } from "./reads";
 import { Addr, CIRCUIT, circuitHref, href, openWallet, short } from "./ui";
 import { V3 } from "./v3";
+import { describe, isAppContainer, loadCircuits, parseQuery, type Circuit } from "./circuitIndex";
+import { ImportRow } from "./ImportRow";
+import m2 from "../../../deployments/m2-demo-xlayer-196.json";
+
+const V3_EXECUTOR = (m2.agentExecutor ?? null) as Address | null;
 import { EXPLORER_TX, sendFromWallet, simulateSafeTx, useWallet } from "./wallet";
 
 const evalAbi = parseAbi(["function eval(uint256 id, bytes input) view returns (bytes)"]);
@@ -64,24 +69,41 @@ function targetGuard(st: SafeState): Address {
   return st.inst.set ? st.inst.guard : V3 ? V3.guard : ENGINE.guard;
 }
 
-/** Import by ID: a circuit number (18 or #18), a processor address, or a pin id. */
-function lookup(q: string, rows: Row[], all: CatalogEntry[]): { rows: Row[] } | { error: string } {
+type Found = { rows: Row[]; unlisted: Circuit[] } | { error: string };
+const isCatalog = (rows: Row[], c: Circuit) => rows.some((r) => r.processor.toLowerCase() === c.cpu.toLowerCase() && r.id === BigInt(c.id));
+
+/** Import by ID: a tape name (15.2.414), a circuit number (18), a processor address, a pin id or a site container. */
+async function lookup(q: string, rows: Row[], all: CatalogEntry[], circuits: Circuit[] | null): Promise<Found> {
   const s = q.trim();
-  const num = /^#?(\d{1,6})$/.exec(s);
-  if (num) {
-    const hit = rows.filter((r) => r.id === BigInt(num[1]));
-    return hit.length ? { rows: hit } : { error: `Circuit #${num[1]} is not in the Fengce Catalog. Only listed circuits, whose test vectors passed on chain, can be added here; others go through Build your own.` };
-  }
   if (/^0x[0-9a-fA-F]{64}$/.test(s)) {
     const hit = rows.filter((r) => r.entry.pinId.toLowerCase() === s.toLowerCase());
-    if (hit.length) return { rows: hit };
-    return { error: all.some((e) => e.pinId.toLowerCase() === s.toLowerCase()) ? "This pin was delisted by its designer, so it can no longer be added." : "This pin is not listed in the Fengce Catalog." };
+    if (hit.length) return { rows: hit, unlisted: [] };
+    return { error: all.some((e) => e.pinId.toLowerCase() === s.toLowerCase()) ? "This pin was delisted by its designer, so it can no longer be added." : "This pin is not listed in the Fengce Catalog. Paste the circuit's tape name instead." };
   }
-  if (isAddress(s)) {
-    const hit = rows.filter((r) => r.processor.toLowerCase() === s.toLowerCase());
-    return hit.length ? { rows: hit } : { error: `No Catalog listing runs on ${short(getAddress(s))}. Only listed circuits can be added here.` };
+  const pq = parseQuery(s);
+  const idx = circuits ?? [];
+  const other = (cs: Circuit[]) => cs.filter((c) => !isCatalog(rows, c));
+  if (pq.kind === "tape") {
+    const cat = rows.filter((r) => idx.some((c) => c.p === pq.p && c.id === pq.id && c.cpu.toLowerCase() === r.processor.toLowerCase()) && r.id === BigInt(pq.id));
+    if (cat.length) return { rows: cat, unlisted: [] };
+    const c = idx.find((x) => x.p === pq.p && x.id === pq.id);
+    if (!c) return { error: circuits ? `No circuit ${pq.id}.2.${pq.p} on X Layer.` : "Still reading the circuits on X Layer; try again in a moment." };
+    if (c.app) return { error: "That's a TapeOut app, not a circuit." };
+    return { rows: [], unlisted: [c] };
   }
-  return { error: "Enter a circuit number (like 18), a processor address or a pin id (0x and 64 hex digits)." };
+  if (pq.kind === "id") {
+    const cat = rows.filter((r) => r.id === BigInt(pq.id));
+    const un = other(idx.filter((c) => c.id === pq.id && !c.app)).slice(0, 30);
+    return cat.length || un.length ? { rows: cat, unlisted: un } : { error: `No circuit #${pq.id} on X Layer.` };
+  }
+  if (pq.kind === "address") {
+    const cat = rows.filter((r) => r.processor.toLowerCase() === pq.address.toLowerCase());
+    const un = other(idx.filter((c) => c.cpu.toLowerCase() === pq.address.toLowerCase() && !c.app)).slice(0, 30);
+    if (cat.length || un.length) return { rows: cat, unlisted: un };
+    if (await isAppContainer(pq.address)) return { error: "That's a TapeOut app, not a circuit." };
+    return { error: `No TapeOut processor or circuit at ${short(pq.address)}.` };
+  }
+  return { error: "Enter a tape name (like 15.2.414), a circuit number, a processor address or a pin id." };
 }
 
 export function CatalogPanel() {
@@ -92,7 +114,9 @@ export function CatalogPanel() {
   const [open, setOpen] = useState<Hex | null>(null);
   const [search, setSearch] = useState("");
   const [imp, setImp] = useState("");
-  const [found, setFound] = useState<{ rows: Row[] } | { error: string } | null>(null);
+  const [found, setFound] = useState<Found | null>(null);
+  const [circuits, setCircuits] = useState<Circuit[] | null>(null);
+  const [openU, setOpenU] = useState<string | null>(null);
   const [sheet, setSheet] = useState<{ row: Row; mode: "add" | "remove" } | null>(null);
   const [st, setSt] = useState<SafeState | null>(null);
   const [tick, setTick] = useState(0);
@@ -114,6 +138,10 @@ export function CatalogPanel() {
   }, []);
 
   useEffect(() => {
+    loadCircuits().then((x) => setCircuits(x.circuits), () => setCircuits([]));
+  }, []);
+
+  useEffect(() => {
     setSt(null);
     if (!w.safe) return;
     let live = true;
@@ -124,6 +152,13 @@ export function CatalogPanel() {
   const added = (r: Row) =>
     !!st && ((r.preset?.stateful ? st.tickPin : st.inst.set ? st.inst.pinId : null)?.toLowerCase() === r.entry.pinId.toLowerCase());
 
+  const unlisted = useMemo(() => {
+    if (found && "unlisted" in found) return found.unlisted;
+    const q = search.trim().toLowerCase();
+    if (!q || !circuits || !rows || q.length < 2) return [];
+    return circuits.filter((c) => !c.app && !isCatalog(rows, c) && (c.tape.startsWith(q) || describe(c).toLowerCase().includes(q) || c.cpu.toLowerCase().includes(q))).slice(0, 30);
+  }, [circuits, rows, search, found]);
+
   const shown = useMemo(() => {
     if (!rows) return [];
     if (found && "rows" in found) return found.rows;
@@ -132,11 +167,12 @@ export function CatalogPanel() {
     return rows.filter((r) => [r.preset?.name, r.preset?.description, r.entry.description, `#${r.id}`, r.processor, r.entry.designer, r.preset?.stateful ? "stateful" : "stateless"].some((x) => x?.toLowerCase().includes(q)));
   }, [rows, search, found]);
 
-  const doImport = () => {
+  const doImport = async () => {
     if (!rows) return;
-    const res = lookup(imp, rows, all);
+    const res = await lookup(imp, rows, all, circuits);
     setFound(res);
-    if ("rows" in res && res.rows.length === 1) setOpen(res.rows[0].entry.pinId);
+    if ("rows" in res && res.rows.length === 1 && !res.unlisted.length) setOpen(res.rows[0].entry.pinId);
+    if ("rows" in res && !res.rows.length && res.unlisted.length === 1) setOpenU(res.unlisted[0].tape);
   };
 
   const add = (r: Row) => {
@@ -156,14 +192,23 @@ export function CatalogPanel() {
       <div className="cat-imp">
         <label htmlFor="cat-id" className="lbl">Import by ID</label>
         <form className="cat-imp-row" onSubmit={(e) => (e.preventDefault(), doImport())}>
-          <input id="cat-id" className="field mono" value={imp} onChange={(e) => setImp(e.target.value)} placeholder="Circuit # (18), processor address or pin id" spellCheck={false} />
+          <input id="cat-id" className="field mono" value={imp} onChange={(e) => setImp(e.target.value)} placeholder="Tape name (15.2.414), circuit #, processor address or pin id" spellCheck={false} />
           <button type="submit" className="pill line" disabled={!rows || !imp.trim()}>Find</button>
           {found && (
             <button type="button" className="alink" onClick={() => (setFound(null), setImp(""))}>Show all</button>
           )}
         </form>
         {found && "error" in found && <span className="err" style={{ fontSize: 14 }}>{found.error}</span>}
-        {found && "rows" in found && <span className="small" style={{ color: "var(--allow)" }}>In the Fengce Catalog: {found.rows.length === 1 ? "1 listing" : `${found.rows.length} listings`}.</span>}
+        {found && "rows" in found && (
+          <span className="small">
+            {found.rows.length ? <span style={{ color: "var(--allow)" }}>In the Fengce Catalog: {found.rows.length === 1 ? "1 listing" : `${found.rows.length} listings`}. </span> : null}
+            {found.unlisted.length ? `${found.unlisted.length === 1 ? "1 unlisted circuit" : `${found.unlisted.length} unlisted circuits`}: not reviewed by their designers or Fengce; map its inputs before adding.` : null}
+          </span>
+        )}
+        <span className="small">
+          Any TapeOut circuit on X Layer can be imported{circuits ? ` (${circuits.filter((c) => !c.app).length.toLocaleString("en-US")} circuits indexed)` : ""}. Designers: list yours in the Catalog for the Catalog badge and 80% of any install fee
+          (Catalog.list with test vectors, see <a className="alink" href="https://github.com/pgreyy/fengce/blob/main/docs/INTEGRATION.md" target="_blank" rel="noreferrer noopener">INTEGRATION.md</a>).
+        </span>
       </div>
 
       {err && <span className="err">{err}</span>}
@@ -181,7 +226,7 @@ export function CatalogPanel() {
                 {[1, 2, 3, 4, 5, 6, 7].map((k) => <span key={k}><i className="sk" style={{ width: 48 }} /></span>)}
               </div>
             ))}
-          {rows && shown.length === 0 && <div className="cat-empty small">No circuit matches “{search}”.</div>}
+          {rows && shown.length === 0 && unlisted.length === 0 && <div className="cat-empty small">No circuit matches “{search}”.</div>}
           {shown.map((r) => {
             const on = open === r.entry.pinId;
             const isAdded = added(r);
@@ -196,7 +241,9 @@ export function CatalogPanel() {
                   onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && e.target === e.currentTarget && (e.preventDefault(), setOpen(on ? null : r.entry.pinId))}
                 >
                   <span className="cat-name">
-                    <span className="cat-t">{r.preset?.name ?? r.entry.description.split(":")[0]}</span>
+                    <span className="cat-t">
+                      {r.preset?.name ?? r.entry.description.split(":")[0]} <span className="tag g" style={{ marginLeft: 6 }}>CATALOG</span>
+                    </span>
                     <span className="cat-d">{r.preset?.description ?? r.entry.description}</span>
                   </span>
                   <span>
@@ -228,6 +275,9 @@ export function CatalogPanel() {
               </Fragment>
             );
           })}
+          {unlisted.map((c) => (
+            <ImportRow key={c.tape} c={c} inst={st?.inst ?? null} guard={st ? targetGuard(st) : V3?.guard ?? ENGINE.guard} agentExecutor={V3_EXECUTOR && (!st || targetGuard(st).toLowerCase() === V3?.guard.toLowerCase()) ? V3_EXECUTOR : AGENT_EXECUTOR} open={openU === c.tape} onToggle={() => setOpenU(openU === c.tape ? null : c.tape)} />
+          ))}
         </div>
       </div>
       {sheet && <Sheet row={sheet.row} mode={sheet.mode} st={st} occupant={occupantOf(st, rows ?? [])} onClose={() => setSheet(null)} onDone={() => setTick((t) => t + 1)} />}

@@ -497,3 +497,10 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .ts-live-h { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
 .ts-live-b { display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; line-height: 1.5; }
 .ts-live-b .alink { font-size: 12px; }
+
+/* Add a circuit: importing an unlisted circuit */
+.imp-map { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.imp-map .field { width: auto; flex: 1 1 220px; min-height: 40px; font-size: 14px; }
+.imp-map .mono { width: 34px; font-size: 12.5px; }
+.imp-warn { padding: 12px 14px; border: 1px solid var(--deny); border-radius: 8px; font-size: 14px; line-height: 1.5; background: color-mix(in srgb, var(--deny) 8%, transparent); }
+.imp-warn b { font-weight: 500; color: var(--deny); }
