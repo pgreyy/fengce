@@ -16,7 +16,7 @@ export function param(name: string) {
   return new URLSearchParams(location.search).get(name);
 }
 /** Anchors of the circuits listed on /docs (Circuits). Every circuit ID shown in the app links to one of them. */
-export const CIRCUIT = { maxBuy: "c-max-per-buy", counter: "c-trades-per-hour", deweb: "c-6-2-180", catalog: "c-catalog" } as const;
+export const CIRCUIT = { maxBuy: "c-max-per-buy", counter: "c-trades-per-hour", tiltLatch: "c-tilt-latch", deweb: "c-6-2-180", catalog: "c-catalog" } as const;
 export const circuitHref = (anchor: string) => href("docs", { tab: "circuits" }, anchor);
 export const short = (a: string, n = 4) => (a.length > 2 + 2 * n ? `${a.slice(0, 2 + n)}…${a.slice(-n)}` : a);
 

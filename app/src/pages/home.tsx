@@ -78,7 +78,7 @@ function useLive(): Live | null {
     let alive = true;
     (async () => {
       const [rows, inst, info] = await Promise.all([
-        safeActivity(LIVE_SAFE, 10, false).catch(() => [] as ActivityRow[]),
+        safeActivity(LIVE_SAFE, 10).catch(() => [] as ActivityRow[]),
         readInstalled(LIVE_SAFE).catch(() => null),
         safeInfo(LIVE_SAFE).catch(() => null),
       ]);
@@ -183,15 +183,15 @@ function Wallets() {
 }
 
 // ------------------------------------------------------------------ eight rules
-const RULES: { name: string; short: string; status: "LIVE" | "GUARD V3" | "CATALOG"; long: string; example: string; to: string }[] = [
-  { name: "Max per buy", short: "Any single swap or send above it is refused.", status: "LIVE", long: "You set 30 USDT0. A 31 USDT0 swap from any app is refused with MAX_PER_BUY before it moves a cent.", example: "30 USDT0", to: href("limits", { rule: "cap" }) },
-  { name: "Trades per hour", short: "Counts swaps each UTC clock hour.", status: "LIVE", long: "Set 5 per hour. The 6th swap in the same clock hour is refused; the counter resets on the hour. Sends don't count.", example: "5 / hour", to: href("limits", { rule: "rate" }) },
-  { name: "Quiet hours", short: "No trading in the hours you choose.", status: "GUARD V3", long: "Pick a window like 01:00 to 07:00 UTC. Swaps inside it are refused with QUIET_HOURS. Sends still work.", example: "01:00 to 07:00", to: href("limits", { rule: "quiet" }) },
-  { name: "Hold lock", short: "No selling a token within N hours of buying it.", status: "GUARD V3", long: "Buy a token and it can't be sold for the hours you set. Stops panic-selling the dip you just bought.", example: "24 hours", to: href("limits", { rule: "hold" }) },
-  { name: "Tilt-shield", short: "4 buys in 30 minutes, or one buy 3× your usual, pauses buying.", status: "GUARD V3", long: "When the pattern trips, buying pauses for your cooldown. Sells and sends still go through.", example: "Pause 6 hours", to: href("tilt-shield") },
-  { name: "Agent cap", short: "A separate budget per agent key, with reason codes.", status: "GUARD V3", long: "Each agent key gets its own daily budget. Over it, the agent gets AGENT_CAP back and can tell you why.", example: "50 USDT0 / day", to: href("agents") },
+const RULES: { name: string; short: string; status: "LIVE" | "GUARD V3" | "CATALOG"; long: string; example: string; to: string; circuit?: [string, string][] }[] = [
+  { name: "Max per buy", short: "Any single swap or send above it is refused.", status: "LIVE", long: "You set 30 USDT0. A 31 USDT0 swap from any app is refused with MAX_PER_BUY before it moves a cent.", example: "30 USDT0", to: href("limits", { rule: "cap" }), circuit: [["NAND circuit #2", CIRCUIT.maxBuy]] },
+  { name: "Trades per hour", short: "Counts swaps each UTC clock hour.", status: "LIVE", long: "Set 5 per hour. The 6th swap in the same clock hour is refused; the counter resets on the hour. Sends don't count.", example: "5 / hour", to: href("limits", { rule: "rate" }), circuit: [["Counter circuit #7", CIRCUIT.counter]] },
+  { name: "Quiet hours", short: "No trading in the hours you choose.", status: "GUARD V3", long: "Pick a window like 01:00 to 07:00 UTC. Swaps inside it are refused with QUIET_HOURS. Sends still work.", example: "01:00 to 07:00", to: href("limits", { rule: "quiet" }), circuit: [["NAND circuit #2", CIRCUIT.maxBuy]] },
+  { name: "Hold lock", short: "No selling a token within N hours of buying it.", status: "GUARD V3", long: "Buy a token and it can't be sold for the hours you set. Stops panic-selling the dip you just bought.", example: "24 hours", to: href("limits", { rule: "hold" }), circuit: [["NAND circuit #2", CIRCUIT.maxBuy]] },
+  { name: "Tilt-shield", short: "4 buys in 30 minutes, or one buy 3× your usual, pauses buying.", status: "GUARD V3", long: "When the pattern trips, buying pauses for your cooldown. Sells and sends still go through.", example: "Pause 6 hours", to: href("tilt-shield"), circuit: [["Counter circuit #7", CIRCUIT.counter], ["Tilt-shield latch", CIRCUIT.tiltLatch]] },
+  { name: "Agent cap", short: "A separate budget per agent key, with reason codes.", status: "GUARD V3", long: "Each agent key gets its own daily budget. Over it, the agent gets AGENT_CAP back and can tell you why.", example: "50 USDT0 / day", to: href("agents"), circuit: [["NAND circuit #2", CIRCUIT.maxBuy]] },
   { name: "Partner approval", short: "Optional. A partner can speed up loosening; silence falls back after 7 days.", status: "GUARD V3", long: "Name a friend. They can approve a looser limit early. If they never answer, it unlocks after 7 days anyway.", example: "Optional", to: href("limits", { rule: "partner" }) },
-  { name: "Add a circuit", short: "Install a rule from the catalog, or build your own.", status: "CATALOG", long: "Pick a pinned TapeOut circuit from the Fengce catalog, or build one. Designers earn 80% of install fees.", example: "Catalog", to: href("limits", { tab: "add" }) },
+  { name: "Add a circuit", short: "Install a rule from the catalog, or build your own.", status: "CATALOG", long: "Pick a pinned TapeOut circuit from the Fengce catalog, or build one. Designers earn 80% of install fees.", example: "Catalog", to: href("limits", { tab: "add" }), circuit: [["Catalog circuits", CIRCUIT.catalog]] },
 ];
 
 function Rules() {
@@ -221,6 +221,15 @@ function Rules() {
           <div>
             <span className="lbl">Example setting</span>
             <div className="num" style={{ fontSize: 24, marginTop: 8 }}>{r.example}</div>
+            <div className="small" style={{ marginTop: 8 }}>
+              {r.circuit ? "Decided on " : "Kept by the guard's timelock"}
+              {r.circuit?.map(([label, anchor], i) => (
+                <span key={anchor}>
+                  {i ? " + " : ""}
+                  <a className="code-link mono" href={circuitHref(anchor)}>{label}</a>
+                </span>
+              ))}
+            </div>
           </div>
           <a className="pill accent big" href={r.to}>Set this</a>
         </div>

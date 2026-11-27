@@ -2,6 +2,9 @@ import { useEffect, useState } from "react";
 import { PRODUCT_NAME, REPO, TAPE_NAME } from "../brand";
 import { DEPLOYMENT, EXPLORER } from "../lib/chain";
 import DEWEB from "../../../deployments/deweb-xlayer-196.json";
+import TILT_LATCH from "../../../circuits/tilt-latch.json";
+import { keccak256 } from "viem";
+const TILT_LATCH_HASH = keccak256(TILT_LATCH.netlist as `0x${string}`);
 import { MAX_BUY_CIRCUIT, COUNTER } from "../okun/engine";
 import { PREPARED } from "../okun/reads";
 import { IncidentGrid } from "../okun/incidents";
@@ -196,6 +199,7 @@ function Docs() {
             <span className="lbl" style={{ display: "block", paddingBottom: 8 }}>Max per buy · circuit #{String(MAX_BUY_CIRCUIT.id)}</span>
             <div className="addr-row"><span>Processor</span><Addr value={MAX_BUY_CIRCUIT.processor} link={`${EXPLORER}/address/${MAX_BUY_CIRCUIT.processor}`} label="Copy processor address" /></div>
             <div className="addr-row"><span>Circuit</span><span className="mono" style={{ fontSize: 13 }}>#{String(MAX_BUY_CIRCUIT.id)} · NAND(amount over cap, paying USDT0)</span></div>
+            <div className="addr-row"><span>Also decides (guard v3)</span><span className="small">Quiet hours, hold lock and agent caps: allow = NAND(rule applies, condition), same circuit and pin</span></div>
             {PREPARED && <div className="addr-row"><span>Pin</span><Addr value={PREPARED.maxBuyPin} n={6} label="Copy pin id" /></div>}
           </div>
           <div id={CIRCUIT.counter} className="anchor">
@@ -206,6 +210,13 @@ function Docs() {
               Object.entries(PREPARED.counterPins).map(([n, pinId]) => (
                 <div key={n} className="addr-row"><span>Pin, {n} per hour</span><Addr value={pinId} n={6} label={`Copy pin for ${n} per hour`} /></div>
               ))}
+          </div>
+          <div id={CIRCUIT.tiltLatch} className="anchor">
+            <span className="lbl" style={{ display: "block", paddingBottom: 8 }}>Tilt-shield latch · guard v3</span>
+            <div className="addr-row"><span>Circuit</span><span className="mono" style={{ fontSize: 13 }}>{TILT_LATCH.gates} NAND + {TILT_LATCH.latches} LATCH · inputs isBuy, trip, clear · state paused</span></div>
+            <div className="addr-row"><span>Netlist hash</span><Addr value={TILT_LATCH_HASH} n={6} label="Copy netlist hash" /></div>
+            <div className="addr-row"><span>Processor #180</span><span className="small">taped out with guard v3 (circuits/tilt-latch.json, checked on every input and state)</span></div>
+            <div className="addr-row"><span>Count in the window</span><a className="code-link mono" style={{ fontSize: 13 }} href={circuitHref(CIRCUIT.counter)}>counter circuit #7, Tick period 30 min</a></div>
           </div>
           <div id={CIRCUIT.deweb} className="anchor">
             <span className="lbl" style={{ display: "block", paddingBottom: 8 }}>{TAPE_NAME} · this site on X Layer</span>

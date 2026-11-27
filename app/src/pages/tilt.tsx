@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { mount } from "../okun/ui";
+import { CIRCUIT, circuitHref, mount } from "../okun/ui";
 
 /** The simulator follows FengceGuardV3 (src/safe/FengceRulesV3.sol): the buy that makes N buys within 30 minutes, or a
  * buy of 3x the usual size, goes through and trips the shield; later buys are refused (TILT_SHIELD) until the cooldown
@@ -89,13 +89,22 @@ function Tilt() {
       <div className="ts-steps">
         {[
           ["01 · Watches", "How fast and how big you buy", "Only your Safe's own transactions. No price feeds, no servers."],
-          ["02 · Trips", `${n} buys in 30 min, or one buy 3× your usual`, "The buy that trips it still goes through. The guard records the pause on chain."],
+          ["02 · Trips", `${n} buys in 30 min, or one buy 3× your usual`, "circuits"],
           ["03 · Safe mode", "Only sells and sends to you", clear === "partner" ? "Until the cooldown ends, or your partner clears it early." : "Until the cooldown ends."],
         ].map(([k, t, d]) => (
           <div key={k}>
             <span className="lbl">{k}</span>
             <div className="ts-st">{t}</div>
-            <div className="ts-sd">{d}</div>
+            <div className="ts-sd">
+              {d === "circuits" ? (
+                <>
+                  <a className="code-link mono" href={circuitHref(CIRCUIT.counter)}>Counter circuit #7</a> counts buys in the window; the{" "}
+                  <a className="code-link mono" href={circuitHref(CIRCUIT.tiltLatch)}>Tilt-shield latch</a> circuit flips. Its state lives on chain.
+                </>
+              ) : (
+                d
+              )}
+            </div>
           </div>
         ))}
       </div>
