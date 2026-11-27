@@ -94,7 +94,8 @@ LEFT=$(( A + F ))
 GWEI=$(cast gas-price --rpc-url "$(rpc)")
 NEED=$(python3 -c "print(f'{($LEFT * $GAS_PER_CHUNK + 600000) * $GWEI * 1.2 / 1e18:.4f}')")
 BAL=$(cast balance $DEPLOYER --ether --rpc-url "$(rpc)")
-echo "   chunks left: $LEFT ($A asset chunks, $F page and data chunks)"
+echo "   site paths (sample): $(grep -oE "DEWEB path [^ ]+" <<<"$PLAN" | awk '{print $3}' | tr "\n" " ")"
+   echo "   chunks left: $LEFT ($A asset chunks, $F page and data chunks)"
 echo "   estimated cost: about $NEED OKB (gas price $(python3 -c "print($GWEI/1e9)") gwei, 20% margin); deployer has $BAL OKB"
 if [[ $DRY == 1 ]]; then
   python3 -c "import sys;sys.exit(0 if $BAL >= $NEED else 1)" && echo "   enough OKB." || echo "   not enough OKB: send at least $(python3 -c "print(f'{$NEED - $BAL + 0.005:.3f}')") OKB to $DEPLOYER first."
@@ -114,13 +115,23 @@ echo "TapeOut DeWeb upload on X Layer mainnet, from $DEPLOYER ($ACCOUNT)."
   unset PW
 FORGE_ARGS=(--account $ACCOUNT --sender $DEPLOYER --password-file "$PWFILE" --broadcast --slow --start-fresh)
 
-for PHASE in assets final; do
+# the files the home page loads (its script, module preloads and styles), so the root works again first
+HOME_FILES=$(python3 - <<'PY'
+import re
+h = open("app/dist/index.html").read()
+print(",".join(sorted({m.lstrip("./") for m in re.findall(r'(?:src|href)="(\./assets/[^"]+)"', h)})))
+PY
+)
+export HOME_FILES
+
+for PHASE in home assets final; do
   while :; do
     pending_clear
     echo "== $PHASE: batch of up to $BATCH chunks"
     OUT=$(forge_run PHASE=$PHASE MAX_CHUNKS=$BATCH) || { echo "The batch kept failing after 5 attempts. Run the script again: it continues from the chain." >&2; exit 1; }
     echo "   sent $(val chunksSent "$OUT") chunks; left: $(val remainingAssets "$OUT") asset, $(val remainingFinal "$OUT") page and data"
-    if [[ $PHASE == assets ]]; then [[ "$(val remainingAssets "$OUT")" == 0 ]] && break
+    if [[ $PHASE == home ]]; then [[ "$(val remainingAssets "$OUT")" == 0 && "$(val remainingFinal "$OUT")" == 0 ]] && break
+    elif [[ $PHASE == assets ]]; then [[ "$(val remainingAssets "$OUT")" == 0 ]] && break
     else [[ "$(val done "$OUT")" == 1 ]] && break
     fi
   done
@@ -128,12 +139,22 @@ done
 cleanup
 
 echo "== check every file on chain by SHA-256"
-(cd app && npx tsx scripts/deweb-check.mts) | tail -3
-python3 - <<'PY'
-import hashlib, json, os
+(cd app && npx tsx scripts/deweb-check.mts) | tail -3 || { echo "FAILED: the on-chain check did not pass." >&2; exit 1; }
+python3 - <<'PY' || { echo "FAILED: the files on chain do not match the build. Not done." >&2; exit 1; }
+import hashlib, json, os, sys
 rec = json.load(open("deployments/deweb-xlayer-196.json"))["files"]
 built = {os.path.relpath(os.path.join(r, f), "app/dist"): "0x" + hashlib.sha256(open(os.path.join(r, f), "rb").read()).hexdigest() for r, _, fs in os.walk("app/dist") for f in fs}
 bad = [p for p in built if rec.get(p, {}).get("sha256") != built[p]] + [p for p in rec if p not in built]
 print(f"   {len(built)} files in the build; on chain: {len(rec)}; {'all match' if not bad else f'{len(bad)} differ: ' + ', '.join(bad[:5])}")
+sys.exit(1 if bad or not built else 0)
 PY
+# the root page itself: index.html complete on chain with the build's hash, and the public gateway serving it
+SITES=0xd6EFb7adCc9c83dC4924Ad56f6a8E4e969b9ADB6
+CONTAINER=$(python3 -c "import json;print(json.load(open('deployments/deweb-xlayer-196.json'))['container'])")
+IDX=$(cast call $SITES "fileInfo(address,string)(uint32,string,bytes32,uint40,uint256)" "$CONTAINER" index.html --rpc-url "$(rpc)" | sed -n 3p)
+WANT=0x$(sha256sum app/dist/index.html | cut -d' ' -f1)
+[[ "$IDX" == "$WANT" ]] || { echo "FAILED: index.html on chain is $IDX, the build has $WANT. Not done." >&2; exit 1; }
+BODY=$(curl -s --max-time 60 https://6-2-180.tapekit.org/ || true)
+if grep -q "No such file on chain" <<<"$BODY" || [[ -z "$BODY" ]]; then echo "FAILED: https://6-2-180.tapekit.org/ does not serve the site (404 or empty). Not done." >&2; exit 1; fi
+echo "   root page: index.html on chain matches the build; the gateway serves it"
 echo "Done. Record: deployments/deweb-xlayer-196.json"

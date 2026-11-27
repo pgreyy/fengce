@@ -90,6 +90,8 @@ contract DeployDeWeb is Script {
     uint256 neededAssets;
     uint256 neededFinal;
     bool budgetHit;
+    /// HOME_FILES (with PHASE=home): the assets dist/index.html loads, comma-separated; they go up first, then index.html.
+    string homeFiles;
 
     function run() external {
         require(block.chainid == 196, "X Layer mainnet only");
@@ -97,6 +99,7 @@ contract DeployDeWeb is Script {
         phase = vm.envOr("PHASE", string("all"));
         maxChunks = vm.envOr("MAX_CHUNKS", uint256(0));
         plan = vm.envOr("PLAN", false);
+        homeFiles = string.concat(",", vm.envOr("HOME_FILES", string("")), ",index.html,");
         id = _findCircuit();
         vm.startBroadcast();
         if (id == 0) {
@@ -116,7 +119,7 @@ contract DeployDeWeb is Script {
             OPENER.open{value: fee}(address(CPU), id);
         }
         string[] memory paths = _upload();
-        bool finalStep = !plan && !budgetHit && neededChunks == 0 && !_is(phase, "assets");
+        bool finalStep = !plan && !budgetHit && neededChunks == 0 && _is(phase, "final") || (!plan && !budgetHit && neededChunks == 0 && _is(phase, "all"));
         if (finalStep) {
             // every file is complete on chain: only now remove files the build no longer has, and keep the name live
             _prune(paths);
@@ -195,15 +198,13 @@ contract DeployDeWeb is Script {
         }
         paths = new string[](n);
         uint256 k;
-        bytes memory prefix = bytes(string.concat(vm.projectRoot(), "/", DIST, "/"));
         string[] memory full = new string[](n);
         for (uint256 i; i < entries.length; i++) {
             if (entries[i].isDir) continue;
-            bytes memory f = bytes(entries[i].path);
-            uint256 cut = _startsWith(f, prefix) ? prefix.length : bytes(string.concat(DIST, "/")).length;
             full[k] = entries[i].path;
-            paths[k++] = string(_slice(f, cut, f.length));
+            paths[k++] = _sitePath(bytes(entries[i].path));
         }
+        if (plan) for (uint256 i; i < n && i < 4; i++) console2.log("DEWEB path", paths[i]);
         // pass 0: hashed assets; pass 1: data and other files; pass 2: pages (.html) last, so new pages only go live
         // once everything they load is on chain
         for (uint256 pass; pass < 3; pass++) {
@@ -211,9 +212,31 @@ contract DeployDeWeb is Script {
                 bool asset = _contains(bytes(paths[i]), "assets/");
                 bool page = _endsWith(bytes(paths[i]), ".html");
                 if ((pass == 0) != asset || (pass == 2) != (!asset && page)) continue;
+                if (_is(phase, "home") && !_contains(bytes(homeFiles), bytes(string.concat(",", paths[i], ",")))) continue;
                 _uploadFile(paths[i], vm.readFileBinary(full[i]), asset);
             }
         }
+    }
+
+    /// The site path of a file in app/dist: everything after the last "app/dist/" in the path readDir returns (forge may
+    /// return it normalised or not). Refuses anything that would not be a clean relative path.
+    function _sitePath(bytes memory f) internal pure returns (string memory) {
+        bytes memory marker = bytes("app/dist/");
+        uint256 at = type(uint256).max;
+        for (uint256 i; i + marker.length <= f.length; i++) {
+            bool m = true;
+            for (uint256 j; j < marker.length; j++) {
+                if (f[i + j] != marker[j]) {
+                    m = false;
+                    break;
+                }
+            }
+            if (m) at = i + marker.length;
+        }
+        require(at != type(uint256).max && at < f.length, "file outside app/dist");
+        bytes memory p = _slice(f, at, f.length);
+        require(p[0] != "/" && !_contains(p, "..") && !_contains(p, "dist/") && !_contains(p, "\\"), "unsafe site path");
+        return string(p);
     }
 
     function _is(string memory a, string memory b) internal pure returns (bool) {
@@ -270,8 +293,9 @@ contract DeployDeWeb is Script {
         if (asset) neededAssets += missing;
         else neededFinal += missing;
         if (plan || budgetHit) return false;
-        if (!(_is(phase, "all") || _is(phase, asset ? "assets" : "final"))) return false;
-        if (!asset && !_is(phase, "all") && neededAssets > 0) return false; // final files wait until every asset is on chain
+        bool home = _is(phase, "home");
+        if (!(home || _is(phase, "all") || _is(phase, asset ? "assets" : "final"))) return false;
+        if (!asset && !home && !_is(phase, "all") && neededAssets > 0) return false; // final files wait until every asset is on chain
         if (maxChunks != 0 && uploadedChunks + missing > maxChunks && uploadedChunks > 0) {
             budgetHit = true; // the next run continues from the chain
             return false;
