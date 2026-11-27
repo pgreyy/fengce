@@ -37,3 +37,7 @@ deployments/m2-demo-dryrun.json
 skills-lock.json
 deployments/m2c-demo-dryrun.json
 .deweb-record.bak
+
+# private working files (kept outside the repo)
+docs/demo-video-script.md
+docs/submission.md

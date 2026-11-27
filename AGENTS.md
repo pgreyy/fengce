@@ -12,7 +12,6 @@ checks, and which claims rest on mainnet evidence.
 - The app on TapeOut DeWeb: [deployments/deweb-xlayer-196.json](deployments/deweb-xlayer-196.json) (`6.2.180.tape`, container, files with SHA-256).
 - Release v1 (previous): [deployments/xlayer-196.json](deployments/xlayer-196.json), [deployments/manifest-xlayer-196.json](deployments/manifest-xlayer-196.json).
 - Event history (installs, Denied, timelocks) from the v2 deploy block: [app/public/events-snapshot.json](app/public/events-snapshot.json).
-- Hackathon write-up: [docs/SUBMISSION.md](docs/SUBMISSION.md).
 - Every README claim with its evidence: [docs/claims.json](docs/claims.json) ([docs/CLAIMS.md](docs/CLAIMS.md)).
 - Wallet guarantees: [docs/wallets.json](docs/wallets.json) ([docs/WALLETS.md](docs/WALLETS.md)).
 

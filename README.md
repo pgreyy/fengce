@@ -206,9 +206,6 @@ Every incident with its source: [getfengce.vercel.app/docs/?tab=inc](https://get
 Core limits are free. Catalog circuits pay their designers 80% of each install fee; per-check fees for agents (x402) and
 wallet integrations come later. [BUSINESS.md](BUSINESS.md).
 
-## Demo video
-
-The 2-minute script: [docs/demo-video-script.md](docs/demo-video-script.md).
 
 ## Licence
 
