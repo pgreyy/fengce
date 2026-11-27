@@ -1,8 +1,9 @@
+import { compareRules, currentRule, replaceSentence, ruleFromConfigure } from "../fengce/ruleSummary";
 import { V3 } from "../fengce/v3";
 import { useEffect, useState } from "react";
 import { decodeFunctionData, encodeFunctionData, getAddress, isAddress, parseAbi, type Address, type Hex } from "viem";
 import { FengceGuardArtifact } from "@fengce/sdk";
-import { DEPLOYMENT, client } from "../lib/chain";
+import { AGENT_EXECUTOR, DEPLOYMENT, client } from "../lib/chain";
 import { ActivityTable, useActivity } from "../fengce/ActivityTable";
 import { attempts, type Attempt } from "../fengce/activity";
 import { ENGINE } from "../fengce/engine";
@@ -28,6 +29,29 @@ function describe(data: Hex): string {
   } catch {
     return "Change the limits";
   }
+}
+
+/** Plain words for a scheduled change: for a new policy, what the Safe will refuse and what gets through that is
+ * refused today (fengce/ruleSummary.ts runs both rules on the same example transactions). */
+function PendingSummary({ data, safe, guard }: { data: Hex; safe: Address; guard: Address }) {
+  const [text, setText] = useState<{ main: string; looser: string | null } | null>(null);
+  useEffect(() => {
+    let live = true;
+    (async () => {
+      const next = await ruleFromConfigure(data);
+      if (!next) return { main: describe(data), looser: null };
+      const c = await compareRules(next, await currentRule(safe, guard), [AGENT_EXECUTOR]);
+      return { main: replaceSentence(c).replace("This replaces your current rule", "Replaces your current rule").replace("After the change", "Once applied"), looser: c.looser };
+    })().then((t) => live && setText(t), () => live && setText({ main: describe(data), looser: null }));
+    return () => void (live = false);
+  }, [data, safe, guard]);
+  if (!text) return <span className="small">Reading what this change does…</span>;
+  return (
+    <>
+      <span style={{ fontSize: 15 }}>{text.main}</span>
+      {text.looser && <span className="small" style={{ color: "var(--deny)" }}>Looser than now: {text.looser}.</span>}
+    </>
+  );
 }
 
 function Wallet() {
@@ -72,6 +96,7 @@ function Wallet() {
   }, [safe, actReady, bump]);
   const local: Attempt[] = attempts(safe);
   const pending = (hist?.scheduled ?? []).filter((s) => !s.done);
+  const isOwner = !!w.account && !!inst?.owners.some((o) => o.toLowerCase() === w.account!.toLowerCase());
   const bound = !!inst && inst.set && inst.guardOn && inst.moduleGuardOn;
   const since = hist?.ev.events.find((e) => e.event === "Configured");
   const weekAgo = Date.now() / 1000 - 7 * 86_400;
@@ -176,14 +201,16 @@ function Wallet() {
               const hms = `${String(Math.floor(left / 3600)).padStart(2, "0")}:${String(Math.floor((left % 3600) / 60)).padStart(2, "0")}:${String(left % 60).padStart(2, "0")}`;
               return (
                 <div key={p.id} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={{ fontSize: 16 }}>{describe(p.data)}</span>
+                  <PendingSummary data={p.data} safe={safe} guard={inst?.guard ?? ENGINE.guard} />
                   <span className="mono" style={{ fontSize: 13, color: "var(--accent)" }}>{left > 0 ? `${hms} left` : "ready to apply"}</span>
                   {!demo && (
                     <span style={{ display: "flex", gap: 14 }}>
                       {left === 0 && (
                         <button type="button" className="alink accent" disabled={busy} onClick={() => safeTx("Apply", inst?.guard ?? ENGINE.guard, p.data)}>Apply</button>
                       )}
-                      <button type="button" className="alink" disabled={busy} onClick={() => safeTx("Cancel", inst?.guard ?? ENGINE.guard, encodeFunctionData({ abi: guardAbi, functionName: "cancelAdmin", args: [inst?.guard ?? ENGINE.guard, p.data] }))}>Cancel</button>
+                      {isOwner && (
+                        <button type="button" className="alink" disabled={busy} title="Takes effect at once: cancelling keeps the stricter rule you have now." onClick={() => safeTx("Cancel this change", inst?.guard ?? ENGINE.guard, encodeFunctionData({ abi: guardAbi, functionName: "cancelAdmin", args: [inst?.guard ?? ENGINE.guard, p.data] }))}>Cancel this change</button>
+                      )}
                     </span>
                   )}
                 </div>

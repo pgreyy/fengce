@@ -17,6 +17,7 @@ import { Addr, CIRCUIT, circuitHref, href, openWallet, short } from "./ui";
 import { V3 } from "./v3";
 import { describe, isAppContainer, loadCircuits, parseQuery, snapshotCircuits, type Circuit } from "./circuitIndex";
 import { ImportRow } from "./ImportRow";
+import { compareRules, currentRule, replaceSentence, ruleFromSchema, type Comparison } from "./ruleSummary";
 import m2 from "../../../deployments/m2-demo-xlayer-196.json";
 
 const V3_EXECUTOR = (m2.agentExecutor ?? null) as Address | null;
@@ -361,6 +362,7 @@ function Sheet({ row, mode, st, occupant, onClose, onDone }: { row: Row; mode: "
   const [done, setDone] = useState<{ text: string; txs: Hex[] } | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [ack, setAck] = useState(false);
+  const [cmp, setCmp] = useState<Comparison | null>(null);
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && !busy && onClose();
@@ -370,6 +372,15 @@ function Sheet({ row, mode, st, occupant, onClose, onDone }: { row: Row; mode: "
 
   const capN = parseAmount(cap);
   const baseN = parseAmount(base);
+  useEffect(() => {
+    setCmp(null);
+    if (mode !== "add" || p.stateful || (usesCap(p) && capN === null)) return;
+    let live = true;
+    presetSchema(p, BigInt(Math.round((capN ?? 0) * 1e6)))
+      .then(async (schema) => compareRules(ruleFromSchema(schema, row.processor, row.id), st?.inst.set ? await currentRule(st.inst.safe, st.inst.guard) : null, [AGENT_EXECUTOR, ...(V3_EXECUTOR ? [V3_EXECUTOR] : [])]))
+      .then((x) => live && setCmp(x), () => live && setCmp(null));
+    return () => void (live = false);
+  }, [mode, cap, st?.inst.safe, st?.inst.set]); // eslint-disable-line react-hooks/exhaustive-deps
   const set = !!st?.inst.set;
   const needsBase = p.stateful && !set;
   const replaces = mode === "add" && !!p.stateful && !!occupant && st?.tickPin?.toLowerCase() !== row.entry.pinId.toLowerCase();
@@ -503,6 +514,14 @@ function Sheet({ row, mode, st, occupant, onClose, onDone }: { row: Row; mode: "
                     </span>
                   </label>
                 )}
+              </div>
+            )}
+
+            {cmp && (
+              <div className="cat-sec">
+                <span className="lbl">What changes</span>
+                <span className="body" style={{ fontSize: 15 }}>{replaceSentence(cmp)}</span>
+                {cmp.looser && <span className="imp-warn"><b>Looser than now:</b> {cmp.looser}.</span>}
               </div>
             )}
 

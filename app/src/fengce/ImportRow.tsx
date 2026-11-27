@@ -7,6 +7,7 @@ import { schemaHash, type SchemaFile } from "@fengce/sdk";
 import { MEMORY_SET, cannotUse, describe, evalBits, memoryNote, stepBits, zeroState, type Circuit } from "./circuitIndex";
 import { FACT_LABEL, NOT_WIRABLE, fingerprint, importPlan, importSchema, importStatefulPlan, pinFor, type Fact } from "./importInstall";
 import { createSafe } from "./safes";
+import { compareRules, currentRule, replaceSentence, ruleFromSchema, type Comparison } from "./ruleSummary";
 import { parseAmount } from "./LimitsEditor";
 import { multiSend, TOKENS } from "./engine";
 import { PREPARED, type Installed } from "./reads";
@@ -39,6 +40,14 @@ export function ImportRow({ c, inst, guard, agentExecutor, open, onToggle }: { c
     if ((open || sheet) && !fp && !why) fingerprint(c).then(setFp, () => setFp(null));
   }, [open, sheet]); // eslint-disable-line react-hooks/exhaustive-deps
   const schema = useMemo(() => (fp ? importSchema(c, fp.netlist, facts, agentExecutor) : null), [fp, facts]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [cmp, setCmp] = useState<Comparison | null>(null);
+  useEffect(() => {
+    setCmp(null);
+    if (!schema || "error" in schema || c.nState) return;
+    let live = true;
+    compareRules(ruleFromSchema(schema, c.cpu, BigInt(c.id)), null, [agentExecutor]).then((x) => live && setCmp(x), () => live && setCmp(null));
+    return () => void (live = false);
+  }, [schema]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const add = () => {
     if (!w.account || !w.safe) return openWallet();
@@ -115,12 +124,15 @@ export function ImportRow({ c, inst, guard, agentExecutor, open, onToggle }: { c
               ))}
               {schema && "error" in schema && <span className="err" style={{ fontSize: 14 }}>{schema.error}</span>}
               {schema && !("error" in schema) && (mem ? <StepPreview c={c} facts={facts} /> : <Preview c={c} facts={facts} />)}
+              {cmp?.neverRefuses && <span className="imp-warn"><b>With this mapping the circuit never refuses anything; your Safe would have no limit.</b> The facts you wired cannot both be true in one transaction (for example an amount cap in USDT0 with "token paid is USDC").</span>}
+              {cmp?.neverAllows && <span className="imp-warn"><b>With this mapping the circuit never allows anything:</b> every transaction from your Safe would be refused.</span>}
+              {cmp && !cmp.neverRefuses && !cmp.neverAllows && cmp.comparable && <span className="small" style={{ color: "var(--text)" }}>With this mapping your Safe {cmp.next}.</span>}
               <span className="small">Quiet hours, hold lock, agent caps and Tilt-shield are decided by guard v3 on its own circuits; they cannot be wired into another circuit.</span>
             </div>
           )}
         </div>
       )}
-      {sheet && schema && !("error" in schema) && fp && <ImportSheet c={c} schema={schema} facts={facts} fp={fp} inst={inst} guard={guard} onClose={() => setSheet(false)} />}
+      {sheet && schema && !("error" in schema) && fp && <ImportSheet c={c} schema={schema} facts={facts} fp={fp} inst={inst} guard={guard} agentExecutor={agentExecutor} onClose={() => setSheet(false)} />}
       {sheet && (!schema || "error" in schema || !fp) && <StubSheet onClose={() => setSheet(false)} text={!fp ? "Reading the circuit from X Layer…" : schema && "error" in schema ? `Finish the mapping first: ${schema.error}` : "Map its inputs first."} />}
     </Fragment>
   );
@@ -252,9 +264,19 @@ function StubSheet({ text, onClose }: { text: string; onClose: () => void }) {
 }
 
 /** Warning, fingerprint, the mapping, then pin and install. */
-function ImportSheet({ c, schema, facts, fp, inst, guard, onClose }: { c: Circuit; schema: SchemaFile; facts: Fact[]; fp: Awaited<ReturnType<typeof fingerprint>>; inst: Installed | null; guard: Address; onClose: () => void }) {
+function ImportSheet({ c, schema, facts, fp, inst, guard, agentExecutor, onClose }: { c: Circuit; schema: SchemaFile; facts: Fact[]; fp: Awaited<ReturnType<typeof fingerprint>>; inst: Installed | null; guard: Address; agentExecutor: Address; onClose: () => void }) {
   const w = useWallet();
   const [ack, setAck] = useState(false);
+  const [override, setOverride] = useState(false);
+  const [cmp, setCmp] = useState<Comparison | null>(null);
+  useEffect(() => {
+    if (c.nState) return;
+    let live = true;
+    (inst?.set ? currentRule(inst.safe, inst.guard) : Promise.resolve(null))
+      .then((cur) => compareRules(ruleFromSchema(schema, c.cpu, BigInt(c.id)), cur, [agentExecutor]))
+      .then((x) => live && setCmp(x), () => live && setCmp(null));
+    return () => void (live = false);
+  }, [inst?.safe, inst?.set]); // eslint-disable-line react-hooks/exhaustive-deps
   const [pin, setPin] = useState<{ pinId: Hex; exists: boolean } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -369,12 +391,25 @@ function ImportSheet({ c, schema, facts, fp, inst, guard, onClose }: { c: Circui
             </div>
             <span className="small">
               {set
-                ? "Your Safe already runs Fengce: your wallet pins the circuit, then the Safe schedules the change; it applies after the wait (1 day, 7 with a partner), like any loosening."
+                ? `Your Safe already runs Fengce: ${plan.ownerPin ? "your wallet pins the circuit, then " : "the circuit is pinned already; "}the Safe schedules the change. It applies after the wait (1 day, 7 with a partner), like any loosening, and you can cancel it until then.`
                 : mem
                   ? "Your Safe has no guard yet: one batch pins the circuit, sets up its memory on Tick and installs guard v3 (Tilt-shield on)."
                   : "Your Safe has no guard yet: one batch pins the circuit and installs guard v3 with it as the policy (Tilt-shield on). Tightening later applies at once; loosening waits 1 day."}
             </span>
           </div>
+        )}
+        {cmp && (
+          <div className="cat-sec">
+            <span className="lbl">What changes</span>
+            <span className="body" style={{ fontSize: 15 }}>{replaceSentence(cmp)}</span>
+            {cmp.looser && <span className="imp-warn"><b>Looser than now:</b> {cmp.looser}.</span>}
+          </div>
+        )}
+        {cmp?.neverRefuses && (
+          <label className="cat-ack">
+            <input type="checkbox" checked={override} onChange={(e) => setOverride(e.target.checked)} />
+            <span>With this mapping the circuit never refuses anything; your Safe would have no limit. I want to add it anyway.</span>
+          </label>
         )}
         <label className="cat-ack">
           <input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} />
@@ -393,8 +428,8 @@ function ImportSheet({ c, schema, facts, fp, inst, guard, onClose }: { c: Circui
             </span>
           </div>
         ) : (
-          <button type="button" className="pill accent big" disabled={!ack || !!blocker || !plan || !!busy} onClick={sign}>
-            {busy ?? (!plan ? "Preparing…" : sigs > 1 ? "Pin, then schedule" : "Pin and install")}
+          <button type="button" className="pill accent big" disabled={!ack || !!blocker || !plan || !!busy || (!!cmp?.neverRefuses && !override) || (!c.nState && !cmp)} onClick={sign}>
+            {busy ?? (!plan ? "Preparing…" : plan.schedule ? (plan.ownerPin ? "Pin, then schedule" : "Schedule the change") : plan.batch[0]?.label.startsWith("Pin") ? "Pin and install" : "Install")}
           </button>
         )}
       </div>
