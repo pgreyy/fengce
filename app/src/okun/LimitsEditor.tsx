@@ -77,6 +77,7 @@ export function LimitsEditor({ installed, onDone }: { installed: Installed | nul
   const [test, setTest] = useState<{ allow: boolean; reason: string } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string; tx?: Hex } | null>(null);
+  const [replaceOk, setReplaceOk] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -119,6 +120,9 @@ export function LimitsEditor({ installed, onDone }: { installed: Installed | nul
       return { to: ENGINE.guard, data: encodeFunctionData({ abi: FengceGuardArtifact.abi as any, functionName: "scheduleAdmin", args: [ENGINE.guard, configure] }), operation: 0 };
     });
 
+  // a guard that is not Fengce: installing replaces it, so it needs an explicit confirm
+  const rawGuard = String(installed?.raw?.guard ?? "0x0000000000000000000000000000000000000000");
+  const otherGuard = !!installed && !installed.guardOn && !/^0x0{40}$/i.test(rawGuard) ? rawGuard : null;
   const blocker = !PREPARED
     ? "The limit circuits are not pinned on X Layer yet. Testing works; signing opens once they are."
     : !w.account
@@ -131,7 +135,9 @@ export function LimitsEditor({ installed, onDone }: { installed: Installed | nul
             ? `This Safe needs ${installed.threshold} owner signatures. One-signature install is for 1-of-1 Safes; use the Safe app for this one.`
             : installed && installed.guardOn && !installed.okunPolicy && alreadySet
               ? "This Safe already runs a Fengce policy that the Limits page did not set."
-              : null;
+              : otherGuard && !replaceOk
+                ? "This Safe runs another guard. Confirm above to replace it with Fengce."
+                : null;
 
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 32, alignItems: "flex-start" }}>
@@ -209,6 +215,14 @@ export function LimitsEditor({ installed, onDone }: { installed: Installed | nul
           <div className="kv"><span>Changing a limit</span><span className="mono">waits 1 day</span></div>
           <div className="kv"><span>Removing the guard</span><span className="mono">waits 2 days, every owner signs</span></div>
           <div className="kv"><span>Partner approval</span><span className="mono muted">coming soon</span></div>
+          {otherGuard && !alreadySet && (
+            <label className="small" style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 8, color: "var(--text)" }}>
+              <input type="checkbox" checked={replaceOk} onChange={(e) => setReplaceOk(e.target.checked)} style={{ marginTop: 3 }} />
+              <span>
+                This Safe already runs another guard ({otherGuard.slice(0, 6)}…{otherGuard.slice(-4)}). Installing Fengce replaces it. I want to replace it.
+              </span>
+            </label>
+          )}
           {alreadySet ? (
             <>
               <span className="small" style={{ marginTop: 8 }}>

@@ -1,6 +1,7 @@
 import { StrictMode, useEffect, useRef, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { PRODUCT_NAME, REPO, TAPE_NAME } from "../brand";
+import { checkExistingSafe, type SafeCheck } from "./addSafe";
 import { createSafe, useOwnedSafes } from "./safes";
 import { chooseSafe, connect, disconnect, useWallet } from "./wallet";
 import "./styles.css";
@@ -160,6 +161,73 @@ function ThemeButton() {
   );
 }
 
+// ------------------------------------------------------------------ add an existing Safe (in the wallet menu)
+function AddExistingSafe({ close }: { close: () => void }) {
+  const w = useWallet();
+  const [open, setOpen] = useState(false);
+  const [addr, setAddr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const [res, setRes] = useState<SafeCheck | null>(null);
+  if (!w.account) return null;
+  const add = async () => {
+    setErr(null);
+    setRes(null);
+    setBusy(true);
+    try {
+      const r = await checkExistingSafe(addr, w.account!);
+      chooseSafe(r.safe); // saved in this browser for this wallet, and selected
+      setRes(r);
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (!open)
+    return (
+      <button type="button" role="menuitem" onClick={(e) => (e.stopPropagation(), setOpen(true))}>
+        Add an existing Safe
+      </button>
+    );
+  return (
+    <div className="add-safe" onClick={(e) => e.stopPropagation()}>
+      <span className="lbl">Add an existing Safe</span>
+      <div style={{ display: "flex", gap: 6 }}>
+        <input className="field mono" value={addr} onChange={(e) => setAddr(e.target.value.trim())} placeholder="0x… Safe on X Layer" aria-label="Safe address" spellCheck={false} autoComplete="off" />
+        <button type="button" className="pill line hpill" disabled={busy || !addr} onClick={add}>
+          {busy ? "Checking" : "Add"}
+        </button>
+      </div>
+      {err && <span className="err" style={{ fontSize: 13 }}>{err}</span>}
+      {res && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13.5 }}>
+          <span>
+            Safe {res.version} · {res.threshold} of {res.owners.length} · added and selected
+          </span>
+          {res.kind === "none" && (
+            <>
+              <span className="muted">No guard is installed: nothing is checked yet.</span>
+              <span style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+                <a className="alink accent" href={href("limits")} onClick={close}>Install limits</a>
+                <a className="alink" href={href("install")} onClick={close}>With Safe{"{Wallet}"}</a>
+              </span>
+            </>
+          )}
+          {(res.kind === "fengce-v2" || res.kind === "fengce-v3") && <span className="allow">Fengce guard {res.kind === "fengce-v3" ? "v3" : "v2"} is installed.</span>}
+          {res.kind === "other" && res.guard && (
+            <>
+              <span className="deny">Another guard is set on this Safe:</span>
+              <Addr value={res.guard} label="Copy guard address" />
+              <span className="muted">Fengce does not replace it unless you confirm on the Limits page.</span>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ------------------------------------------------------------------ wallet menu (dropdown on desktop, inside the sheet on mobile)
 function WalletMenu({ close }: { close: () => void }) {
   const w = useWallet();
@@ -193,6 +261,7 @@ function WalletMenu({ close }: { close: () => void }) {
             </div>
           );
         })}
+        <AddExistingSafe close={close} />
         <button
           type="button"
           role="menuitem"

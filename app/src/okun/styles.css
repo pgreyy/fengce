@@ -138,6 +138,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .menu .lbl { padding: 8px 10px; }
 .copy-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 6px; border-radius: 7px; border: 1px solid var(--line); background: none; color: var(--muted); cursor: pointer; flex: 0 0 auto; }
 .copy-btn:hover { color: var(--text); border-color: var(--muted); }
+.add-safe { display: flex; flex-direction: column; gap: 8px; padding: 8px 10px 10px; border-top: 1px solid var(--line); margin-top: 4px; }
+.add-safe .field { min-width: 0; flex: 1; font-size: 13px; }
+.menu .add-safe .pill.line { border: 1px solid var(--line); padding: 0 14px; justify-content: center; }
 .menu .copy-btn { padding: 0 6px; border: 1px solid var(--line); border-radius: 7px; font-size: 11px; }
 
 /* footer */
