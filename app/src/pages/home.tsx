@@ -7,7 +7,6 @@ import { readInstalled } from "../fengce/reads";
 import { CIRCUIT, CodeCard, circuitHref, href, mount, short, StartLink } from "../fengce/ui";
 import { startVinyl } from "../fengce/vinyl-hero.js";
 import { EXPLORER_TX, safeInfo, simulateSafeTx } from "../fengce/wallet";
-import { DEMO, REASONS, guardOn, swapOfTx, type Swap } from "../fengce/proof";
 
 /** The Safe of the mainnet acceptance test: its real allowed swap and a live check of an over-limit one. */
 const LIVE_SAFE = getAddress("0x5641DA334011832Feec997875781a3D40239465e") as Address;
@@ -40,7 +39,7 @@ const mix = (pct: number) => `color-mix(in srgb, var(--bg) ${pct}%, transparent)
 function Hero() {
   return (
     <div className="hero">
-      <Vinyl cls="hero-vinyl" veil={`linear-gradient(90deg, ${mix(94)} 0%, ${mix(70)} 42%, ${mix(0)} 70%)`} />
+      <Vinyl veil={`linear-gradient(90deg, ${mix(94)} 0%, ${mix(70)} 42%, ${mix(0)} 70%)`} />
       <div className="w hero-in">
         <div className="hero-top">
           <span className="lbl">
@@ -56,7 +55,6 @@ function Hero() {
             <a className="pill line big" href={href("try")}>Test a limit</a>
           </div>
         </div>
-        <ProofCard />
         <div className="works">
           <span>Works inside</span>
           <b>Safe{"{Wallet}"}</b>
@@ -67,43 +65,6 @@ function Hero() {
         </div>
       </div>
       <span className="hero-cue" aria-hidden="true" />
-    </div>
-  );
-}
-
-// ------------------------------------------------------------------ phones: live proof card inside the hero
-interface Proof {
-  on: boolean | null;
-  swap: Swap | null;
-  refused: Swap | null;
-}
-function ProofCard() {
-  const [p, setP] = useState<Proof | null>(null);
-  useEffect(() => {
-    if (!DEMO || !window.matchMedia("(max-width: 767px)").matches) return;
-    let alive = true;
-    Promise.all([guardOn(DEMO.safe, DEMO.guard).catch(() => null), swapOfTx(DEMO.swapTx).catch(() => null), swapOfTx(DEMO.refuseTx).catch(() => null)]).then(
-      ([on, swap, refused]) => alive && setP({ on, swap, refused }),
-    );
-    return () => void (alive = false);
-  }, []);
-  if (!DEMO) return null;
-  const sk = <i className="sk" style={{ width: 150 }} />;
-  return (
-    <div className="proof">
-      <div className="proof-h">
-        <span className="mono">Safe {short(DEMO.safe)}</span>
-        <span className={`proof-on${p?.on === false ? " off" : ""}`}>{p ? (p.on ? "● guard on" : p.on === false ? "○ guard off" : "") : ""}</span>
-      </div>
-      <a className="proof-r" href={EXPLORER_TX(DEMO.swapTx)} target="_blank" rel="noreferrer noopener">
-        <span>{p ? (p.swap ? `Swap ${p.swap.amount} → ${p.swap.out}` : "Swap") : sk}</span>
-        <span className="tag g">ALLOWED</span>
-      </a>
-      <a className="proof-r" href={EXPLORER_TX(DEMO.refuseTx)} target="_blank" rel="noreferrer noopener">
-        <span>{p ? (p.refused ? `Swap ${p.refused.amount} → ${p.refused.out}` : "Swap") : sk}</span>
-        <span className="tag r">REFUSED · {REASONS[DEMO.refusedCode] ?? `code ${DEMO.refusedCode}`}</span>
-      </a>
-      <span className="proof-f">X Layer mainnet · {DEMO.refusedCode === 1 ? "refused by the max per buy circuit, recorded on chain" : "refusal recorded on chain"}</span>
     </div>
   );
 }

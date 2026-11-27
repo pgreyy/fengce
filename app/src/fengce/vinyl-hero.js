@@ -12,12 +12,11 @@ export function startVinyl(canvas, opts) {
     canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.width = W + "px"; canvas.style.height = H + "px";
     narrow = W < 768;
     if (narrow) {
-      // phones: background for the live proof card in the middle of the hero (lower opacity is set in CSS); the record's
-      // visible half sits behind the card and the arm reaches in from the right edge
-      cx = W * 0.86; cy = H * 0.8; rMin = W * 0.12; rMax = H * 0.44;
-      var nxp = W * 0.52, nyp = H * 0.64;
+      // phones: the text sits at the bottom of the hero; the record and tonearm fill the open space above it
+      cx = W * 0.8; cy = H * 0.44; rMin = W * 0.12; rMax = H * 0.44;
+      var nxp = W * 0.5, nyp = H * 0.24;
       thetaN = Math.atan2(nyp - cy, nxp - cx); tipR = Math.hypot(nxp - cx, nyp - cy);
-      pvx = W * 0.94; pvy = H * 0.42;
+      pvx = W * 0.95; pvy = H * 0.05;
     } else {
       cx = W * 0.74; cy = H * 1.32; rMin = H * 0.42; rMax = Math.hypot(cx, cy) + 20;
       thetaN = -1.3; tipR = rMin + (rMax - rMin) * 0.22; pvx = W * 0.95; pvy = -H * 0.02;
