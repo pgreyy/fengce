@@ -23,6 +23,18 @@ MAINNET=https://rpc.xlayer.tech
 DRY=0
 [[ "${1:-}" == "--dry-run" ]] && DRY=1
 
+# One cleanup for every exit path (success, failure, Ctrl+C, kill): stop the fork and shred the password file.
+ANVIL=""
+PWFILE=""
+cleanup() {
+  [[ -n "$ANVIL" ]] && kill "$ANVIL" 2>/dev/null
+  [[ -n "$PWFILE" && -e "$PWFILE" ]] && shred -u "$PWFILE" 2>/dev/null
+  PWFILE=""
+}
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
 if [[ $DRY == 1 ]]; then
   OUT=deployments/m2-demo-dryrun.json # git-ignored
   STATE=$OUT
@@ -31,7 +43,6 @@ if [[ $DRY == 1 ]]; then
   RPC=http://127.0.0.1:$PORT
   anvil --fork-url "$MAINNET" --port $PORT --auto-impersonate --silent &
   ANVIL=$!
-  trap 'kill $ANVIL 2>/dev/null' EXIT
   for _ in $(seq 60); do cast block-number --rpc-url $RPC >/dev/null 2>&1 && break; sleep 0.5; done
   # the fork deployer gets 2 USDT0 and some OKB, as on mainnet
   cast rpc anvil_setBalance $DEPLOYER 0x16345785D8A0000 --rpc-url $RPC >/dev/null
@@ -48,6 +59,14 @@ else
   echo "Milestone 2 on X Layer mainnet, from $DEPLOYER ($ACCOUNT)."
   read -r -s -p "Keystore password for $ACCOUNT: " PW
   echo
+  # forge cannot read /dev/fd paths, so the password goes to a private file (mode 600, in the per-user runtime folder
+  # when there is one) that the EXIT/INT/TERM trap shreds. It is never echoed or logged.
+  PWDIR=${XDG_RUNTIME_DIR:-$HOME/.cache}
+  [[ -d "$PWDIR" ]] || (umask 077 && mkdir -p "$PWDIR")
+  PWFILE=$(umask 077 && mktemp "$PWDIR/m2-pw.XXXXXX")
+  chmod 600 "$PWFILE"
+  printf '%s' "$PW" >"$PWFILE"
+  unset PW
   SIGN=(--account $ACCOUNT --sender $DEPLOYER)
 fi
 [[ -f "$STATE" && -s "$STATE" ]] || echo '{"chainId":196,"txs":{}}' >"$STATE"
@@ -86,8 +105,7 @@ step() {
   if [[ $DRY == 1 ]]; then
     log=$(cd contracts && STEP=$name STATE="$ROOT/$STATE" forge script script/M2Demo.s.sol --rpc-url $RPC "${SIGN[@]}" --broadcast --slow 2>&1) || { echo "$log" | tail -25; exit 1; }
   else
-    # the password reaches forge through a pipe (process substitution): never on disk, never in the process list
-    log=$(cd contracts && STEP=$name STATE="$ROOT/$STATE" forge script script/M2Demo.s.sol --rpc-url $RPC "${SIGN[@]}" --password-file <(printf '%s' "$PW") --broadcast --slow 2>&1) || { echo "$log" | tail -25; exit 1; }
+    log=$(cd contracts && STEP=$name STATE="$ROOT/$STATE" forge script script/M2Demo.s.sol --rpc-url $RPC "${SIGN[@]}" --password-file "$PWFILE" --broadcast --slow 2>&1) || { echo "$log" | tail -25; exit 1; }
   fi
   local run=contracts/broadcast/M2Demo.s.sol/196/run-latest.json
   python3 -c "$RECORD" "$STATE" "$name" "$run" <<<"$log"
@@ -113,5 +131,5 @@ fi
 step tilt
 step paused
 
-unset PW
+cleanup
 echo "Done. Addresses and transaction IDs: $OUT"
