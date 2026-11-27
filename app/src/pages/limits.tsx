@@ -1,19 +1,12 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
+import { BuildPanel } from "../okun/BuildPanel";
+import { CatalogPanel } from "../okun/CatalogPanel";
 import { LimitsEditor } from "../okun/LimitsEditor";
 import { readInstalled, type Installed } from "../okun/reads";
 import { href, mount, param, short, StartLink } from "../okun/ui";
 import { useWallet } from "../okun/wallet";
 
 type Tab = "tpl" | "add" | "build";
-
-function Soon({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="panel" style={{ padding: 24, display: "flex", flexDirection: "column", gap: 12, maxWidth: 720 }}>
-      <span className="lbl">{title} · coming soon</span>
-      <p className="body">{children}</p>
-    </div>
-  );
-}
 
 function Limits() {
   const w = useWallet();
@@ -41,18 +34,8 @@ function Limits() {
         ))}
       </div>
       {tab === "tpl" && (loading ? <p className="body">Reading your Safe from X Layer…</p> : <LimitsEditor key={`${installed?.safe}:${installed?.set}`} installed={installed} onDone={setInstalled} />)}
-      {tab === "add" && (
-        <Soon title="Add a circuit">
-          Pick a circuit from the Fengce Catalog, or import one by its ID, connect its inputs to your wallet's facts, test it, and add it to
-          your limits. The designer earns 80% of each install.
-        </Soon>
-      )}
-      {tab === "build" && (
-        <Soon title="Build your own">
-          Combine one or two conditions (buy size, hour of day, trades in the last hour) into a rule. It is compiled into a new TapeOut
-          circuit, checked on every input, and taped out from your wallet for a one-time fee.
-        </Soon>
-      )}
+      {tab === "add" && <CatalogPanel />}
+      {tab === "build" && <BuildPanel />}
     </main>
   );
 }

@@ -259,13 +259,13 @@ export async function simulateSafeTx(owner: Address, safe: Address, tx: { to: Ad
 
 /** Sends a call from the connected wallet and waits for it. `gas` forces sending a transaction the node expects to revert
  * (to record a refusal on chain). */
-export async function sendFromWallet(to: Address, data: Hex, gas?: bigint): Promise<{ hash: Hex; status: "success" | "reverted" }> {
+export async function sendFromWallet(to: Address, data: Hex, gas?: bigint, value?: bigint): Promise<{ hash: Hex; status: "success" | "reverted" }> {
   const w = store.wallet;
   const account = store.account;
   if (!w || !account) throw new Error("Connect a wallet first");
   await ensureXLayer(w);
   const wc = createWalletClient({ account, transport: custom(w.provider), chain: { id: 196, name: "X Layer", nativeCurrency: { name: "OKB", symbol: "OKB", decimals: 18 }, rpcUrls: { default: { http: [XLAYER.rpc] } } } });
-  const hash = await wc.sendTransaction({ to, data, gas });
+  const hash = await wc.sendTransaction({ to, data, gas, value });
   const r = await client.waitForTransactionReceipt({ hash });
   return { hash, status: r.status };
 }
