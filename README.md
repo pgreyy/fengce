@@ -53,16 +53,17 @@ Tightening is instant (guard v3), loosening waits 1 day, removing the guard wait
 
 | Rule | Status | Circuit | Evidence |
 |---|---|---|---|
-| Max per buy | LIVE | [NAND #2](https://getfengce.vercel.app/docs/?tab=circuits#c-max-per-buy) | [`0x9414b8f3…dbe7d9`](https://www.oklink.com/x-layer/tx/0x9414b8f3c850cfa7479ac679e90d707875ef47de7628c4dd8a6bdc5882dbe7d9) allowed; refusal [test](contracts/test/fork/LimitsInstall.t.sol) |
+| Max per buy | LIVE | [NAND #2](https://getfengce.vercel.app/docs/?tab=circuits#c-max-per-buy) | [`0x9414b8f3…dbe7d9`](https://www.oklink.com/x-layer/tx/0x9414b8f3c850cfa7479ac679e90d707875ef47de7628c4dd8a6bdc5882dbe7d9) allowed; [`0x78dd364b…021283`](https://www.oklink.com/x-layer/tx/0x78dd364b256c32b70eebbac717dd5c8ed7b5876def35ba6118be7a81d4021283) refused (guard v3) |
 | Trades per clock hour | LIVE | [Counter #7](https://getfengce.vercel.app/docs/?tab=circuits#c-trades-per-hour) | [contracts/test/fork/LimitsInstall.t.sol](contracts/test/fork/LimitsInstall.t.sol) |
-| Quiet hours | v3 | [NAND #2](https://getfengce.vercel.app/docs/?tab=circuits#c-max-per-buy) | [GuardV3.t.sol](contracts/test/fork/GuardV3.t.sol) `test_quietHours_nandCircuit` |
-| Hold lock | v3 | [NAND #2](https://getfengce.vercel.app/docs/?tab=circuits#c-max-per-buy) | `test_holdLock_nandCircuit` |
-| Tilt-shield | v3 | [Counter #7](https://getfengce.vercel.app/docs/?tab=circuits#c-trades-per-hour) + [latch](https://getfengce.vercel.app/docs/?tab=circuits#c-tilt-latch) | `test_tiltShield_counterAndLatchCircuits`, `test_tiltShield_sizeTrip_andPartnerClear` |
-| Agent cap | v3 | [NAND #2](https://getfengce.vercel.app/docs/?tab=circuits#c-max-per-buy) | `test_agentCap_nandCircuit` |
-| Partner approval | v3 | guard timelock | `test_tiltShield_sizeTrip_andPartnerClear` |
+| Quiet hours | v3 on mainnet (fork-tested) | [NAND #2](https://getfengce.vercel.app/docs/?tab=circuits#c-max-per-buy) | [GuardV3.t.sol](contracts/test/fork/GuardV3.t.sol) `test_quietHours_nandCircuit` |
+| Hold lock | v3 on mainnet (fork-tested) | [NAND #2](https://getfengce.vercel.app/docs/?tab=circuits#c-max-per-buy) | `test_holdLock_nandCircuit` |
+| Tilt-shield | LIVE (v3) | [Counter #7](https://getfengce.vercel.app/docs/?tab=circuits#c-trades-per-hour) + [latch](https://getfengce.vercel.app/docs/?tab=circuits#c-tilt-latch) | [`0x52fa8d40…de0b2b`](https://www.oklink.com/x-layer/tx/0x52fa8d40882b75e6561a029afde8fc31a8498a911202253e3313e38959de0b2b) refused after 4 buys in the same half hour; `test_tiltShield_counterAndLatchCircuits` |
+| Agent cap | LIVE (v3) | [NAND #2](https://getfengce.vercel.app/docs/?tab=circuits#c-max-per-buy) | [`0xbde663dc…d728ae`](https://www.oklink.com/x-layer/tx/0xbde663dcf559fa162d1bf406836a84859f893dccd805fbac9cd92882c7d728ae) denied (OKX Agentic Wallet); `test_agentCap_nandCircuit` |
+| Partner approval | v3 on mainnet (fork-tested) | guard timelock | `test_tiltShield_sizeTrip_andPartnerClear` |
 | Add a circuit / Build your own | LIVE (app) | [Catalog](https://getfengce.vercel.app/docs/?tab=circuits#c-catalog) / taped out from your wallet | Catalog contract below |
 
-v3 is built and fork-tested on live X Layer state; its mainnet deployment is [scripts/m2-onchain.sh](scripts/m2-onchain.sh).
+Guard v3 is deployed on X Layer mainnet by [scripts/m2-onchain.sh](scripts/m2-onchain.sh) (Milestone 2 below). Quiet hours, hold lock and partner
+approval run in that guard and are fork-tested; they have not been exercised with a mainnet transaction yet.
 
 ## Deployed contracts (release v2, X Layer mainnet)
 
@@ -85,11 +86,41 @@ All 18: [docs/judges.md](docs/judges.md) · manifest: [deployments/manifest-xlay
 | Circuit | Processor | For |
 |---|---|---|
 | NAND #2 | [`0x839bdD6fa7A66416A609A735e11DE5411B98574e`](https://www.oklink.com/x-layer/address/0x839bdD6fa7A66416A609A735e11DE5411B98574e) | max per buy; v3 quiet hours, hold lock, agent caps |
-| Counter #7 (100 NAND + 4 LATCH) | #180 [`0x7335a50819d44402e3D5E00239bBB80A13E7308F`](https://www.oklink.com/x-layer/address/0x7335a50819d44402e3D5E00239bBB80A13E7308F) | trades per hour (15 pins), Tilt-shield buys in a window |
+| Counter #7 (100 NAND + 4 LATCH) | #180 [`0x7335a50819d44402e3D5E00239bBB80A13E7308F`](https://www.oklink.com/x-layer/address/0x7335a50819d44402e3D5E00239bBB80A13E7308F) | trades per hour (15 pins), Tilt-shield buys in the same half hour |
 | Tilt-shield latch (6 NAND + 1 LATCH) | #180 | Tilt-shield pause, [circuits/tilt-latch.json](contracts/circuits/tilt-latch.json) |
 | 6.2.180.tape | #180 | this site, stored on X Layer with DeWeb |
 
-## Demo transactions
+## Milestone 2 on X Layer mainnet (guard v3)
+
+Demo Safe [`0x637A7BEe8a71A750923Cd023d4666eb89A2a5208`](https://www.oklink.com/x-layer/address/0x637A7BEe8a71A750923Cd023d4666eb89A2a5208) ([open read-only](https://getfengce.vercel.app/wallet/?safe=0x637A7BEe8a71A750923Cd023d4666eb89A2a5208)), FengceGuardV3
+[`0x8f2Bee582260dF363AAfaE77cb2e1cdB63110941`](https://www.oklink.com/x-layer/address/0x8f2Bee582260dF363AAfaE77cb2e1cdB63110941), AgentExecutorV3 [`0x3FFd99E3E2386C863fbcC16362aF233648D6695A`](https://www.oklink.com/x-layer/address/0x3FFd99E3E2386C863fbcC16362aF233648D6695A), agent (OKX Agentic Wallet) `0x7dd2eA948c13C1CF6045DDBc3c674A6ed2E6d879`. Every row below is in
+[deployments/m2-demo-xlayer-196.json](deployments/m2-demo-xlayer-196.json); amounts and reason codes were decoded from the
+transactions on chain.
+
+| What | Transaction | Result |
+|---|---|---|
+| FengceRulesV3 library deployed | [`0x162db8d0…c77efd`](https://www.oklink.com/x-layer/tx/0x162db8d0b65718c354a2890a068c6dfe613f186ed95f7eb283209fc40cc77efd) | `0xbc07773b7a19b2a8e8f89adc97bde9d7752b1c2c` |
+| Tilt-shield latch circuit taped out (circuit #8 on processor #180) | [`0x76128ab4…7d4266`](https://www.oklink.com/x-layer/tx/0x76128ab438ae0037eb6c3185ba9568eeab1715a2de0e85011f15772ff37d4266) | 6 NAND + 1 LATCH |
+| Tilt-shield latch pinned in PinRegistry | [`0xc43c9d84…8097ca`](https://www.oklink.com/x-layer/tx/0xc43c9d842b7cd6b97a061c73fc32a12636af4708123d9994c3e70fbde88097ca) | pin `0xe74214f7…` |
+| FengceGuardV3 deployed | [`0xb13183b1…2f19f0`](https://www.oklink.com/x-layer/tx/0xb13183b1c679e042570ee1f1e180dd5b37f5bab657713c46b43e29cc7e2f19f0) | `0x8f2Bee582260dF363AAfaE77cb2e1cdB63110941` |
+| AgentExecutorV3 deployed | [`0x81738058…3f08ee`](https://www.oklink.com/x-layer/tx/0x8173805857632f9632f545faab772bb6e6aab0dd0aea15e131cdf596593f08ee) | `0x3FFd99E3E2386C863fbcC16362aF233648D6695A` |
+| Demo Safe created | [`0xeea23f67…a35211`](https://www.oklink.com/x-layer/tx/0xeea23f6795202ca7e4240adf1968023905e344ceeadbcc61b08adc53a6a35211) | `0x637A7BEe8a71A750923Cd023d4666eb89A2a5208` |
+| Guard v3 installed with one signature (max per buy 2 USDT0, 5 trades per hour, Tilt-shield at 4 buys, agent cap 0.5 USDT0 a day) | [`0xf3dfa64b…a37fc8`](https://www.oklink.com/x-layer/tx/0xf3dfa64beb16a5a7674e52f1bd6622e306b9373bf7fdde25a25c065939a37fc8) | installed |
+| Safe funded | [`0x4d47c747…7be1f3`](https://www.oklink.com/x-layer/tx/0x4d47c747299da74e8e542ad5477ab87d77eb0f3df7b7c1d8842613beb07be1f3) | 1.5 USDT0 |
+| Swap 0.2 USDT0 → OKB | [`0xafb795f9…f217b6`](https://www.oklink.com/x-layer/tx/0xafb795f9f4c86f301734f61e6f282bf3cc528125b8351c0858c6bfce2af217b6) | Allowed |
+| Swap 3 USDT0 → OKB (over the 2 USDT0 cap), recorded with recordRefusal | [`0x78dd364b…021283`](https://www.oklink.com/x-layer/tx/0x78dd364b256c32b70eebbac717dd5c8ed7b5876def35ba6118be7a81d4021283) | Refused, code 1 (CIRCUIT: max per buy) |
+| Tilt-shield buy 1 of 4 (0.2 USDT0) in the same half hour | [`0xf700d23e…9d1f7e`](https://www.oklink.com/x-layer/tx/0xf700d23ea538721ce771b2953ac76c340ec5e9ad8d701181a2e87fcb2c9d1f7e) | Allowed |
+| Tilt-shield buy 2 of 4 (0.2 USDT0) in the same half hour | [`0x5594edd9…c9f3e7`](https://www.oklink.com/x-layer/tx/0x5594edd982868806eb3b9418b6c86feddf76dbf583e3d046f1895262cbc9f3e7) | Allowed |
+| Tilt-shield buy 3 of 4 (0.2 USDT0) in the same half hour | [`0x8cbef618…7b30be`](https://www.oklink.com/x-layer/tx/0x8cbef6186d6cf148ae311bdcf112d5cf081668685f42a22efcef693f537b30be) | Allowed |
+| Tilt-shield buy 4 of 4 (0.2 USDT0) in the same half hour | [`0x26baa17c…fd0f70`](https://www.oklink.com/x-layer/tx/0x26baa17ca5b743fdaefc6c2df186f96e8aa1eb738ec5b7b5f3126a5894fd0f70) | Allowed · trips Tilt-shield |
+| One more buy of 0.2 USDT0, recorded with recordRefusal | [`0x52fa8d40…de0b2b`](https://www.oklink.com/x-layer/tx/0x52fa8d40882b75e6561a029afde8fc31a8498a911202253e3313e38959de0b2b) | Refused, code 5 (TILT_SHIELD) |
+| OKX Agentic Wallet pays 0.3 USDT0 through AgentExecutorV3 | [`0x4da52f34…ec3b1c`](https://www.oklink.com/x-layer/tx/0x4da52f34ca30b4dae4569bbbbf209b7f162bf5fa6e5632778824917f53ec3b1c) | Allowed (0.3 of the 0.5 USDT0 daily cap) |
+| Same agent pays 0.3 USDT0 again | [`0xbde663dc…d728ae`](https://www.oklink.com/x-layer/tx/0xbde663dcf559fa162d1bf406836a84859f893dccd805fbac9cd92882c7d728ae) | Denied, code 6 (AGENT_CAP), nothing moved |
+
+## Milestone 1 (acceptance Safe, guard v2)
+
+Safe [`0x5641DA334011832Feec997875781a3D40239465e`](https://www.oklink.com/x-layer/address/0x5641DA334011832Feec997875781a3D40239465e) and the release v2 demo agent.
+
 
 | What | Transaction | Result |
 |---|---|---|

@@ -32,9 +32,9 @@ Sources and losses as reported: [README, Why Fengce](../README.md#why-fengce).
 - **Two limits as TapeOut circuits.** Max per buy reuses a deployed NAND circuit with a new pin (amount over the cap
   and paying USDT0). Trades per hour is a new counter circuit (100 NAND + 4 LATCH), checked on all 2,048 input and state
   combinations, run by Tick and reset each clock hour.
-- **Adapters for other wallets.** ERC-7579 and ERC-6900 accounts are enforced through hooks (not permanent); Coinbase Smart
+- **Adapters for other wallets.** ERC-6900 accounts are enforced through a hook (not permanent); Coinbase Smart
   Wallet and EIP-7702 accounts for agents.
-- **Guard v3 (built, fork-tested; mainnet deploy by `scripts/m2-onchain.sh`).** Quiet hours, hold lock and per-agent caps
+- **Guard v3 (on X Layer mainnet; transactions in [judges.md](judges.md#milestone-2-on-x-layer-mainnet-guard-v3)).** Quiet hours, hold lock and per-agent caps
   decided on NAND circuit #2; Tilt-shield on counter circuit #7 and a new latch circuit (6 NAND + 1 LATCH) through Tick.
   Tightening applies at once, loosening waits 1 day (7 with a partner, who can approve early). Refusals carry a reason code;
   owners can record a refusal on chain without a reverted transaction.
@@ -71,7 +71,7 @@ Full tables: [Docs, Compared](https://getfengce.vercel.app/docs/?tab=cmp).
 
 ## What's next
 
-- **Guard v3 on mainnet** and the move of existing Safes to it (recovery: 2 days, every owner).
+- **Moving existing Safes to guard v3** (a guard change: recovery, 2 days, every owner) and Sourcify verification of the v3 contracts.
 - **Wallet integrations**: limits shown on a wallet's confirm screen through the SDK ([BUSINESS.md](../BUSINESS.md)).
 - **An independent security review** before larger amounts.
 

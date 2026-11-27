@@ -3,8 +3,8 @@
 This guide takes a TapeOut circuit from selection to a running policy on a Safe v1.5.0 on X Layer, then covers
 day-to-day operation, configuration changes and recovery. Read [THREAT-MODEL.md](THREAT-MODEL.md) first.
 
-Addresses used below are in [ADDRESSES.md](ADDRESSES.md). Fengce's own contracts are not deployed yet; see
-`contracts/script/` for the deployment script and `deployments/` for the address file.
+Addresses used below are in [ADDRESSES.md](ADDRESSES.md). Fengce's own contracts are in `deployments/` (release v2:
+`xlayer-196-v2.json`; guard v3: `m2-demo-xlayer-196.json`).
 
 ## 1. Choose and quote a circuit
 
@@ -184,12 +184,6 @@ Deploy `AgentExecutor(guard)`, allowlist `(executor, addAgent)` before the first
 executor as a module during install (before `setGuard`), then add agents with a Safe transaction
 `executor.addAgent(agent, expiresAt)`. Agents call `executor.execute(safe, to, value, data)`; each call is
 checked by the Safe's Fengce module guard. Any owner can call `executor.revokeAgent(safe, agent)`.
-
-## ERC-7579 accounts
-
-Install `FengceHook(registry, evalGasCap)` as a hook (module type 4) with init data
-`abi.encode(pinId, layout, bindings)` (on Safe7579, wrapped as `abi.encode(HookType.GLOBAL, bytes4(0), data)`).
-See THREAT-MODEL.md for the Safe7579 uninstall limit.
 
 ## Stateful policies (Tick)
 

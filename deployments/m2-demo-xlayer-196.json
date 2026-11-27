@@ -133,6 +133,26 @@
         "contract": null,
         "created": "0x8f2bee582260df363aafae77cb2e1cdb63110941"
       }
+    ],
+    "agent": [
+      {
+        "hash": "0x4da52f34ca30b4dae4569bbbbf209b7f162bf5fa6e5632778824917f53ec3b1c",
+        "to": "0x3ffd99e3e2386c863fbcc16362af233648d6695a",
+        "function": "execute(address,address,uint256,bytes)",
+        "contract": null,
+        "created": "0x3ffd99e3e2386c863fbcc16362af233648d6695a",
+        "result": "allowed: 0.3 USDT0 from the Safe to its owner",
+        "sentBy": "OKX Agentic Wallet (onchainos wallet contract-call, ERC-4337 EntryPoint)"
+      },
+      {
+        "hash": "0xbde663dcf559fa162d1bf406836a84859f893dccd805fbac9cd92882c7d728ae",
+        "to": "0x3ffd99e3e2386c863fbcc16362af233648d6695a",
+        "function": "execute(address,address,uint256,bytes)",
+        "contract": null,
+        "created": "0x3ffd99e3e2386c863fbcc16362af233648d6695a",
+        "result": "refused: Denied with FengceRefused(6 = AGENT_CAP), nothing executed",
+        "sentBy": "OKX Agentic Wallet (onchainos wallet contract-call, ERC-4337 EntryPoint)"
+      }
     ]
   },
   "tiltLatchCircuitId": "8",
@@ -152,13 +172,22 @@
       "swapped": "200000"
     },
     "refuse": {
-      "refusedCode": "1"
+      "refusedCode": "1",
+      "amount": "3000000"
     },
     "tilt": {
-      "tiltTrippedAt": "1795771817"
+      "tiltTrippedAt": "1795771817",
+      "buys": "4",
+      "amountEach": "200000"
     },
     "paused": {
-      "refusedCode": "5"
+      "refusedCode": "5",
+      "amount": "200000"
+    },
+    "agent": {
+      "allowed": "300000",
+      "deniedCode": "6",
+      "agentCapPerDay": "500000"
     }
   }
 }

@@ -271,9 +271,9 @@ function Try() {
           <span className="lbl" style={{ padding: "14px 0" }}>Limits this wallet enforces{!safe ? " · demo Safe" : ""}</span>
           <div className="kv"><span>Max per buy</span><span className="mono muted">{!inst ? "…" : inst.set ? `${usdt0(inst.maxPerBuy)} USDT0` : "not set"}</span></div>
           <div className="kv"><span>Trades per clock hour (UTC)</span><span className="mono muted">{!inst ? "…" : inst.trades ? `${inst.trades.usedThisHour} of ${inst.trades.perHour} used` : "off"}</span></div>
-          <div className="kv"><span>Quiet hours</span><span className="mono muted">coming soon</span></div>
-          <div className="kv"><span>Hold lock on send</span><span className="mono muted">coming soon</span></div>
-          <div className="kv"><span>Tilt-shield safe mode</span><span className="mono muted">coming soon</span></div>
+          <div className="kv"><span>Quiet hours</span><span className="mono muted">{!inst ? "…" : !inst.v3 ? "guard v3 only" : inst.v3.rules.quietOn ? `${String(inst.v3.rules.quietStart).padStart(2, "0")}:00–${String(inst.v3.rules.quietEnd).padStart(2, "0")}:00 UTC` : "off"}</span></div>
+          <div className="kv"><span>Hold lock on send</span><span className="mono muted">{!inst ? "…" : !inst.v3 ? "guard v3 only" : inst.v3.rules.holdSeconds ? `${inst.v3.rules.holdSeconds / 3600} h` : "off"}</span></div>
+          <div className="kv"><span>Tilt-shield safe mode</span><span className="mono muted">{!inst ? "…" : !inst.v3 ? "guard v3 only" : !inst.v3.rules.tiltOn ? "off" : inst.v3.tilt?.paused ? "tripped: buys paused" : `${inst.v3.tilt?.count ?? 0} of ${inst.v3.tilt?.tripAt ?? 4} buys this half hour`}</span></div>
           <span className="small" style={{ marginTop: 14 }}>
             This page builds the transaction; your Safe's guard decides. The same checks run when you use another app through this Safe, because they live
             in the wallet, not here. Refused attempts are simulated first and cost nothing unless you record them on chain.

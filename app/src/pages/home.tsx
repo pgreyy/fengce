@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from "react";
+import m2 from "../../../deployments/m2-demo-xlayer-196.json";
 import { getAddress, type Address, type Hex } from "viem";
-import { safeActivity, type ActivityRow } from "../fengce/chainActivity";
-import { MAX_BUY_CIRCUIT, TOKENS, multiSend, swapCalls } from "../fengce/engine";
+import { MAX_BUY_CIRCUIT } from "../fengce/engine";
 import { PinnedIncidents } from "../fengce/incidents";
-import { readInstalled } from "../fengce/reads";
 import { CIRCUIT, CodeCard, circuitHref, href, mount, short, StartLink } from "../fengce/ui";
 import { startVinyl } from "../fengce/vinyl-hero.js";
-import { EXPLORER_TX, safeInfo, simulateSafeTx } from "../fengce/wallet";
+import { EXPLORER_TX } from "../fengce/wallet";
 
-/** The Safe of the mainnet acceptance test: its real allowed swap and a live check of an over-limit one. */
+/** The Milestone 1 acceptance Safe (guard v2). */
 const LIVE_SAFE = getAddress("0x5641DA334011832Feec997875781a3D40239465e") as Address;
 
 // ------------------------------------------------------------------ vinyl background (hero and closer)
@@ -69,91 +68,41 @@ function Hero() {
   );
 }
 
-// ------------------------------------------------------------------ live strip (real data from the acceptance Safe)
-interface Live {
-  allowed: ActivityRow | null;
-  stopped: { amount: string; reason: string; tx: Hex | null } | null;
-  cap: number | null;
-}
-function useLive(): Live | null {
-  const [v, setV] = useState<Live | null>(null);
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      const [rows, inst, info] = await Promise.all([
-        safeActivity(LIVE_SAFE, 10).catch(() => [] as ActivityRow[]),
-        readInstalled(LIVE_SAFE).catch(() => null),
-        safeInfo(LIVE_SAFE).catch(() => null),
-      ]);
-      const cap = inst?.maxPerBuy != null ? Number(inst.maxPerBuy) / 1e6 : null;
-      const allowed = rows.find((r) => r.ok === true && r.type.startsWith("Swap")) ?? null;
-      const onChain = rows.find((r) => r.ok === false && r.type.startsWith("Swap"));
-      let stopped: Live["stopped"] = onChain ? { amount: onChain.amount, reason: onChain.reason, tx: onChain.tx } : null;
-      if (!stopped && cap !== null && info) {
-        // no over-limit swap is recorded on chain for this Safe: run one against the live guard (eth_call, not sent)
-        const amt = BigInt(Math.round((cap + 1) * 1e6));
-        const sim = await simulateSafeTx(info.owners[0], LIVE_SAFE, multiSend(swapCalls(LIVE_SAFE, TOKENS.USDT0.address, TOKENS.WOKB.address, amt, 0n, 500)));
-        stopped = sim.ok ? null : { amount: `${cap + 1} USDT0`, reason: sim.reason.text, tx: null };
-      }
-      if (alive) setV({ allowed, stopped, cap });
-    })().catch(() => alive && setV({ allowed: null, stopped: null, cap: null }));
-    return () => void (alive = false);
-  }, []);
-  return v;
-}
+// ------------------------------------------------------------------ live strip (Milestone 2 demo Safe, guard v3; every row is a real transaction)
+type M2Tx = { hash: Hex };
+const T = m2.txs as unknown as Record<string, M2Tx[]>;
+const usd = (base: string) => `${Number(base) / 1e6} USDT0`;
+const PROOF: { what: string; tag: string; tone: "g" | "r"; tx: Hex; why: string }[] = [
+  { what: `Swap ${usd(m2.steps.swap.swapped)} → OKB`, tag: "ALLOWED", tone: "g", tx: T.swap[0].hash, why: "within max per buy (2 USDT0)" },
+  { what: `Swap ${usd(m2.steps.refuse.amount)} → OKB`, tag: "REFUSED · CIRCUIT", tone: "r", tx: T.refuse[0].hash, why: "over max per buy: NAND circuit #2 said no" },
+  { what: `5th buy of ${usd(m2.steps.tilt.amountEach)}`, tag: "REFUSED · TILT_SHIELD", tone: "r", tx: T.paused[0].hash, why: "after 4 buys in the same half hour" },
+  { what: "Agent pays 0.3 USDT0 again", tag: "DENIED · AGENT_CAP", tone: "r", tx: T.agent[1].hash, why: "OKX Agentic Wallet over its 0.5 USDT0 daily cap" },
+];
 
 function LiveStrip() {
-  const v = useLive();
-  const wait = <span className="muted">reading X Layer…</span>;
   return (
     <section className="sec">
       <div className="w">
         <span className="lbl">Live on X Layer mainnet</span>
-        <h2 className="h2">One allowed. One stopped. Same Safe, same limits.</h2>
+        <h2 className="h2">One Safe, four outcomes, all on chain.</h2>
         <div className="receipt">
-          <div>
-            <span className="lbl">{v?.allowed ? `Swap ${v.allowed.amount}` : "Swap within the cap"}</span>
-            <div className="v"><span className="tag g">ALLOWED</span></div>
-            <span className="small mono">
-              {!v ? wait : v.allowed?.tx ? <a href={EXPLORER_TX(v.allowed.tx)} target="_blank" rel="noreferrer noopener" style={{ textDecoration: "underline" }}>tx {short(v.allowed.tx)}</a> : "no swap found"}
-            </span>
-          </div>
-          <div>
-            <span className="lbl">{v?.stopped ? `Swap ${v.stopped.amount} → OKB` : "Swap over the cap"}</span>
-            <div className="v"><span className="tag r">REFUSED</span></div>
-            <span className="small">
-              {!v ? (
-                wait
-              ) : v.stopped ? (
-                <>
-                  {v.stopped.reason}
-                  {v.stopped.tx ? (
-                    <>
-                      {" · "}
-                      <a className="mono" href={EXPLORER_TX(v.stopped.tx)} target="_blank" rel="noreferrer noopener" style={{ textDecoration: "underline" }}>tx {short(v.stopped.tx)}</a>
-                    </>
-                  ) : (
-                    " · checked against the guard just now (eth_call, not sent)"
-                  )}
-                </>
-              ) : (
-                "could not run the check just now"
-              )}
-            </span>
-          </div>
-          <div>
-            <span className="lbl">Checked by</span>
-            <div className="v num">FengceGuard</div>
-            <span className="small">on Safe {short(LIVE_SAFE)}{v?.cap != null ? ` · max per buy ${v.cap} USDT0` : ""}</span>
-          </div>
-          <div>
-            <span className="lbl">Rule ran on</span>
-            <div className="v num">
-              <a className="code-link" href={circuitHref(CIRCUIT.maxBuy)}>TapeOut circuit #{String(MAX_BUY_CIRCUIT.id)}</a>
+          {PROOF.map((p) => (
+            <div key={p.tx}>
+              <span className="lbl">{p.what}</span>
+              <div className="v"><span className={`tag ${p.tone}`}>{p.tag}</span></div>
+              <span className="small">
+                {p.why} ·{" "}
+                <a className="mono" href={EXPLORER_TX(p.tx)} target="_blank" rel="noreferrer noopener" style={{ textDecoration: "underline" }}>tx {short(p.tx)}</a>
+              </span>
             </div>
-            <span className="small">pinned code, readable on chain</span>
-          </div>
+          ))}
         </div>
+        <p className="small" style={{ marginTop: 18 }}>
+          Checked by FengceGuardV3 on demo Safe <a className="code-link mono" href={href("wallet", { safe: m2.safe })}>{short(m2.safe)}</a>, with rules on{" "}
+          <a className="code-link" href={circuitHref(CIRCUIT.maxBuy)}>TapeOut circuit #{String(MAX_BUY_CIRCUIT.id)}</a>, <a className="code-link" href={circuitHref(CIRCUIT.counter)}>counter #7</a> and the{" "}
+          <a className="code-link" href={circuitHref(CIRCUIT.tiltLatch)}>Tilt-shield latch</a>. Refusals were recorded on chain by the owner (recordRefusal) or by AgentExecutorV3 (Denied); nothing moved.
+          Milestone 1 proof: acceptance Safe <a className="code-link mono" href={href("wallet", { safe: LIVE_SAFE })}>{short(LIVE_SAFE)}</a>.
+        </p>
       </div>
     </section>
   );
@@ -191,7 +140,7 @@ const RULES: { name: string; short: string; status: "LIVE" | "GUARD V3" | "CATAL
   { name: "Trades per hour", short: "Counts swaps each UTC clock hour.", status: "LIVE", long: "Set 5 per hour. The 6th swap in the same clock hour is refused; the counter resets on the hour. Sends don't count.", example: "5 / hour", to: href("limits", { rule: "rate" }), circuit: [["Counter circuit #7", CIRCUIT.counter]] },
   { name: "Quiet hours", short: "No trading in the hours you choose.", status: "GUARD V3", long: "Pick a window like 01:00 to 07:00 UTC. Swaps inside it are refused with QUIET_HOURS. Sends still work.", example: "01:00 to 07:00", to: href("limits", { rule: "quiet" }), circuit: [["NAND circuit #2", CIRCUIT.maxBuy]] },
   { name: "Hold lock", short: "No selling a token within N hours of buying it.", status: "GUARD V3", long: "Buy a token and it can't be sold for the hours you set. Stops panic-selling the dip you just bought.", example: "24 hours", to: href("limits", { rule: "hold" }), circuit: [["NAND circuit #2", CIRCUIT.maxBuy]] },
-  { name: "Tilt-shield", short: "4 buys in 30 minutes, or one buy 3× your usual, pauses buying.", status: "GUARD V3", long: "When the pattern trips, buying pauses for your cooldown. Sells and sends still go through.", example: "Pause 6 hours", to: href("tilt-shield"), circuit: [["Counter circuit #7", CIRCUIT.counter], ["Tilt-shield latch", CIRCUIT.tiltLatch]] },
+  { name: "Tilt-shield", short: "4 buys in the same half hour, or one buy 3× your usual, pauses buying.", status: "GUARD V3", long: "When the pattern trips, buying pauses for your cooldown. Sells and sends still go through.", example: "Pause 6 hours", to: href("tilt-shield"), circuit: [["Counter circuit #7", CIRCUIT.counter], ["Tilt-shield latch", CIRCUIT.tiltLatch]] },
   { name: "Agent cap", short: "A separate budget per agent key, with reason codes.", status: "GUARD V3", long: "Each agent key gets its own daily budget. Over it, the agent gets AGENT_CAP back and can tell you why.", example: "50 USDT0 / day", to: href("agents"), circuit: [["NAND circuit #2", CIRCUIT.maxBuy]] },
   { name: "Partner approval", short: "Optional. A partner can speed up loosening; silence falls back after 7 days.", status: "GUARD V3", long: "Name a friend. They can approve a looser limit early. If they never answer, it unlocks after 7 days anyway.", example: "Optional", to: href("limits", { rule: "partner" }) },
   { name: "Add a circuit", short: "Install a rule from the catalog, or build your own.", status: "CATALOG", long: "Pick a pinned TapeOut circuit from the Fengce catalog, or build one. Free during launch; when a designer sets a fee, 80% goes to the designer.", example: "Catalog", to: href("limits", { tab: "add" }), circuit: [["Catalog circuits", CIRCUIT.catalog]] },
@@ -361,7 +310,7 @@ const FEED: [string, string, "g" | "r"][] = [
   ["agent buy 80 USDT0", "AGENT_CAP", "r"],
   ["swap at 03:10 UTC", "QUIET_HOURS", "r"],
   ["swap 12 USDT0 → OKB", "ALLOWED", "g"],
-  ["4th buy in 30 min", "TILT_SHIELD", "r"],
+  ["4th buy in the same half hour", "TILT_SHIELD", "r"],
   ["loosen max to 60", "WAITS 1 DAY", "r"],
 ];
 function Feed() {

@@ -6,6 +6,7 @@
 // installed, change requested, applied, cancelled). Agent calls through AgentExecutor (allowed and Denied) come from the
 // Fengce event history. Owner transactions the guard refuses revert and leave no log: they are shown when this browser
 // sent or simulated them (activity.ts), and a sent one is checked against its receipt on chain.
+import { V3 } from "./v3";
 import { decodeEventLog, decodeFunctionData, formatUnits, parseAbi, size, slice, hexToBigInt, toEventSelector, type Address, type Hex, type Log } from "viem";
 import { FengceGuardArtifact } from "@fengce/sdk";
 import { createPublicClient, http } from "viem";
@@ -181,7 +182,7 @@ function describeReceipt(safe: Address, logs: readonly Log[]): Pick<ActivityRow,
   const s = safe.toLowerCase();
   const failed = logs.some((l) => l.address.toLowerCase() === s && l.topics[0] === EXEC_FAIL);
   const guardEvents = logs
-    .filter((l) => l.address.toLowerCase() === ENGINE.guard.toLowerCase())
+    .filter((l) => l.address.toLowerCase() === ENGINE.guard.toLowerCase() || (!!V3 && l.address.toLowerCase() === V3.guard.toLowerCase()))
     .map((l) => {
       try {
         return decodeEventLog({ abi: guardAbi, data: l.data, topics: l.topics }) as unknown as { eventName: string; args: any };
@@ -282,7 +283,12 @@ async function ownerRefusals(safe: Address, head: bigint, limit: number, from: b
 }
 
 /** Plain words for a Denied reason as the event history decodes it (an error name with arguments). */
+/** FengceGuardV3 reason codes (FengceRulesV3) in plain words. */
+const V3_WORDS: Record<number, string> = { 1: "over max per buy (CIRCUIT)", 2: "too many trades this hour", 3: "inside quiet hours", 4: "hold lock", 5: "Tilt-shield: buys paused (TILT_SHIELD)", 6: "over the agent's daily cap (AGENT_CAP)", 7: "not allowed (OTHER)" };
+
 export function plainReason(r: string): string {
+  const v3 = /FengceRefused\((\d+)/.exec(r) ?? /^0xc7568655([0-9a-f]{64})/i.exec(r);
+  if (v3) return V3_WORDS[Number(v3[1].length > 3 ? BigInt(`0x${v3[1]}`) : v3[1])] ?? "refused";
   if (/TickDenied|Rate/i.test(r)) return "too many trades this hour";
   if (/FengceDenied|PolicyDenied|AmountGt|Denied/i.test(r)) return "over the limit";
   return r || "refused";
@@ -409,13 +415,20 @@ export async function safeActivity(safe: Address, limit = 25): Promise<ActivityR
   return mergeRows(base, await browserRows(safe, new Set(base.map((r) => r.tx?.toLowerCase()))));
 }
 
+/** Guard v3: refusals an owner recorded on chain with recordRefusal (Refused events, nothing was sent). */
+export function v3RefusalRowsFrom(safe: Address, events: { source: string; event: string; block: string; tx: Hex; safe: string | null; args: Record<string, unknown> }[]): ActivityRow[] {
+  return events
+    .filter((e) => e.source === "guard" && e.event === "Refused" && e.safe?.toLowerCase() === safe.toLowerCase())
+    .map((e) => ({ time: null, block: BigInt(e.block), tx: e.tx, source: "safe" as const, type: "Refusal recorded", amount: "–", ok: false, result: "Refused", reason: V3_WORDS[Number(e.args.reason)] ?? `code ${String(e.args.reason)}` }));
+}
+
 /** Background (slower): owner refusals after the snapshot and agent calls from the live event history. */
 export async function laterRows(safe: Address): Promise<ActivityRow[]> {
   const { loadSnapshot, safeHistory } = await import("./reads");
   const snap = (await loadSnapshot()) as (Awaited<ReturnType<typeof loadSnapshot>> & { activity?: Record<string, SeedEntry> }) | null;
   const seed = snap?.activity?.[safe.toLowerCase()];
   const [refused, hist] = await Promise.all([refusalsSince(safe, seed ? BigInt(seed.head) : DEPLOY_BLOCK), safeHistory(safe).catch(() => null)]);
-  const agent = hist ? await withTimes(agentRowsFrom(safe, hist.h.events as never)) : [];
+  const agent = hist ? await withTimes([...agentRowsFrom(safe, hist.h.events as never), ...v3RefusalRowsFrom(safe, hist.h.events as never)]) : [];
   return mergeRows(refused, agent);
 }
 

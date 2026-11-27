@@ -1,5 +1,6 @@
 import { decodeErrorResult, decodeEventLog, getAddress, parseAbi, type Abi, type Address, type Hex, type Log } from "viem";
 import { CatalogArtifact, FengceGuardArtifact } from "@fengce/sdk";
+import m2 from "../../../deployments/m2-demo-xlayer-196.json";
 import { ADDR, AGENT_EXECUTOR, CATALOG, DEPLOY_BLOCK, client } from "./chain";
 
 /** Every Fengce event of release v2: FengceGuard (installs, timelocks, recovery), AgentExecutor (agents, Denied) and
@@ -42,10 +43,15 @@ const AGENT_EXECUTOR_EVENTS = parseAbi([
   "event Denied(address indexed safe, address indexed agent, address target, bytes32 factsHash, bytes reason)",
 ]);
 
+const V3_EVENTS = parseAbi(["event Refused(address indexed safe, address indexed by, uint8 indexed reason, address to, bytes32 dataHash)"]) as unknown as Abi;
+
 const SOURCES: { source: FengceEvent["source"]; address: Address; abi: Abi }[] = [
   { source: "guard", address: ADDR.guard, abi: FengceGuardArtifact.abi as unknown as Abi },
   { source: "agentExecutor", address: AGENT_EXECUTOR, abi: AGENT_EXECUTOR_EVENTS as unknown as Abi },
   { source: "catalog", address: CATALOG, abi: CatalogArtifact.abi as unknown as Abi },
+  // Milestone 2: FengceGuardV3 (same timelock events as v2, plus Refused) and AgentExecutorV3 (same agent events)
+  { source: "guard", address: getAddress(m2.guard), abi: [...(FengceGuardArtifact.abi as unknown as Abi), ...V3_EVENTS] as Abi },
+  { source: "agentExecutor", address: getAddress(m2.agentExecutor), abi: AGENT_EXECUTOR_EVENTS as unknown as Abi },
 ];
 
 function jsonSafe(v: unknown): string | boolean | string[] {
@@ -255,7 +261,7 @@ interface CacheEntry {
   toBlock: string;
   events: FengceEvent[];
 }
-const CACHE_KEY = `fengce-events:v2:${ADDR.guard.toLowerCase()}`;
+const CACHE_KEY = `fengce-events:v3:${ADDR.guard.toLowerCase()}`;
 
 function readCache(): CacheEntry | null {
   try {

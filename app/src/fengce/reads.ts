@@ -5,6 +5,7 @@ import { TickArtifact } from "@fengce/sdk";
 import { client } from "../lib/chain";
 import { safeConfig, safeEvents } from "../lib/data";
 import { syncHistory, type History, type Snapshot } from "../lib/events";
+import { V3, readV3, type V3State } from "./v3";
 import { ENGINE, TOKENS, type Prepared } from "./engine";
 
 /** deployments/limits-xlayer-196.json, if script/PrepareLimits.s.sol has been broadcast (read at build time). */
@@ -25,16 +26,17 @@ async function slotAt(addr: Address, slot: bigint): Promise<bigint> {
   return v ? hexToBigInt(v) : 0n;
 }
 
-export async function guardBindings(safe: Address): Promise<Binding[]> {
+/** The policy bindings of a Safe in a Fengce guard (v2 and v3 share the Config layout: _configs at slot 5). */
+export async function guardBindings(safe: Address, guard: Address = ENGINE.guard): Promise<Binding[]> {
   const base = hexToBigInt(keccak256(encodeAbiParameters([{ type: "address" }, { type: "uint256" }], [safe, CONFIGS_SLOT])));
   const lenSlot = base + BINDINGS_OFFSET;
-  const len = Number(await slotAt(ENGINE.guard, lenSlot));
+  const len = Number(await slotAt(guard, lenSlot));
   if (len === 0 || len > 32) return [];
   const data = hexToBigInt(keccak256(pad(numberToHex(lenSlot), { size: 32 })));
   return Promise.all(
     [...Array(len).keys()].map(async (i) => ({
-      source: Number((await slotAt(ENGINE.guard, data + BigInt(2 * i))) & 0xffn),
-      param: await slotAt(ENGINE.guard, data + BigInt(2 * i + 1)),
+      source: Number((await slotAt(guard, data + BigInt(2 * i))) & 0xffn),
+      param: await slotAt(guard, data + BigInt(2 * i + 1)),
     })),
   );
 }
@@ -44,7 +46,14 @@ export interface Installed {
   owners: Address[];
   threshold: number;
   version: string;
+  /** the Safe's guard is a Fengce guard (v2 or v3) */
   guardOn: boolean;
+  /** which Fengce guard: "v2" (FengceGuard) or "v3" (FengceGuardV3) */
+  engine: "v2" | "v3" | null;
+  /** the Fengce guard address the Safe uses (v2 when none yet) */
+  guard: Address;
+  /** v3 rules and Tilt-shield state (guard v3 only) */
+  v3: V3State | null;
   moduleGuardOn: boolean;
   set: boolean;
   pinId: Hex | null;
@@ -65,10 +74,13 @@ const ZERO = "0x0000000000000000000000000000000000000000";
 export async function readInstalled(safe: Address): Promise<Installed> {
   const cfg = (await safeConfig(safe)) as any;
   const f = cfg.fengce;
-  const guardOn = String(cfg.guard).toLowerCase() === ENGINE.guard.toLowerCase();
-  const moduleGuardOn = String(cfg.moduleGuard).toLowerCase() === ENGINE.guard.toLowerCase();
+  const g = String(cfg.guard).toLowerCase();
+  const engine: Installed["engine"] = g === ENGINE.guard.toLowerCase() ? "v2" : V3 && g === V3.guard.toLowerCase() ? "v3" : null;
+  const guard = engine === "v3" ? V3!.guard : ENGINE.guard;
+  const guardOn = engine !== null;
+  const moduleGuardOn = String(cfg.moduleGuard).toLowerCase() === guard.toLowerCase();
   const set = !!f?.set;
-  const bindings = set ? await guardBindings(safe) : [];
+  const [bindings, v3] = await Promise.all([set ? guardBindings(safe, guard) : Promise.resolve([]), engine === "v3" ? readV3(safe, PREPARED).catch(() => null) : Promise.resolve(null)]);
   const amountGt = bindings.find((b) => b.source === 5);
   const tick = f && f.tick && String(f.tick) !== ZERO ? (getAddress(f.tick) as Address) : null;
   let trades: Installed["trades"] = null;
@@ -86,6 +98,9 @@ export async function readInstalled(safe: Address): Promise<Installed> {
     threshold: Number(cfg.threshold),
     version: cfg.version,
     guardOn,
+    engine,
+    guard,
+    v3,
     moduleGuardOn,
     set,
     pinId: set ? f.pinId : null,

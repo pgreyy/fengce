@@ -3,6 +3,7 @@ import { PRODUCT_NAME, REPO, TAPE_NAME } from "../brand";
 import { DEPLOYMENT, EXPLORER } from "../lib/chain";
 import DEWEB from "../../../deployments/deweb-xlayer-196.json";
 import TILT_LATCH from "../../../contracts/circuits/tilt-latch.json";
+import M2 from "../../../deployments/m2-demo-xlayer-196.json";
 import { keccak256 } from "viem";
 const TILT_LATCH_HASH = keccak256(TILT_LATCH.netlist as `0x${string}`);
 import { MAX_BUY_CIRCUIT, COUNTER } from "../fengce/engine";
@@ -28,7 +29,7 @@ const CMP: [string, ...[string, Tone][]][] = [
   ["Company in the middle", ["Yes", "b"], ["Yes", "b"], ["No", "g"], ["No", "g"]],
   ["Can the rule change quietly", ["Yes, instantly via API", "b"], ["Through a dashboard", "b"], ["Owner can change it", "b"], ["No: loosening waits 1 day in public", "g"]],
   ["Other contracts can check it", ["No", "b"], ["No", "b"], ["No", "b"], ["Yes, isBound", "g"]],
-  ["Works on the wallet you already have", ["No, their wallet", "b"], ["Safe only", "m"], ["Their account types", "m"], ["Safe; 7579 and 6900 enforced", "g"]],
+  ["Works on the wallet you already have", ["No, their wallet", "b"], ["Safe only", "m"], ["Their account types", "m"], ["Safe; 6900 enforced", "g"]],
   ["Rule format", ["Their JSON rules", "m"], ["Their policies", "m"], ["Fixed caveat types", "m"], ["Any TapeOut circuit", "g"]],
 ];
 const USES = [
@@ -49,6 +50,36 @@ const STEPS = [
 ];
 
 /** Safes with a FengceGuard configuration: Configured events, from the snapshot at once, then the live history. */
+/** Milestone 2 on X Layer mainnet: every transaction of the guard v3 demo, from deployments/m2-demo-xlayer-196.json. */
+function M2Txs() {
+  const t = M2.txs as unknown as Record<string, { hash: string }[]>;
+  const rows: [string, string, string][] = [
+    ["FengceGuardV3 deployed", t.deploy[5].hash, "deployed"],
+    ["Tilt-shield latch circuit taped out and pinned", t.deploy[3].hash, `circuit #${M2.tiltLatchCircuitId}`],
+    ["Guard v3 installed on the demo Safe, one signature", t.safe[1].hash, "installed"],
+    ["Swap 0.2 USDT0 → OKB", t.swap[0].hash, "ALLOWED"],
+    ["Swap 3 USDT0 → OKB, recorded with recordRefusal", t.refuse[0].hash, "REFUSED · CIRCUIT"],
+    ...t.tilt.map((x, i) => [`Tilt-shield buy ${i + 1} of 4 (0.2 USDT0), same half hour`, x.hash, i === 3 ? "ALLOWED · trips" : "ALLOWED"] as [string, string, string]),
+    ["One more buy, recorded with recordRefusal", t.paused[0].hash, "REFUSED · TILT_SHIELD"],
+    ["OKX Agentic Wallet pays 0.3 USDT0 through AgentExecutorV3", t.agent[0].hash, "ALLOWED"],
+    ["Same agent pays 0.3 USDT0 again", t.agent[1].hash, "DENIED · AGENT_CAP"],
+  ];
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <span className="lbl">Milestone 2 on X Layer mainnet · guard v3 · {rows.length} transactions</span>
+      {rows.map(([what, h, res]) => (
+        <div key={h} className="addr-row">
+          <span>{what}</span>
+          <span style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            <a className="code-link mono" style={{ fontSize: 13 }} href={`${EXPLORER}/tx/${h}`} target="_blank" rel="noreferrer noopener">{short(h, 6)}</a>
+            <span className={`tag ${res.startsWith("ALLOWED") ? "g" : res === "deployed" || res === "installed" || res.startsWith("circuit") ? "n" : "r"}`}>{res}</span>
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function Installs() {
   const rows = useInstalls(true);
   return (
@@ -110,9 +141,14 @@ function Docs() {
     ["Max per buy circuit", `${short(MAX_BUY_CIRCUIT.processor)} #${MAX_BUY_CIRCUIT.id} (NAND)`],
     ["Trades per hour circuit", PREPARED ? `${short(PREPARED.counterProcessor)} #${PREPARED.counterCircuitId} (${COUNTER.gates} NAND + ${COUNTER.latches} LATCH)` : `${COUNTER.gates} NAND + ${COUNTER.latches} LATCH, taped out on processor #180 (pending)`],
     ["Catalog circuits", "0x839b…74e #2 · 0xF9bB…a0F #7 · 0xB04E…3FF #5 · 0xE2a6…cd7 #18 · 0x87BF…9a6 #52"],
-    ["Demo Safe", DEPLOYMENT.demoSafe],
+    ["Demo Safe (release v2)", DEPLOYMENT.demoSafe],
+    ["FengceGuardV3 (Milestone 2)", M2.guard],
+    ["AgentExecutorV3", M2.agentExecutor],
+    ["FengceRulesV3 library", M2.rulesLibrary],
+    ["Demo Safe (guard v3)", M2.safe],
+    ["Milestone 1 acceptance Safe", "0x5641DA334011832Feec997875781a3D40239465e"],
     ["TapeOut features used", `Circuits (eval, step with LATCH state through Tick), PinRegistry over REF closures, DeWeb (${TAPE_NAME})`],
-    ["All addresses", "deployments/xlayer-196-v2.json · Sourcify, exact match"],
+    ["All addresses", "deployments/xlayer-196-v2.json (v2, Sourcify exact match) · deployments/m2-demo-xlayer-196.json (v3, not yet on Sourcify)"],
     ["Repo", REPO.replace("https://", "")],
   ];
   return (
@@ -154,7 +190,7 @@ function Docs() {
             </div>
             <div>
               <span className="lbl" style={{ display: "block", paddingBottom: 12 }}>What we can't promise</span>
-              {[["Wallets without Fengce installed", "not protected"], ["Plain EOAs, 7702 and embedded wallets", "use a Safe"], ["7579 and 6900 wallets", "enforced, not permanent"], ["TapeOut factory upgrades", "watched off chain"]].map(([a, b]) => (
+              {[["Wallets without Fengce installed", "not protected"], ["Plain EOAs, 7702 and embedded wallets", "use a Safe"], ["6900 wallets", "enforced, not permanent"], ["TapeOut factory upgrades", "watched off chain"]].map(([a, b]) => (
                 <div className="kv" key={a}><span>{a}</span><span className="mono muted" style={{ fontSize: 12.5 }}>{b}</span></div>
               ))}
             </div>
@@ -203,7 +239,7 @@ function Docs() {
                   <tr><th>Wallet</th><th>Enforced</th><th>Permanence (isBound)</th><th>Notes</th></tr>
                 </thead>
                 <tbody>
-                  {[["Safe", "yes", "yes", "guard on owner and module paths"], ["Kernel, Nexus, Etherspot (7579)", "yes", "not yet", "the hook can be uninstalled on some"], ["Alchemy MA v2 (6900)", "yes", "not yet", "hook"], ["EOA, 7702, embedded", "no", "no", "move funds to a Safe"]].map(([a, b, cc, d]) => (
+                  {[["Safe", "yes", "yes", "guard on owner and module paths"], ["Alchemy MA v2 (6900)", "yes", "not yet", "hook"], ["EOA, 7702, embedded", "no", "no", "move funds to a Safe"]].map(([a, b, cc, d]) => (
                     <tr key={a}>
                       <td className="rowhead">{a}</td>
                       <td data-label="Enforced" className="mono" style={{ fontSize: 13, color: b === "yes" ? "var(--allow)" : "var(--muted)" }}>{b}</td>
@@ -262,7 +298,7 @@ function Docs() {
             <div className="addr-row"><span>Circuit</span><span className="mono" style={{ fontSize: 13 }}>{TILT_LATCH.gates} NAND + {TILT_LATCH.latches} LATCH · inputs isBuy, trip, clear · state paused</span></div>
             <div className="addr-row"><span>Netlist hash</span><Addr value={TILT_LATCH_HASH} n={6} label="Copy netlist hash" /></div>
             <div className="addr-row"><span>Processor #180</span><span className="small">taped out with guard v3 (circuits/tilt-latch.json, checked on every input and state)</span></div>
-            <div className="addr-row"><span>Count in the window</span><a className="code-link mono" style={{ fontSize: 13 }} href={circuitHref(CIRCUIT.counter)}>counter circuit #7, Tick period 30 min</a></div>
+            <div className="addr-row"><span>Count in the window</span><a className="code-link mono" style={{ fontSize: 13 }} href={circuitHref(CIRCUIT.counter)}>counter circuit #7, Tick period: each half hour (UTC)</a></div>
           </div>
           <div id={CIRCUIT.deweb} className="anchor">
             <span className="lbl" style={{ display: "block", paddingBottom: 8 }}>{TAPE_NAME} · this site on X Layer</span>
@@ -279,6 +315,8 @@ function Docs() {
       )}
 
       {tab === "judges" && <Installs />}
+
+      {tab === "judges" && <M2Txs />}
 
       {tab === "judges" && (
         <div>

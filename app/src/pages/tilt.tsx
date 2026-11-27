@@ -1,7 +1,65 @@
-import { useState } from "react";
-import { CIRCUIT, circuitHref, mount } from "../fengce/ui";
+import { useEffect, useState } from "react";
+import m2 from "../../../deployments/m2-demo-xlayer-196.json";
+import { readInstalled, type Installed } from "../fengce/reads";
+import { CIRCUIT, circuitHref, href, mount, short } from "../fengce/ui";
+import { V3 } from "../fengce/v3";
+import { EXPLORER_TX, useWallet } from "../fengce/wallet";
 
-/** The simulator follows FengceGuardV3 (src/safe/FengceRulesV3.sol): the buy that makes N buys within 30 minutes, or a
+const hhmm = (t: number) => new Date(t * 1000).toUTCString().slice(17, 22);
+
+/** Live: the Milestone 2 demo Safe's real trip on X Layer mainnet (deployments/m2-demo-xlayer-196.json). */
+function LiveTilt() {
+  const w = useWallet();
+  const [inst, setInst] = useState<Installed | null>(null);
+  const [mine, setMine] = useState<Installed | null>(null);
+  useEffect(() => {
+    if (V3?.demoSafe) readInstalled(V3.demoSafe).then(setInst, () => setInst(null));
+  }, []);
+  useEffect(() => {
+    setMine(null);
+    if (w.safe) readInstalled(w.safe).then(setMine, () => setMine(null));
+  }, [w.safe]);
+  if (!V3?.demoSafe) return null;
+  const t = inst?.v3?.tilt;
+  const tilts = (m2.txs as Record<string, { hash: string }[]>).tilt ?? [];
+  const paused = (m2.txs as Record<string, { hash: string }[]>).paused?.[0];
+  return (
+    <section className="ts-live">
+      <div className="ts-live-h">
+        <span className="lbl">Live on X Layer mainnet · demo Safe {short(V3.demoSafe)}</span>
+        <span className={`tag ${t?.paused ? "r" : "g"}`}>{!inst ? "reading…" : !inst.v3?.rules.tiltOn ? "OFF" : t?.paused ? "TRIPPED · BUYS PAUSED" : "ON"}</span>
+      </div>
+      <div className="ts-live-b">
+        <span>
+          4 buys of 0.2 USDT0 in the same half hour tripped it at {hhmm(Number(m2.steps.tilt.tiltTrippedAt))} UTC:{" "}
+          {tilts.map((x, i) => (
+            <a key={x.hash} className="alink" href={EXPLORER_TX(x.hash)} target="_blank" rel="noreferrer noopener">
+              buy {i + 1}{i < tilts.length - 1 ? " · " : ""}
+            </a>
+          ))}
+        </span>
+        {paused && (
+          <span>
+            The next buy was refused with reason TILT_SHIELD (code 5), recorded on chain:{" "}
+            <a className="alink accent" href={EXPLORER_TX(paused.hash)} target="_blank" rel="noreferrer noopener">tx {short(paused.hash)}</a>
+          </span>
+        )}
+        {t && (
+          <span className="muted">
+            Now: {t.paused ? `buys paused${t.resumesAt ? ` until ${hhmm(t.resumesAt)} UTC` : ""}` : `${t.count} of ${t.tripAt ?? 4} buys in this half hour`} (read from chain just now).
+          </span>
+        )}
+        {mine && (
+          <span className="muted">
+            Your Safe {short(mine.safe)}: {mine.engine === "v3" ? (mine.v3?.rules.tiltOn ? (mine.v3.tilt?.paused ? "Tilt-shield tripped" : "Tilt-shield on") : "Tilt-shield off") : mine.engine === "v2" ? "guard v2 (Tilt-shield needs guard v3)" : "no Fengce guard yet"}.
+          </span>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/** The simulator follows FengceGuardV3 (src/safe/FengceRulesV3.sol): the buy that makes N buys in the same half hour (UTC), or a
  * buy of 3x the usual size, goes through and trips the shield; later buys are refused (TILT_SHIELD) until the cooldown
  * ends. Sells and sends are never paused. Time is simulated minutes. */
 type Row = { t: number; text: string; tag: string; tone: "g" | "r" };
@@ -36,7 +94,7 @@ function Tilt() {
         { t: now, text: "Shield trips · safe mode on", tag: "SAFE MODE", tone: "r" },
         { t: now, text: `Buy ${s}× usual`, tag: "TRIPS SHIELD", tone: "r" },
       ]);
-      setMsg(big >= 3 ? "One buy at 3× your usual. Buying is paused." : `${n} buys inside 30 minutes. Buying is paused.`);
+      setMsg(big >= 3 ? "One buy at 3× your usual. Buying is paused." : `${n} buys in the same half hour. Buying is paused.`);
     } else {
       add([{ t: now, text: `Buy ${s}× usual`, tag: "ALLOWED", tone: "g" }]);
       setMsg("Buy allowed.");
@@ -58,7 +116,7 @@ function Tilt() {
     if (!tripped && win.length >= v && win.length > 0) {
       setTripped(true);
       add([{ t: now, text: "Shield trips · safe mode on", tag: "SAFE MODE", tone: "r" }]);
-      setMsg(`${v} buys inside 30 minutes. Buying is paused.`);
+      setMsg(`${v} buys in the same half hour. Buying is paused.`);
     }
   };
 
@@ -86,10 +144,12 @@ function Tilt() {
         <p className="ts-lead">When you start buying too fast or too big, your Safe stops buying for a while. Selling and sending to yourself still work. It runs on your Safe, so no app can skip it.</p>
       </div>
 
+      <LiveTilt />
+
       <div className="ts-steps">
         {[
           ["01 · Watches", "How fast and how big you buy", "Only your Safe's own transactions. No price feeds, no servers."],
-          ["02 · Trips", `${n} buys in 30 min, or one buy 3× your usual`, "circuits"],
+          ["02 · Trips", `${n} buys in the same half hour, or one buy 3× your usual`, "circuits"],
           ["03 · Safe mode", "Only sells and sends to you", clear === "partner" ? "Until the cooldown ends, or your partner clears it early." : "Until the cooldown ends."],
         ].map(([k, t, d]) => (
           <div key={k}>
@@ -112,7 +172,7 @@ function Tilt() {
       <section className="ts-panel">
         <div className="ts-sim">
           <div className="ts-row">
-            <span className="lbl">Try it · last 30 minutes</span>
+            <span className="lbl">Try it · this half hour</span>
             <span className={`ts-state ${tripped ? "trip" : "open"}`}>
               <span className="ts-dot" />
               {tripped ? "SAFE MODE" : "OPEN"}
@@ -146,7 +206,7 @@ function Tilt() {
               <div className="lbl">Cooldown left</div>
             </div>
           </div>
-          <div className="ts-lane" role="img" aria-label={`${win.length} buys in the last 30 minutes; usual size and 3 times usual marked`}>
+          <div className="ts-lane" role="img" aria-label={`${win.length} buys in this half hour; usual size and 3 times usual marked`}>
             {[0, 5, 10, 15, 20, 25, 30].map((m) => {
               const x = (m / 30) * 100;
               return (
@@ -210,10 +270,10 @@ function Tilt() {
             {seg(clear, setClear, [["partner", "Partner or cooldown"], ["cooldown", "Cooldown only"]])}
           </div>
           <div className="ts-note">Turning it on is instant. Turning it off or loosening it waits 1 day, or 7 days with a partner unless they approve sooner.</div>
-          <button type="button" className="pill accent big ts-cta" disabled title="Tilt-shield runs in FengceGuard v3, which is not deployed yet">
+          <a className="pill accent big ts-cta" href={href("limits", { tpl: "tilt" })}>
             Turn on Tilt-shield
-          </button>
-          <div className="ts-soon">Live with Guard v3</div>
+          </a>
+          <div className="ts-soon">Runs in FengceGuard v3 on X Layer. On Limits it trips at 4 buys in the same half hour.</div>
         </aside>
       </section>
     </main>

@@ -1,3 +1,4 @@
+import { V3 } from "../fengce/v3";
 import { useEffect, useState } from "react";
 import { decodeFunctionData, encodeFunctionData, getAddress, isAddress, parseAbi, type Address, type Hex } from "viem";
 import { FengceGuardArtifact } from "@fengce/sdk";
@@ -11,7 +12,8 @@ import { EXPLORER_TX, sendFromWallet, simulateSafeTx, useWallet } from "../fengc
 
 const regAbi = parseAbi(["function isPinned(bytes32) view returns (bool)"]);
 const guardAbi = FengceGuardArtifact.abi as any;
-const DEMO = getAddress(DEPLOYMENT.demoSafe) as Address;
+/** The Milestone 2 demo Safe (guard v3) when it exists, else the release v2 demo Safe. */
+const DEMO = (V3?.demoSafe ?? getAddress(DEPLOYMENT.demoSafe)) as Address;
 
 /** What a scheduled configure() would set, in words. */
 function describe(data: Hex): string {
@@ -120,7 +122,8 @@ function Wallet() {
           {status(bound ? "Bound" : "Not bound", bound ? "var(--allow)" : "var(--muted)")}
           {status(pinned ? "Rules pinned" : pinned === false ? "Pin broken" : "Rules pinned ·", pinned ? "var(--allow)" : pinned === false ? "var(--deny)" : "var(--muted)")}
           {status("Alarm on", "var(--accent)")}
-          {status("No partner", "var(--muted)")}
+          {inst?.v3 && !/^0x0{40}$/i.test(inst.v3.rules.partner) ? status(`Partner ${short(inst.v3.rules.partner)}`, "var(--allow)") : status("No partner", "var(--muted)")}
+          {inst?.engine && status(inst.engine === "v3" ? "Guard v3" : "Guard v2", "var(--muted)")}
           <a className="pill accent" href={href("try")}>Try a trade</a>
         </div>
       </div>
@@ -128,9 +131,19 @@ function Wallet() {
       <div className="scroll-x">
         <div className="metrics" style={{ display: "grid", gridTemplateColumns: "repeat(5, minmax(170px, 1fr))", borderTop: "1px solid var(--line)", borderBottom: "1px solid var(--line)" }}>
           {metric("Max buy", inst ? usdt0(inst.maxPerBuy) : "…", inst?.limitsPolicy === false && inst?.set ? "USDT0 per send (demo policy)" : "USDT0 per buy", false, 0)}
-          {metric("Quiet hours", "Soon", "next engine release", false, 1)}
+          {inst?.engine === "v3" && inst.v3
+            ? metric("Quiet hours", inst.v3.rules.quietOn ? `${String(inst.v3.rules.quietStart).padStart(2, "0")}–${String(inst.v3.rules.quietEnd).padStart(2, "0")}` : "Off", inst.v3.rules.quietOn ? "UTC · no buys" : inst.v3.rules.holdSeconds ? `hold lock ${inst.v3.rules.holdSeconds / 3600} h` : "guard v3", false, 1)
+            : metric("Quiet hours", inst?.engine === "v2" ? "v3 only" : "…", "needs guard v3", false, 1)}
           {metric("Per hour", inst?.trades ? `${inst.trades.usedThisHour} / ${inst.trades.perHour}` : "Off", inst?.trades ? `swaps this hour · resets ${new Date(inst.trades.resetsAt * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "no hourly limit", false, 2)}
-          {metric("Tilt-shield", "Soon", "next engine release", false, 3)}
+          {inst?.engine === "v3" && inst.v3
+            ? metric(
+                "Tilt-shield",
+                !inst.v3.rules.tiltOn ? "Off" : inst.v3.tilt?.paused ? "Tripped" : `${inst.v3.tilt?.count ?? 0} / ${inst.v3.tilt?.tripAt ?? 4}`,
+                !inst.v3.rules.tiltOn ? "guard v3" : inst.v3.tilt?.paused ? (inst.v3.tilt.resumesAt ? `buys paused until ${new Date(inst.v3.tilt.resumesAt * 1000).toUTCString().slice(17, 22)} UTC` : "buys paused") : "buys this half hour",
+                !!inst.v3.tilt?.paused,
+                3,
+              )
+            : metric("Tilt-shield", inst?.engine === "v2" ? "v3 only" : "…", "needs guard v3", false, 3)}
           {metric("Blocked · 7d", String(blocked7d), "refused in Activity", blocked7d > 0, 4)}
         </div>
       </div>
@@ -168,9 +181,9 @@ function Wallet() {
                   {!demo && (
                     <span style={{ display: "flex", gap: 14 }}>
                       {left === 0 && (
-                        <button type="button" className="alink accent" disabled={busy} onClick={() => safeTx("Apply", ENGINE.guard, p.data)}>Apply</button>
+                        <button type="button" className="alink accent" disabled={busy} onClick={() => safeTx("Apply", inst?.guard ?? ENGINE.guard, p.data)}>Apply</button>
                       )}
-                      <button type="button" className="alink" disabled={busy} onClick={() => safeTx("Cancel", ENGINE.guard, encodeFunctionData({ abi: guardAbi, functionName: "cancelAdmin", args: [ENGINE.guard, p.data] }))}>Cancel</button>
+                      <button type="button" className="alink" disabled={busy} onClick={() => safeTx("Cancel", inst?.guard ?? ENGINE.guard, encodeFunctionData({ abi: guardAbi, functionName: "cancelAdmin", args: [inst?.guard ?? ENGINE.guard, p.data] }))}>Cancel</button>
                     </span>
                   )}
                 </div>

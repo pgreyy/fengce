@@ -491,3 +491,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   .csheet-bg { align-items: flex-end; padding: 0; }
   .csheet { width: 100%; max-height: 88vh; border-radius: 16px 16px 0 0; padding: 20px var(--pad) 28px; }
 }
+
+/* Tilt-shield: live state of the demo Safe */
+.ts-live { margin: 28px 0 8px; border: 1px solid var(--line); border-radius: 6px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; background: var(--surface); }
+.ts-live-h { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.ts-live-b { display: flex; flex-direction: column; gap: 6px; font-size: 14.5px; line-height: 1.5; }
+.ts-live-b .alink { font-size: 12px; }
