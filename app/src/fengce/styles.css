@@ -176,6 +176,14 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .hero-cue { display: none; position: absolute; left: 50%; bottom: 10px; z-index: 1; width: 1px; height: 26px; overflow: hidden; background: color-mix(in srgb, var(--muted) 35%, transparent); }
 .hero-cue::after { content: ""; position: absolute; left: 0; top: 0; width: 1px; height: 10px; background: var(--accent); animation: cue 1.8s ease-in-out infinite; }
 @keyframes cue { 0% { transform: translateY(-10px); } 70%, 100% { transform: translateY(26px); } }
+.proof { display: none; }
+.proof-h { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 40px; border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+.proof-on { font-family: var(--fm); font-size: 11.5px; letter-spacing: .06em; color: var(--allow); }
+.proof-on.off { color: var(--deny); }
+.proof-r { display: flex; justify-content: space-between; align-items: center; gap: 10px; min-height: 46px; border-bottom: 1px solid var(--line); font-size: 14px; color: var(--text); }
+.proof-r > span:first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proof .tag { letter-spacing: .03em; padding: 4px 6px; }
+.proof-f { padding-top: 8px; font-size: 11.5px; line-height: 1.4; color: var(--muted); }
 .works { display: flex; gap: 10px 22px; align-items: center; margin-top: 42px; font-family: var(--fm); font-size: 12px; letter-spacing: .06em; color: var(--muted); flex-wrap: wrap; text-transform: none; }
 .works > span:first-child { text-transform: uppercase; }
 .works b { color: var(--text); font-weight: 400; white-space: nowrap; }
@@ -244,8 +252,16 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 @media (max-width: 767px) {
   /* phones: the hero is exactly the first screen (small viewport units: the address bar and toolbar are counted) */
   .hero { height: auto; min-height: calc(100vh - var(--headH) - 1px); min-height: calc(100dvh - var(--headH) - 1px); min-height: calc(100svh - var(--headH) - 1px); display: flex; flex-direction: column; }
-  .hero-in { flex: 1 1 auto; height: auto; justify-content: flex-start; padding-top: 32px; padding-bottom: 46px; }
-  .hero-in .works { margin-top: auto; padding-top: 24px; }
+  /* three groups (text and buttons / proof card / chips) spread over the screen; the card absorbs spare height */
+  .hero-in { flex: 1 1 auto; height: auto; justify-content: space-between; gap: clamp(16px, 3.2svh, 32px); padding-top: 24px; padding-bottom: 44px; }
+  .hero-in .works { margin-top: 0; }
+  .hero-top .hero-h1 { margin-top: 14px; }
+  .hero-top .hero-sub { margin-top: 16px; }
+  .hero-top .hero-cta { margin-top: 22px; }
+  .proof { display: flex; flex-direction: column; justify-content: center; flex: 1 1 auto; max-height: 300px; padding: 4px 16px 10px; border: 1px solid var(--line); border-radius: 6px; background: color-mix(in srgb, var(--surface) 62%, transparent); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .hero-vinyl { opacity: .5; }
+  .proof-r { flex: 1 1 46px; max-height: 66px; }
+  .proof-h { flex: 1 1 40px; max-height: 54px; }
   .hero-cue { display: block; }
   .works > span[aria-hidden] { display: none; }
   .works b { font-size: 11px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 999px; background: color-mix(in srgb, var(--bg) 70%, transparent); }
@@ -483,4 +499,16 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   .cat-top .field { width: 100% !important; }
   .csheet-bg { align-items: flex-end; padding: 0; }
   .csheet { width: 100%; max-height: 88vh; border-radius: 16px 16px 0 0; padding: 20px var(--pad) 28px; }
+}
+
+/* short phones (740 px tall and similar): the hero still fits the first screen */
+@media (max-width: 767px) and (max-height: 760px) {
+  .hero-in { gap: 14px; padding-top: 24px; padding-bottom: 40px; }
+  .hero-top .hero-h1 { font-size: 36px; margin-top: 12px; }
+  .hero-top .hero-sub { font-size: 15px; line-height: 1.45; margin-top: 12px; }
+  .hero-top .hero-cta { margin-top: 18px; }
+  .proof { padding: 2px 14px 8px; }
+  .proof-r { min-height: 40px; }
+  .proof-h { min-height: 36px; }
+  .hero-in .works { gap: 6px 10px; }
 }

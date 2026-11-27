@@ -1,0 +1,164 @@
+{
+  "chainId": 196,
+  "txs": {
+    "deploy": [
+      {
+        "hash": "0x162db8d0b65718c354a2890a068c6dfe613f186ed95f7eb283209fc40cc77efd",
+        "to": "0x4e59b44847b379578588920ca78fbf26c0b4956c",
+        "function": null,
+        "contract": "FengceRulesV3.ir-small",
+        "created": "0xbc07773b7a19b2a8e8f89adc97bde9d7752b1c2c"
+      },
+      {
+        "hash": "0x1605cc3767758b75712bcfb0b533de2bcb5b421212d0acaebd496e1fb922eeb1",
+        "to": "0xe45d5a9b01582204f597eb0be44d6e0a335ca6db",
+        "function": "mint(uint256,uint256)",
+        "contract": null,
+        "created": "0xe45d5a9b01582204f597eb0be44d6e0a335ca6db"
+      },
+      {
+        "hash": "0x67e7e639fb80322ef4eb7fb5c164ad9c86431131fdc0be1674ed40e3f0d69273",
+        "to": "0xe45d5a9b01582204f597eb0be44d6e0a335ca6db",
+        "function": "mint(uint256,uint256)",
+        "contract": null,
+        "created": "0xe45d5a9b01582204f597eb0be44d6e0a335ca6db"
+      },
+      {
+        "hash": "0x76128ab438ae0037eb6c3185ba9568eeab1715a2de0e85011f15772ff37d4266",
+        "to": "0x7335a50819d44402e3d5e00239bbb80a13e7308f",
+        "function": "tapeout(bytes,uint32,uint32)",
+        "contract": null,
+        "created": "0x7335a50819d44402e3d5e00239bbb80a13e7308f"
+      },
+      {
+        "hash": "0xc43c9d842b7cd6b97a061c73fc32a12636af4708123d9994c3e70fbde88097ca",
+        "to": "0xd905dde3a09a9777b98013ad196e3b3f988e3715",
+        "function": "pin(address,uint256,bytes32,bytes32)",
+        "contract": null,
+        "created": "0xd905dde3a09a9777b98013ad196e3b3f988e3715"
+      },
+      {
+        "hash": "0xb13183b1c679e042570ee1f1e180dd5b37f5bab657713c46b43e29cc7e2f19f0",
+        "to": null,
+        "function": null,
+        "contract": "FengceGuardV3",
+        "created": "0x8f2bee582260df363aafae77cb2e1cdb63110941"
+      },
+      {
+        "hash": "0x8173805857632f9632f545faab772bb6e6aab0dd0aea15e131cdf596593f08ee",
+        "to": null,
+        "function": null,
+        "contract": "AgentExecutorV3.ir-small",
+        "created": "0x3ffd99e3e2386c863fbcc16362af233648d6695a"
+      }
+    ],
+    "safe": [
+      {
+        "hash": "0xeea23f6795202ca7e4240adf1968023905e344ceeadbcc61b08adc53a6a35211",
+        "to": "0x14f2982d601c9458f93bd70b218933a6f8165e7b",
+        "function": "createProxyWithNonce(address,bytes,uint256)",
+        "contract": null,
+        "created": "0x14f2982d601c9458f93bd70b218933a6f8165e7b"
+      },
+      {
+        "hash": "0xf3dfa64beb16a5a7674e52f1bd6622e306b9373bf7fdde25a25c065939a37fc8",
+        "to": "0x637a7bee8a71a750923cd023d4666eb89a2a5208",
+        "function": "execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)",
+        "contract": null,
+        "created": "0x637a7bee8a71a750923cd023d4666eb89a2a5208"
+      }
+    ],
+    "fund": [
+      {
+        "hash": "0x4d47c747299da74e8e542ad5477ab87d77eb0f3df7b7c1d8842613beb07be1f3",
+        "to": "0x779ded0c9e1022225f8e0630b35a9b54be713736",
+        "function": "transfer(address,uint256)",
+        "contract": null,
+        "created": "0x779ded0c9e1022225f8e0630b35a9b54be713736"
+      }
+    ],
+    "swap": [
+      {
+        "hash": "0xafb795f9f4c86f301734f61e6f282bf3cc528125b8351c0858c6bfce2af217b6",
+        "to": "0x637a7bee8a71a750923cd023d4666eb89a2a5208",
+        "function": "execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)",
+        "contract": null,
+        "created": "0x637a7bee8a71a750923cd023d4666eb89a2a5208"
+      }
+    ],
+    "refuse": [
+      {
+        "hash": "0x78dd364b256c32b70eebbac717dd5c8ed7b5876def35ba6118be7a81d4021283",
+        "to": "0x8f2bee582260df363aafae77cb2e1cdb63110941",
+        "function": "recordRefusal(address,address,uint256,bytes,uint8)",
+        "contract": null,
+        "created": "0x8f2bee582260df363aafae77cb2e1cdb63110941"
+      }
+    ],
+    "tilt": [
+      {
+        "hash": "0xf700d23ea538721ce771b2953ac76c340ec5e9ad8d701181a2e87fcb2c9d1f7e",
+        "to": "0x637a7bee8a71a750923cd023d4666eb89a2a5208",
+        "function": "execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)",
+        "contract": null,
+        "created": "0x637a7bee8a71a750923cd023d4666eb89a2a5208"
+      },
+      {
+        "hash": "0x5594edd982868806eb3b9418b6c86feddf76dbf583e3d046f1895262cbc9f3e7",
+        "to": "0x637a7bee8a71a750923cd023d4666eb89a2a5208",
+        "function": "execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)",
+        "contract": null,
+        "created": "0x637a7bee8a71a750923cd023d4666eb89a2a5208"
+      },
+      {
+        "hash": "0x8cbef6186d6cf148ae311bdcf112d5cf081668685f42a22efcef693f537b30be",
+        "to": "0x637a7bee8a71a750923cd023d4666eb89a2a5208",
+        "function": "execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)",
+        "contract": null,
+        "created": "0x637a7bee8a71a750923cd023d4666eb89a2a5208"
+      },
+      {
+        "hash": "0x26baa17ca5b743fdaefc6c2df186f96e8aa1eb738ec5b7b5f3126a5894fd0f70",
+        "to": "0x637a7bee8a71a750923cd023d4666eb89a2a5208",
+        "function": "execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)",
+        "contract": null,
+        "created": "0x637a7bee8a71a750923cd023d4666eb89a2a5208"
+      }
+    ],
+    "paused": [
+      {
+        "hash": "0x52fa8d40882b75e6561a029afde8fc31a8498a911202253e3313e38959de0b2b",
+        "to": "0x8f2bee582260df363aafae77cb2e1cdb63110941",
+        "function": "recordRefusal(address,address,uint256,bytes,uint8)",
+        "contract": null,
+        "created": "0x8f2bee582260df363aafae77cb2e1cdb63110941"
+      }
+    ]
+  },
+  "tiltLatchCircuitId": "8",
+  "tiltLatchPin": "0xe74214f7c364b60d332d38b4a639faa398c3973c4d7bc08f5cf0d1a4417beb6a",
+  "tiltLatchNetlistHash": "0x8d0c6d168add46910f31e030659e69f00ba4bafebf7ae6c13f9a9ae79941c442",
+  "guard": "0x8f2Bee582260dF363AAfaE77cb2e1cdB63110941",
+  "agentExecutor": "0x3FFd99E3E2386C863fbcC16362aF233648D6695A",
+  "rulesLibrary": "0xbc07773b7a19b2a8e8f89adc97bde9d7752b1c2c",
+  "safe": "0x637A7BEe8a71A750923Cd023d4666eb89A2a5208",
+  "owner": "0x6eAC9821430aCa193a717a7C17D68f8033D46087",
+  "agent": "0x7dd2eA948c13C1CF6045DDBc3c674A6ed2E6d879",
+  "steps": {
+    "fund": {
+      "funded": "1500000"
+    },
+    "swap": {
+      "swapped": "200000"
+    },
+    "refuse": {
+      "refusedCode": "1"
+    },
+    "tilt": {
+      "tiltTrippedAt": "1795771817"
+    },
+    "paused": {
+      "refusedCode": "5"
+    }
+  }
+}
