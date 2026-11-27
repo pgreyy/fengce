@@ -34,10 +34,16 @@ Sources and losses as reported: [README, Why Fengce](../README.md#why-fengce).
   combinations, run by Tick and reset each clock hour.
 - **Adapters for other wallets.** ERC-6900 accounts are enforced through a hook (not permanent); Coinbase Smart
   Wallet and EIP-7702 accounts for agents.
-- **Guard v3 (on X Layer mainnet; transactions in [judges.md](judges.md#milestone-2-on-x-layer-mainnet-guard-v3)).** Quiet hours, hold lock and per-agent caps
+- **Guard v3 (on X Layer mainnet, verified on Sourcify; transactions in [judges.md](judges.md#milestone-2-on-x-layer-mainnet-guard-v3)).** Quiet hours, hold lock and per-agent caps
   decided on NAND circuit #2; Tilt-shield on counter circuit #7 and a new latch circuit (6 NAND + 1 LATCH) through Tick.
   Tightening applies at once, loosening waits 1 day (7 with a partner, who can approve early). Refusals carry a reason code;
   owners can record a refusal on chain without a reverted transaction.
+- **One-signature Safes.** FengceSetupV3 installs guard v3 while the Safe is created, so a new Safe starts with limits in one
+  transaction; Safe{Wallet} users can install from a Transaction Builder file (/install) or open the app inside Safe{Wallet}.
+- **Templates.** Admin key guard (delegatecalls only to MultiSendCallOnly; owner, threshold and module changes wait a day)
+  and Vault (small USDT0 sends now, big ones after a public wait), each one signature on a new Safe (fork-tested).
+- **Any TapeOut circuit as a limit.** Search and import any of the ~12,000 circuits on X Layer, map its inputs to guard facts,
+  see every case run on chain and what changes before signing; unlisted circuits carry a warning (fork-tested).
 - **Add a circuit and build your own.** Install a Catalog circuit (its install fee goes 80% to the designer), or combine
   conditions into a new circuit, checked on every input, taped out from your wallet, pinned and used as your policy.
 - **Safe{Wallet} and agents.** A Transaction Builder file installs the guard on any X Layer Safe (`/install`); the OKX
@@ -54,6 +60,8 @@ Sources and losses as reported: [README, Why Fengce](../README.md#why-fengce).
 | One-signature install, in-limit swap passes, over-limit swap reverts, the third swap in an hour reverts, raising the cap waits 1 day | fork test on live X Layer state: [test/fork/LimitsInstall.t.sol](../contracts/test/fork/LimitsInstall.t.sol) |
 | Source verified | 18/18 v2 contracts on Sourcify, exact match ([list](CLAIMS.md#sourcify-18)) |
 | The app is stored on X Layer | [6.2.180.tape](https://6-2-180.tapekit.org/), every file checked by SHA-256 ([record](../deployments/deweb-xlayer-196.json)) |
+| Guard v3 on mainnet | max per buy, Tilt-shield, agent cap, a Catalog install and a Build your own circuit, each with an allowed and a refused transaction ([judges.md](judges.md)) |
+| Guard v3 verified | FengceGuardV3, FengceRulesV3, AgentExecutorV3, FengceSetupV3 on Sourcify ([claim](CLAIMS.md#v3-deployed)) |
 | Tests | 112 in CI for the v2 release commit, plus later unit and fork tests ([CLAIMS.md](CLAIMS.md)) |
 
 Every claim with its transaction, test or verification link: [CLAIMS.md](CLAIMS.md).
@@ -71,7 +79,8 @@ Full tables: [Docs, Compared](https://getfengce.vercel.app/docs/?tab=cmp).
 
 ## What's next
 
-- **Moving existing Safes to guard v3** (a guard change: recovery, 2 days, every owner) and Sourcify verification of the v3 contracts.
+- **Moving existing Safes to guard v3** (a guard change: recovery, 2 days, every owner).
+- **Treasury template** once a recipient allowlist can sit next to a cap and a budget.
 - **Wallet integrations**: limits shown on a wallet's confirm screen through the SDK ([BUSINESS.md](../BUSINESS.md)).
 - **An independent security review** before larger amounts.
 

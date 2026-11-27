@@ -44,6 +44,17 @@ property of the code or setup). Test links point at the test function in this re
 | [wallet-mav2](#wallet-mav2) | fork-tested | X Layer mainnet fork (live Modular Account v2 code) | v2 |
 | [wallet-7702](#wallet-7702) | fork-tested | X Layer mainnet fork (live SemiModularAccount7702) | v2 |
 | [wallet-coinbase](#wallet-coinbase) | fork-tested | X Layer mainnet fork with Coinbase Smart Wallet code from Base | v2 |
+| [v3-deployed](#v3-deployed) | verified | X Layer mainnet (196) | v3 |
+| [v3-max-per-buy](#v3-max-per-buy) | mainnet | X Layer mainnet (196) | v3 |
+| [v3-tilt-shield](#v3-tilt-shield) | mainnet | X Layer mainnet (196) | v3 |
+| [v3-agent-cap](#v3-agent-cap) | mainnet | X Layer mainnet (196) | v3 |
+| [setup-one-signature](#setup-one-signature) | mainnet | X Layer mainnet (196) | v3 |
+| [catalog-install-mainnet](#catalog-install-mainnet) | mainnet | X Layer mainnet (196) | v3 |
+| [build-your-own-mainnet](#build-your-own-mainnet) | mainnet | X Layer mainnet (196) | v3 |
+| [import-any-circuit](#import-any-circuit) | fork-tested | X Layer mainnet fork | v3 |
+| [templates](#templates) | fork-tested | X Layer mainnet fork | v3 |
+| [v3-hold-lock](#v3-hold-lock) | mainnet | X Layer mainnet (196) | v3 |
+| [v3-quiet-hours](#v3-quiet-hours) | mainnet | X Layer mainnet (196) | v3 |
 
 ## binds-owners
 
@@ -398,3 +409,118 @@ Coinbase Smart Wallet: agents act through FengceAgentOwner and are checked; owne
 Status: **fork-tested** · Network: X Layer mainnet fork with Coinbase Smart Wallet code from Base · Release: v2
 
 - [test_coinbaseAgentThroughCircuit](../contracts/test/wallets/FengceAgentOwner.t.sol#L47)
+
+## v3-deployed
+
+FengceGuardV3, FengceRulesV3, AgentExecutorV3 and FengceSetupV3 are deployed on X Layer mainnet and verified on Sourcify (FengceGuardV3: match, runtime bytecode identical; the other three: exact match).
+
+Status: **verified** · Network: X Layer mainnet (196) · Release: v3
+
+- [FengceGuardV3 deploy](https://www.oklink.com/x-layer/tx/0xb13183b1c679e042570ee1f1e180dd5b37f5bab657713c46b43e29cc7e2f19f0)
+- [FengceGuardV3 on Sourcify](https://repo.sourcify.dev/196/0x8f2Bee582260dF363AAfaE77cb2e1cdB63110941)
+- [FengceRulesV3 on Sourcify](https://repo.sourcify.dev/196/0xbc07773b7a19b2a8e8f89adc97bde9d7752b1c2c)
+- [AgentExecutorV3 on Sourcify](https://repo.sourcify.dev/196/0x3FFd99E3E2386C863fbcC16362aF233648D6695A)
+- [FengceSetupV3 deploy](https://www.oklink.com/x-layer/tx/0xde11a35904a8a7928813e1eb3816555457e1a2b377bbee94c1438e8f54c1a00e)
+- [FengceSetupV3 on Sourcify](https://repo.sourcify.dev/196/0x591E804770b0819AF1d3Ce14289215d1c3dC8dA3)
+
+## v3-max-per-buy
+
+Guard v3 on the demo Safe: a 0.2 USDT0 swap was allowed; a 3 USDT0 swap over the 2 USDT0 cap is refused with code 1 (CIRCUIT, NAND circuit #2), recorded on chain with recordRefusal.
+
+Status: **mainnet** · Network: X Layer mainnet (196) · Release: v3
+
+- [allowed swap](https://www.oklink.com/x-layer/tx/0xafb795f9f4c86f301734f61e6f282bf3cc528125b8351c0858c6bfce2af217b6)
+- [refusal recorded](https://www.oklink.com/x-layer/tx/0x78dd364b256c32b70eebbac717dd5c8ed7b5876def35ba6118be7a81d4021283)
+
+## v3-tilt-shield
+
+Tilt-shield on mainnet: four 0.2 USDT0 buys in the same half hour tripped it (counter circuit #7 and the Tilt-shield latch, through Tick); the next buy is refused with code 5 (TILT_SHIELD).
+
+Status: **mainnet** · Network: X Layer mainnet (196) · Release: v3
+
+- [buy 1](https://www.oklink.com/x-layer/tx/0xf700d23ea538721ce771b2953ac76c340ec5e9ad8d701181a2e87fcb2c9d1f7e)
+- [buy 2](https://www.oklink.com/x-layer/tx/0x5594edd982868806eb3b9418b6c86feddf76dbf583e3d046f1895262cbc9f3e7)
+- [buy 3](https://www.oklink.com/x-layer/tx/0x8cbef6186d6cf148ae311bdcf112d5cf081668685f42a22efcef693f537b30be)
+- [buy 4](https://www.oklink.com/x-layer/tx/0x26baa17ca5b743fdaefc6c2df186f96e8aa1eb738ec5b7b5f3126a5894fd0f70)
+- [refusal recorded](https://www.oklink.com/x-layer/tx/0x52fa8d40882b75e6561a029afde8fc31a8498a911202253e3313e38959de0b2b)
+
+## v3-agent-cap
+
+An OKX Agentic Wallet agent paid 0.3 USDT0 through AgentExecutorV3 (allowed); paying 0.3 again went over its 0.5 USDT0 daily cap and was recorded as Denied with code 6 (AGENT_CAP); nothing moved.
+
+Status: **mainnet** · Network: X Layer mainnet (196) · Release: v3
+
+- [allowed](https://www.oklink.com/x-layer/tx/0x4da52f34ca30b4dae4569bbbbf209b7f162bf5fa6e5632778824917f53ec3b1c)
+- [denied](https://www.oklink.com/x-layer/tx/0xbde663dcf559fa162d1bf406836a84859f893dccd805fbac9cd92882c7d728ae)
+
+## setup-one-signature
+
+A Safe is created with guard v3 already installed in one transaction (Safe setup delegatecalls FengceSetupV3); the app's Create a new Safe uses it.
+
+Status: **mainnet** · Network: X Layer mainnet (196) · Release: v3
+
+- [Safe created with guard v3](https://www.oklink.com/x-layer/tx/0xe2031beb8a5ccb08f58549ec785fa35ecdbf5b3fa06a8f8573b5059b73a9f4b8)
+- [fork check of the app's calls](../app/scripts/install-create-fork.mts)
+
+## catalog-install-mainnet
+
+A Catalog circuit (Stablecoin Transfer Limit, circuit #2, free during launch) was installed on a second Safe: scheduled, approved early by its partner, applied; a 0.05 USDT0 send was allowed and a 0.5 USDT0 send is refused (code 1).
+
+Status: **mainnet** · Network: X Layer mainnet (196) · Release: v3
+
+- [step 1: execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)](https://www.oklink.com/x-layer/tx/0x057763311385a7bc95a5056f02ff5534e77d08f5f42af991075ca4a4dc74506c)
+- [step 2: partnerApprove(address,bytes32)](https://www.oklink.com/x-layer/tx/0xa82f6f146526c1ab0910a57ea2695581bc836978f6bd534544a7449e5256653b)
+- [step 3: execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)](https://www.oklink.com/x-layer/tx/0xece1e4402a1d7b90b27e581540d8513b86b9d37972d23a885312ff58469cc977)
+- [step 4: execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)](https://www.oklink.com/x-layer/tx/0x5c00b558cfc44d9a8ed82c4c474bcda5ff88ecd083fa88b3fbb2f3e01f1de811)
+- [step 5: recordRefusal(address,address,uint256,bytes,uint8)](https://www.oklink.com/x-layer/tx/0xf72e45a6da4c61b8deb0250f5b72a68cc7bdeb1d4eef7aa36c76a1e3327948fd)
+
+## build-your-own-mainnet
+
+A circuit built as Limits -> Build your own builds it (4 NAND: refuse when over 0.1 USDT0 or paying USDC) was taped out as circuit #9 on processor #180, pinned and installed; a 0.05 USDT0 send was allowed and a 0.5 USDT0 send is refused (code 1).
+
+Status: **mainnet** · Network: X Layer mainnet (196) · Release: v3
+
+- [step 1: mint(uint256,uint256)](https://www.oklink.com/x-layer/tx/0xd0b1493cd6973b1663febde9fcd3edc75437f5e8a9d1e717970ebb0f663e8c17)
+- [step 2: tapeout(bytes,uint32,uint32)](https://www.oklink.com/x-layer/tx/0x0faa7132581b19d27b99bed91e4d6072e672997b26ca46dd0e5acd41153f613b)
+- [step 3: pin(address,uint256,bytes32,bytes32)](https://www.oklink.com/x-layer/tx/0x99960f1119824d44c5ffff0d38f4c0181a84ae527ed666ad38c6f6366f191a50)
+- [step 4: execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)](https://www.oklink.com/x-layer/tx/0x0be4db8fa6d9f58f123cddc7c7de552f8d98dd32fd8609778ebf2116a3fd67bb)
+- [step 5: partnerApprove(address,bytes32)](https://www.oklink.com/x-layer/tx/0x5df6e22f76edb965e8c0ea92284690fec64b24e1c1db9438a4ae8e3661f0c06a)
+- [step 6: execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)](https://www.oklink.com/x-layer/tx/0x60575269110199603a5215abc6aca1084316244e549043636a6a5febb7369a88)
+- [step 7: execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes)](https://www.oklink.com/x-layer/tx/0x01b9db8f71505d9a82615eca1fe069fe7308ea3ee007bcf55f51298a6dc2d1ba)
+- [step 8: recordRefusal(address,address,uint256,bytes,uint8)](https://www.oklink.com/x-layer/tx/0x2046dca0cc95f97b3340b5d9c4b6f41abebc961627f2d4bcf101c92e5908f3eb)
+
+## import-any-circuit
+
+Any TapeOut circuit on X Layer can be imported: an unlisted circuit (1.2.131) mapped to guard facts is pinned and installed with guard v3 in one signature, and decides allow and refuse; a circuit with memory (2.2.364) is added through Tick at first install.
+
+Status: **fork-tested** · Network: X Layer mainnet fork · Release: v3
+
+- [import fork check](../app/scripts/import-fork.mts)
+- [memory fork check](../app/scripts/import-stateful-fork.mts)
+
+## templates
+
+The Admin key guard and Vault templates install guard v3 on a new Safe in one signature; each was shown to allow one transaction and refuse one (Admin: a delegatecall to a contract other than MultiSendCallOnly, and adding an owner right away; Vault: a send over the cap).
+
+Status: **fork-tested** · Network: X Layer mainnet fork · Release: v3
+
+- [templates fork check](../app/scripts/templates-fork.mts)
+
+## v3-hold-lock
+
+Hold lock on mainnet: with a 6-hour hold lock, a 0.05 USDT0 buy went through and selling it right away is refused with code 4 (HOLD_LOCK).
+
+Status: **mainnet** · Network: X Layer mainnet (196) · Release: v3
+
+- [step 1](https://www.oklink.com/x-layer/tx/0xb6248ca7f44629c47f7f71752440ac3fe593912af35e7ef87d7b4ad3f486f660)
+- [step 2](https://www.oklink.com/x-layer/tx/0xf0125accabbfb3b57adb4a3151ed30f814ee4c100b90acf77818cef6f9199f81)
+- [step 3](https://www.oklink.com/x-layer/tx/0x3b1d2f6b7f8ce24fb910f2011d5377daa127eb413b81bdc3d1ddab12743e61d5)
+
+## v3-quiet-hours
+
+Quiet hours on mainnet: with quiet hours over the current UTC hour (a tightening, applied at once), a buy is refused with code 3 (QUIET_HOURS).
+
+Status: **mainnet** · Network: X Layer mainnet (196) · Release: v3
+
+- [step 1](https://www.oklink.com/x-layer/tx/0xa382acff9721a59f3fc4a43dee0e13c23397d08ed4c45d36caa7b57bac4d36ea)
+- [step 2](https://www.oklink.com/x-layer/tx/0x9e9115a971ee51146251464e5bebf527ebacd2dd91af35f17d11e24a9b1ce798)

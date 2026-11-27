@@ -63,16 +63,43 @@ function M2Txs() {
     ["One more buy, recorded with recordRefusal", t.paused[0].hash, "REFUSED · TILT_SHIELD"],
     ["OKX Agentic Wallet pays 0.3 USDT0 through AgentExecutorV3", t.agent[0].hash, "ALLOWED"],
     ["Same agent pays 0.3 USDT0 again", t.agent[1].hash, "DENIED · AGENT_CAP"],
+    ...(t.hold?.length === 3
+      ? ([
+          ["Hold lock 6 hours, then buy 0.05 USDT0", t.hold[1].hash, "ALLOWED"],
+          ["Sell it right away, recorded with recordRefusal", t.hold[2].hash, "REFUSED · HOLD_LOCK"],
+        ] as [string, string, string][])
+      : []),
+    ...(t.quiet?.length === 2 ? ([["A buy inside quiet hours, recorded with recordRefusal", t.quiet[1].hash, "REFUSED · QUIET_HOURS"]] as [string, string, string][]) : []),
+    ...(t.partner?.length ? ([["Partner scheduled (a loosening: waits 1 day)", t.partner[0].hash, "scheduled"]] as [string, string, string][]) : []),
+    ...(t.setup ? ([["FengceSetupV3 deployed: Safe creation with guard v3 in one signature", t.setup[0].hash, "deployed"]] as [string, string, string][]) : []),
+    ...(t.fresh ? ([["Second Safe created with guard v3 in one transaction", t.fresh[0].hash, "installed"]] as [string, string, string][]) : []),
+    ...(t.catalog?.length === 5
+      ? ([
+          ["Catalog #2 install scheduled (free during launch)", t.catalog[0].hash, "installed"],
+          ["Partner approves the change early", t.catalog[1].hash, "installed"],
+          ["Catalog circuit applied as the policy", t.catalog[2].hash, "installed"],
+          ["Send 0.05 USDT0", t.catalog[3].hash, "ALLOWED"],
+          ["Send 0.5 USDT0, recorded with recordRefusal", t.catalog[4].hash, "REFUSED · CIRCUIT"],
+        ] as [string, string, string][])
+      : []),
+    ...(t.build?.length === 8
+      ? ([
+          [`Build your own circuit taped out (#${M2.buildCircuitId} on #180)`, t.build[1].hash, `circuit #${M2.buildCircuitId}`],
+          ["Pinned, scheduled, approved early, applied", t.build[5].hash, "installed"],
+          ["Send 0.05 USDT0", t.build[6].hash, "ALLOWED"],
+          ["Send 0.5 USDT0, recorded with recordRefusal", t.build[7].hash, "REFUSED · CIRCUIT"],
+        ] as [string, string, string][])
+      : []),
   ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <span className="lbl">Milestone 2 on X Layer mainnet · guard v3 · {rows.length} transactions</span>
+      <span className="lbl">Milestones 2 and 2c on X Layer mainnet · guard v3 · {rows.length} transactions</span>
       {rows.map(([what, h, res]) => (
         <div key={h} className="addr-row">
           <span>{what}</span>
           <span style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <a className="code-link mono" style={{ fontSize: 13 }} href={`${EXPLORER}/tx/${h}`} target="_blank" rel="noreferrer noopener">{short(h, 6)}</a>
-            <span className={`tag ${res.startsWith("ALLOWED") ? "g" : res === "deployed" || res === "installed" || res.startsWith("circuit") ? "n" : "r"}`}>{res}</span>
+            <span className={`tag ${res.startsWith("ALLOWED") ? "g" : res === "deployed" || res === "installed" || res === "scheduled" || res.startsWith("circuit") ? "n" : "r"}`}>{res}</span>
           </span>
         </div>
       ))}
@@ -148,7 +175,8 @@ function Docs() {
     ["Demo Safe (guard v3)", M2.safe],
     ["Milestone 1 acceptance Safe", "0x5641DA334011832Feec997875781a3D40239465e"],
     ["TapeOut features used", `Circuits (eval, step with LATCH state through Tick), PinRegistry over REF closures, DeWeb (${TAPE_NAME})`],
-    ["All addresses", "deployments/xlayer-196-v2.json (v2, Sourcify exact match) · deployments/m2-demo-xlayer-196.json (v3, not yet on Sourcify)"],
+    ["FengceSetupV3", M2.setupV3],
+    ["All addresses", "deployments/xlayer-196-v2.json (v2, Sourcify exact match) · deployments/m2-demo-xlayer-196.json (v3, on Sourcify: guard match, the others exact match)"],
     ["Repo", REPO.replace("https://", "")],
   ];
   return (
