@@ -1,6 +1,6 @@
 schema_version: 1
 name: fengce
-version: "0.1.0"
+version: "0.2.0"
 description: "Check a transaction against a wallet's Fengce spending policy on X Layer before acting, and treat Denied as final."
 author:
   name: "Fengce"

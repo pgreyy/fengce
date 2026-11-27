@@ -1,10 +1,10 @@
 {
   "name": "fengce",
-  "description": "Check a transaction against a wallet's Fengce spending policy on X Layer before acting, and treat Denied as final.",
-  "version": "0.1.0",
+  "version": "0.2.0",
+  "description": "Check a transaction against a Safe's Fengce limits on X Layer before acting (allowed, or a reason code such as MAX_PER_BUY or AGENT_CAP), and treat a refusal as final.",
   "author": { "name": "Fengce" },
   "homepage": "https://getfengce.vercel.app",
   "repository": "https://github.com/pgreyy/fengce",
   "license": "MIT",
-  "keywords": ["x-layer", "safe", "policy", "spending-limit", "ai-agent"]
+  "keywords": ["x-layer", "okx", "safe", "ai-agent", "spending-limit", "tapeout"]
 }

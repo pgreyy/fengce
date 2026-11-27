@@ -1,7 +1,7 @@
 ---
 name: fengce
 description: "Check a transaction against a wallet's Fengce spending policy on X Layer before acting, and treat Denied as final."
-version: "0.1.0"
+version: "0.2.0"
 author: "Fengce"
 tags:
   - x-layer
@@ -54,6 +54,31 @@ curl -s -X POST https://getfengce.vercel.app/api/preflight -H 'content-type: app
 # "deny"
 ```
 
+### Check with the SDK (reason codes)
+
+```bash
+npm i @fengce/sdk viem
+node --input-type=module -e '
+import { createPublicClient, http } from "viem";
+import { check } from "@fengce/sdk";
+const client = createPublicClient({ transport: http("https://rpc.xlayer.tech") });
+console.log(await check(client, "<SAFE>", { to: "<TARGET>", value: 0n, data: "<CALLDATA>" }));'
+# { allowed: false, reason: "MAX_PER_BUY", limit: 30000000n, guard: "0x9D2A…8E6e", ... }
+```
+
+**When to use**: when you can run Node; same answer as preflight, straight from the chain (one eth_call that runs the
+Safe's own guard), with a reason code:
+
+| `reason` | Tell the user |
+|---|---|
+| `MAX_PER_BUY` | over the Safe's max per buy (`limit`, in USDT0 base units) |
+| `TRADES_PER_HOUR` | the Safe allows no more swaps this clock hour (UTC) |
+| `QUIET_HOURS` | swaps are paused at this hour on this Safe |
+| `HOLD_LOCK` | this token was bought too recently to sell |
+| `TILT_SHIELD` | buying is paused after a burst of buys; sells and sends still work |
+| `AGENT_CAP` | over this agent's daily budget on this Safe |
+| `CIRCUIT`, `NOT_CONFIGURED`, `DELEGATECALL`, `ADMIN`, `OTHER` | the Safe's policy refuses it; quote `detail` |
+
 ### Simulate a transaction against a listed policy
 
 ```bash
@@ -75,7 +100,7 @@ curl -s https://getfengce.vercel.app/api/safe/<SAFE> | jq '{guard, moduleGuard, 
 
 ## Decision rules
 
-1. `deny` is **final**. The wallet will refuse the transaction. Do not split it into smaller transactions, route it
+1. `deny` (or `allowed: false`) is **final**, whatever the reason code. The wallet will refuse the transaction. Do not split it into smaller transactions, route it
    through another contract or token, change the recipient to get around the rule, or retry it later hoping for a different
    answer. Tell the user what was denied and the reason.
 2. Never try to change, pause or remove the policy or the guard to make a transaction pass. Those changes are timelocked
