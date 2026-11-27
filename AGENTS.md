@@ -78,7 +78,8 @@ private one through the `XLAYER_RPC_URL` secret). Nothing in the test suite send
 - **Mainnet transactions**: the v2 demo (an agent's 1.5 USDT0 transfer denied, 0.5 allowed), the v1 demo, the v2
   deployment (pins, Catalog listings with on-chain vector checks, demo Safe setup). Links in [docs/CLAIMS.md](docs/CLAIMS.md).
 - **Verified**: 18/18 v2 contracts on Sourcify.
-- **Wallet types**: 4 with a tested adapter (Safe on mainnet, the other 3 on forks); list and tests in
+- **Wallet types**: 4 with a tested adapter (Safe on mainnet, the other 3 on forks). Only Safe makes the limits permanent (guard
+  and timelock); the other three use a hook or an extra owner the account owner can remove. List and tests in
   [docs/WALLETS.md](docs/WALLETS.md#wallet-types-with-a-tested-adapter-4), claim `wallet-types-4`.
 - **Fork-tested**: owner-path blocking, recovery and timelocks, outcome checks, floors, Tick budgets, approvals and
   signatures, swaps, and the non-Safe wallet adapters listed in docs/WALLETS.md. Fork tests run against live X Layer mainnet state.

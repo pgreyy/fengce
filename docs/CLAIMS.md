@@ -363,7 +363,7 @@ Status: **documented** · Network: n/a · Release: n/a
 
 ## wallet-types-4
 
-Adapters have a passing test on 4 wallet types: Safe and Modular Account v2 (enforced; permanent only on Safe), and EIP-7702 (SemiModularAccount7702) and Coinbase Smart Wallet (agents only).
+Adapters have a passing test on 4 wallet types. Only Safe makes the limits permanent: FengceGuard is its transaction and module guard, and any change waits on a timelock. The other three use a hook or an extra owner that the account owner can remove: Modular Account v2 (enforced through a hook), and EIP-7702 (SemiModularAccount7702) and Coinbase Smart Wallet (agents only).
 
 Status: **fork-tested** · Network: X Layer mainnet fork (Safe also on X Layer mainnet) · Release: v2
 

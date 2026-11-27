@@ -22,8 +22,9 @@ read on Safe accounts; on other accounts it checks the outcome and the account's
 
 ## Wallet types with a tested adapter (4)
 
-Every wallet in the matrix whose adapter has a passing test. Enforcement is permanent only on Safe; Modular Account v2 is enforced but
-its hook can be removed, and two are agent-only.
+Every wallet in the matrix whose adapter has a passing test. **Only Safe makes the limits permanent** (FengceGuard as its transaction
+and module guard, every change behind a timelock). The other three use a hook or an extra owner that the account owner can
+remove: Modular Account v2 is enforced through a hook, and two are agent-only.
 Alchemy MultiOwnerLightAccount v2 (agent-only, not tested) and the three not-integrated wallets are not counted. Claim:
 [wallet-types-4](CLAIMS.md#wallet-types-4).
 
