@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Address } from "viem";
-import { safeActivity, type ActivityRow } from "./chainActivity";
+import { laterRows, mergeRows, safeActivity, seedRows, type ActivityRow } from "./chainActivity";
 import { CopyButton, short } from "./ui";
 import { EXPLORER_TX } from "./wallet";
 
@@ -12,9 +12,17 @@ export function useActivity(safe: Address | null, limit = 25, bump = 0) {
     let live = true;
     setRows(null);
     setErr(null);
-    // the Safe's own transactions first (fast), then again with agent events from the Fengce history (slower)
-    safeActivity(safe, limit, false).then((r) => live && setRows((cur) => cur ?? r), () => undefined);
-    safeActivity(safe, limit).then((r) => live && setRows(r), (e) => live && (setErr((e as Error).message), setRows((cur) => cur ?? [])));
+    // first paint from the snapshot plus new Safe transactions (fast); owner refusals and agent calls since the snapshot
+    // are merged in after, in the background
+    seedRows(safe).then((r) => live && r && setRows((cur) => cur ?? r), () => undefined); // instant, from the snapshot
+    safeActivity(safe, limit).then(
+      (r) => {
+        if (!live) return;
+        setRows(r);
+        laterRows(safe).then((a) => live && a.length && setRows((cur) => mergeRows(cur ?? r, a)), () => undefined);
+      },
+      (e) => live && (setErr((e as Error).message), setRows([])),
+    );
     return () => void (live = false);
   }, [safe, limit, bump]);
   return { rows, err };
@@ -109,12 +117,18 @@ export function ActivityTable({
               <th>Age</th>
             </tr>
           </thead>
+          {rows === null && <caption className="sr-only">Reading X Layer</caption>}
           <tbody>
-            {rows === null && (
-              <tr>
-                <td className="sticky muted" colSpan={5}>Reading X Layer…</td>
-              </tr>
-            )}
+            {rows === null &&
+              [0, 1, 2].map((i) => (
+                <tr key={`sk${i}`} aria-hidden="true" className="act-sk">
+                  <td className="sticky"><span className="sk" style={{ width: 120 }} /></td>
+                  <td><span className="sk" style={{ width: 70 }} /></td>
+                  <td><span className="sk" style={{ width: 160 }} /></td>
+                  <td className="r"><span className="sk" style={{ width: 130 }} /></td>
+                  <td><span className="sk" style={{ width: 70 }} /></td>
+                </tr>
+              ))}
             {rows !== null && list.length === 0 && (
               <tr>
                 <td className="sticky muted" colSpan={5}>{err ? `Could not read the chain: ${err}` : (empty ?? "Nothing yet.")}</td>

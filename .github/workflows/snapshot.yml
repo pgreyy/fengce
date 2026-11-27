@@ -1,10 +1,10 @@
 name: Refresh event snapshot
 
-# Daily (and on demand): extends app/public/events-snapshot.json to a recent block, commits it if it changed, and
+# Every 2 hours (and on demand): extends app/public/events-snapshot.json to a recent block, commits it if it changed, and
 # redeploys the static app to Vercel production, so pages only scan the blocks since the last run.
 on:
   schedule:
-    - cron: "17 3 * * *"
+    - cron: "17 */2 * * *"
   workflow_dispatch:
 
 permissions:

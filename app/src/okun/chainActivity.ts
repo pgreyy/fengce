@@ -8,11 +8,16 @@
 // sent or simulated them (activity.ts), and a sent one is checked against its receipt on chain.
 import { decodeEventLog, decodeFunctionData, formatUnits, parseAbi, size, slice, hexToBigInt, toEventSelector, type Address, type Hex, type Log } from "viem";
 import { FengceGuardArtifact } from "@fengce/sdk";
-import { client } from "../lib/chain";
+import { createPublicClient, http } from "viem";
+import { DEPLOY_BLOCK, IN_BROWSER, RPCS, client } from "../lib/chain";
+
+/** Probes go round-robin over every public RPC, batched, so the search shares the rate limits of both. */
+const probeClients = RPCS.map((u) => createPublicClient({ transport: http(u, { retryCount: 3, retryDelay: 400, batch: IN_BROWSER ? { batchSize: 16, wait: 4 } : false }) }));
+let rr = 0;
+const probeClient = () => probeClients[rr++ % probeClients.length];
 import { attempts } from "./activity";
 import { ABIS, ENGINE, TOKENS } from "./engine";
 import { reasonOf, revertData, safeInfo } from "./wallet";
-import { safeHistory } from "./reads";
 
 export interface ActivityRow {
   /** unix seconds, or null when unknown */
@@ -48,9 +53,17 @@ const fmtAmt = (v: bigint, token: string) => {
 
 async function nonceAt(safe: Address, block: bigint): Promise<bigint> {
   try {
-    return await client.readContract({ address: safe, abi: nonceAbi, functionName: "nonce", blockNumber: block });
-  } catch {
-    return 0n; // no Safe at that block yet
+    return await probeClient().readContract({ address: safe, abi: nonceAbi, functionName: "nonce", blockNumber: block });
+  } catch (e) {
+    // no Safe at that block yet: the call returns no data. Anything else (rate limit, timeout) is retried once more on
+    // the other RPC and then fails the search, rather than being read as "nonce 0".
+    if (/returned no data|reverted|execution reverted/i.test(String((e as Error).message))) return 0n;
+    return await probeClient()
+      .readContract({ address: safe, abi: nonceAbi, functionName: "nonce", blockNumber: block })
+      .catch((e2) => {
+        if (/returned no data|reverted/i.test(String((e2 as Error).message))) return 0n;
+        throw e2;
+      });
   }
 }
 
@@ -75,81 +88,76 @@ function writeCache(safe: Address, c: Cache) {
   }
 }
 
-/** Blocks in which the Safe executed transactions with nonce current-limit..current-1. Every nonce() probe is kept and
- * shared, newest first, so each search starts between the closest probes already made. */
-async function executionBlocks(safe: Address, head: bigint, limit: number, countAt: (b: bigint) => Promise<bigint> = (b) => nonceAt(safe, b), cacheId = safe as string): Promise<{ nonce: bigint; block: bigint }[]> {
-  const probes = new Map<bigint, bigint>(); // block -> nonce after that block
-  const probe = async (b: bigint) => {
-    if (!probes.has(b)) probes.set(b, await countAt(b));
-    return probes.get(b)!;
-  };
-  const current = await probe(head);
+/** Blocks in which a counter (a Safe's nonce, or an EOA's transaction count) went from n to n+1, for the newest
+ * `limit` values of n. All values are searched at once: every round sends one parallel batch of probes (a 64-point grid
+ * first, then 16 points inside each interval still open), so a Safe with any number of transactions takes about five
+ * round trips. The search starts at the Fengce v2 deploy block (or after the last block cached for this Safe), and the
+ * results are cached in this browser, so a second visit only looks at new blocks. */
+async function executionBlocks(safe: Address, head: bigint, limit: number, countAt: (b: bigint) => Promise<bigint> = (b) => nonceAt(safe, b), cacheId = safe as string, from: bigint = DEPLOY_BLOCK, minNonce = 0n): Promise<{ nonce: bigint; block: bigint }[]> {
   const cache = readCache(cacheId as Address);
-  const first = current > BigInt(limit) ? current - BigInt(limit) : 0n;
-  for (const [n, blk] of Object.entries(cache.blocks)) {
-    const b = BigInt(blk);
-    probes.set(b, BigInt(n) + 1n); // after the block of nonce n, the nonce is at least n+1 (only used as a bound)
-    if (b > 0n && !probes.has(b - 1n)) probes.set(b - 1n, BigInt(n));
-  }
-  const out: { nonce: bigint; block: bigint }[] = [];
-  for (let n = current - 1n; n >= first; n--) {
-    const hit = cache.blocks[n.toString()];
-    if (hit) {
-      out.push({ nonce: n, block: BigInt(hit) });
-      continue;
+  const probes = new Map<bigint, bigint>(); // block -> count after that block
+  // at most 24 probes in flight: enough for one round trip per round, below the public RPCs' rate limits
+  const probeAll = async (bs: bigint[]) => {
+    const todo = [...new Set(bs)].filter((b) => !probes.has(b));
+    for (let i = 0; i < todo.length; i += 24) {
+      const part = todo.slice(i, i + 24);
+      const vals = await Promise.all(part.map(countAt));
+      part.forEach((b, k) => probes.set(b, vals[k]));
     }
-    // bounds from known probes: lo has nonce <= n, hi has nonce > n
-    let lo = -1n, hi = head;
-    for (const [b, v] of probes) {
-      if (v > n && b < hi) hi = b;
-      if (v <= n && b > lo) lo = b;
-    }
-    // nothing known below: probe 8 points at once, further back each time (recent Safes are found in one round)
-    if (lo < 0n) {
-      let step = 2048n;
-      while (lo < 0n) {
-        const pts = [...Array(8).keys()].map((k) => (hi > step * 4n ** BigInt(k) ? hi - step * 4n ** BigInt(k) : 0n));
-        const vals = await Promise.all(pts.map(probe));
-        const i = vals.findIndex((v) => v <= n);
-        if (i >= 0) {
-          lo = pts[i];
-          if (i > 0) hi = pts[i - 1];
-        } else if (pts[7] === 0n) {
-          lo = -1n;
-          break;
-        } else {
-          hi = pts[7];
-          step *= 4n ** 8n;
+  };
+  const current = await countAt(head);
+  probes.set(head, current);
+  let first = current > BigInt(limit) ? current - BigInt(limit) : 0n;
+  if (first < minNonce) first = minNonce;
+  const cached = Object.entries(cache.blocks).map(([n, b]) => [BigInt(n), BigInt(b)] as const);
+  const lastCached = cached.reduce((m, [, b]) => (b > m ? b : m), 0n);
+  const lo = lastCached > from ? lastCached : from;
+  const out = new Map<bigint, bigint>();
+  for (const [n, b] of cached) if (n >= first) out.set(n, b);
+  const targets: bigint[] = [];
+  for (let n = first; n < current; n++) if (!out.has(n)) targets.push(n);
+  if (targets.length) {
+    // round 1: a grid over [lo, head]
+    const span = head - lo;
+    await probeAll([lo, ...Array.from({ length: 23 }, (_, i) => lo + (span * BigInt(i + 1)) / 24n)]);
+    for (let round = 0; round < 40; round++) {
+      const sorted = [...probes.entries()].sort((x, y) => (x[0] < y[0] ? -1 : 1));
+      const want: bigint[] = [];
+      let open = 0;
+      for (const n of targets) {
+        if (out.has(n)) continue;
+        // tightest (a, b]: count(a) <= n < count(b)
+        let a = -1n, b = -1n;
+        for (const [blk, v] of sorted) {
+          if (v <= n) a = blk;
+          else {
+            b = blk;
+            break;
+          }
         }
+        if (b < 0n) continue; // not found below head (should not happen)
+        if (a < 0n) {
+          // the count was already above n at the first probe: that transaction is older than the search range
+          out.set(n, -1n);
+          continue;
+        }
+        if (b - a <= 1n) {
+          out.set(n, b);
+          continue;
+        }
+        open++;
+        const w = b - a;
+        const k = w - 1n < 12n ? w - 1n : 12n;
+        for (let i = 1n; i <= k; i++) want.push(a + (w * i) / (k + 1n));
       }
+      if (!open) break;
+      await probeAll(want);
     }
-    // 8-way search: smallest block in (lo, hi] with nonce > n, 7 probes per round in one batched request
-    let a = lo + 1n, z = hi;
-    while (a < z) {
-      if (z - a < 8n) {
-        const pts = [...Array(Number(z - a)).keys()].map((k) => a + BigInt(k));
-        const vals = await Promise.all(pts.map(probe));
-        const i = vals.findIndex((v) => v > n);
-        z = i >= 0 ? pts[i] : z;
-        a = z;
-        break;
-      }
-      const span = z - a;
-      const pts = [1n, 2n, 3n, 4n, 5n, 6n, 7n].map((k) => a + (span * k) / 8n);
-      const vals = await Promise.all(pts.map(probe));
-      const i = vals.findIndex((v) => v > n);
-      if (i < 0) a = pts[6] + 1n;
-      else {
-        z = pts[i];
-        if (i > 0) a = pts[i - 1] + 1n;
-      }
-    }
-    out.push({ nonce: n, block: a });
-    cache.blocks[n.toString()] = a.toString();
-    if (n === 0n) break;
   }
+  const res = [...out.entries()].filter(([, b]) => b >= 0n).map(([nonce, block]) => ({ nonce, block }));
+  for (const r of res) cache.blocks[r.nonce.toString()] = r.block.toString();
   writeCache(cacheId as Address, cache);
-  return out;
+  return res.sort((x, y) => (x.nonce < y.nonce ? 1 : -1));
 }
 
 /** The transaction in `block` that used Safe nonce `nonce` (SafeL2 logs carry the nonce in additionalInfo). */
@@ -246,11 +254,11 @@ function describeExec(input: Hex): { type: string; amount: string } {
 /** Refusals recorded on chain: the owner's own transactions to the Safe that reverted. The owner's nonce rises with every
  * transaction it sends, reverted or not, so the same search finds them; the reason comes from replaying the call one block
  * earlier. Only the owner's `limit` most recent transactions are looked at. */
-async function ownerRefusals(safe: Address, head: bigint, limit: number): Promise<ActivityRow[]> {
+async function ownerRefusals(safe: Address, head: bigint, limit: number, from: bigint): Promise<ActivityRow[]> {
   const owners = (await safeInfo(safe).catch(() => ({ owners: [] as Address[] }))).owners.slice(0, 3);
   const rows: ActivityRow[] = [];
   for (const owner of owners) {
-    const blocks = await executionBlocks(safe, head, limit, (b) => client.getTransactionCount({ address: owner, blockNumber: b }).then(BigInt), `eoa:${owner}`);
+    const blocks = await executionBlocks(safe, head, limit, (b) => probeClient().getTransactionCount({ address: owner, blockNumber: b }).then(BigInt), `eoa:${owner}`, from);
     const found = await Promise.all(
       blocks.map(async ({ nonce, block }) => {
         const blk = await client.getBlock({ blockNumber: block, includeTransactions: true });
@@ -286,15 +294,18 @@ async function timeOf(block: bigint): Promise<number> {
   return blockTimes.get(block)!;
 }
 
-/** Newest first. `limit` bounds how many executed Safe transactions are looked up. */
-export async function safeActivity(safe: Address, limit = 25, withHistory = true): Promise<ActivityRow[]> {
-  const head = await client.getBlockNumber();
-  const [execs, hist, refused] = await Promise.all([
-    executionBlocks(safe, head, limit),
-    withHistory ? safeHistory(safe).catch(() => null) : null,
-    ownerRefusals(safe, head, 15).catch(() => [] as ActivityRow[]),
-  ]);
-  const rows: ActivityRow[] = [];
+// ------------------------------------------------------------------ rows, seeded by the event snapshot
+
+/** Activity of one Safe as the snapshot stores it (block as a string). */
+export interface SeedEntry {
+  head: string; // rows cover the Safe up to this block
+  nonce: string; // the Safe's nonce at `head`
+  rows: (Omit<ActivityRow, "block"> & { block: string | null })[];
+}
+const toSeedRow = (r: ActivityRow) => ({ ...r, block: r.block === null ? null : r.block.toString() });
+const fromSeedRow = (r: SeedEntry["rows"][number]): ActivityRow => ({ ...r, block: r.block === null ? null : BigInt(r.block) });
+
+async function describeExecs(safe: Address, execs: { nonce: bigint; block: bigint }[]): Promise<ActivityRow[]> {
   const found = await Promise.all(
     execs.map(async ({ nonce, block }) => {
       const tx = await txForNonce(safe, block, nonce);
@@ -303,32 +314,109 @@ export async function safeActivity(safe: Address, limit = 25, withHistory = true
       return { time, block, tx, source: "safe" as const, ...describeReceipt(safe, rc.logs as Log[]) };
     }),
   );
-  for (const r of found) if (r) rows.push(r);
-  rows.push(...refused);
-  for (const e of hist?.ev.agentEvents.filter((x) => x.event === "AgentExecuted") ?? [])
-    rows.push({ time: null, block: BigInt(e.block), tx: e.tx, source: "agent", type: `Agent ${short(String(e.args.agent))}`, amount: "–", ok: true, result: "Allowed", reason: "within the agent's limits" });
-  for (const e of hist?.ev.deniedAgentCalls ?? [])
-    rows.push({ time: null, block: BigInt(e.block), tx: e.tx, source: "agent", type: `Agent ${short(String(e.args.agent))}`, amount: "–", ok: false, result: "Refused", reason: plainReason(String(e.args.reason ?? "")) });
-  // agent rows: fetch block times (few)
-  await Promise.all(rows.filter((r) => r.time === null && r.block !== null).map(async (r) => (r.time = await timeOf(r.block!).catch(() => null))));
-  const seen = new Set(rows.map((r) => r.tx?.toLowerCase()));
-  for (const a of attempts(safe)) {
-    if (a.tx && seen.has(a.tx.toLowerCase())) continue;
-    let onChain: "success" | "reverted" | null = null;
-    if (a.tx) onChain = await client.getTransactionReceipt({ hash: a.tx }).then((r) => r.status, () => null);
-    rows.push({
-      time: Math.floor(a.time / 1000),
-      block: null,
-      tx: a.tx ?? null,
-      source: "browser",
-      type: a.action,
-      amount: a.amount,
-      ok: onChain ? onChain === "success" : a.ok,
-      result: onChain === "reverted" ? "Refused on chain" : a.tx ? (a.ok ? "Allowed" : "Refused") : "Refused · simulated, not sent",
-      reason: a.reason,
+  return found.filter((r): r is NonNullable<typeof r> => r !== null);
+}
+
+/** The Safe's executed transactions after the seed (or all, without one). Returns the rows, the head and the nonce. */
+export async function collect(safe: Address, limit: number, seed?: SeedEntry | null): Promise<{ head: bigint; nonce: bigint; rows: ActivityRow[] }> {
+  const known = seed ? BigInt(seed.nonce) : 0n;
+  const from = seed ? BigInt(seed.head) : DEPLOY_BLOCK;
+  const [head, nonce] = await Promise.all([client.getBlockNumber(), client.readContract({ address: safe, abi: nonceAbi, functionName: "nonce" }).catch(() => 0n)]);
+  const execs = nonce > known ? await executionBlocks(safe, head, limit, undefined, safe, from, known) : [];
+  const rows = [...(await describeExecs(safe, execs)), ...(seed?.rows ?? []).map(fromSeedRow)];
+  return { head, nonce, rows };
+}
+
+/** Owner refusals recorded on chain (reverted owner transactions to the Safe) after `from`. */
+export async function refusalsSince(safe: Address, from: bigint, limit = 15): Promise<ActivityRow[]> {
+  const head = await client.getBlockNumber();
+  return ownerRefusals(safe, head, limit, from).catch(() => [] as ActivityRow[]);
+}
+
+/** Rows this browser recorded (simulated refusals, or sent ones checked against their receipt). */
+export async function browserRows(safe: Address, seen: Set<string | undefined>): Promise<ActivityRow[]> {
+  return Promise.all(
+    attempts(safe)
+      .filter((a) => !(a.tx && seen.has(a.tx.toLowerCase())))
+      .map(async (a) => {
+        const onChain = a.tx ? await client.getTransactionReceipt({ hash: a.tx }).then((r) => r.status, () => null) : null;
+        return {
+          time: Math.floor(a.time / 1000),
+          block: null,
+          tx: a.tx ?? null,
+          source: "browser" as const,
+          type: a.action,
+          amount: a.amount,
+          ok: onChain ? onChain === "success" : a.ok,
+          result: onChain === "reverted" ? "Refused on chain" : a.tx ? (a.ok ? "Allowed" : "Refused") : "Refused · simulated, not sent",
+          reason: a.reason,
+        } as ActivityRow;
+      }),
+  );
+}
+
+/** Agent calls (AgentExecutor: allowed, and Denied with the reason) from a list of Fengce events. */
+export function agentRowsFrom(safe: Address, events: { source: string; event: string; block: string; tx: Hex; safe: string | null; args: Record<string, unknown> }[]): ActivityRow[] {
+  const mine = events.filter((e) => e.source === "agentExecutor" && e.safe?.toLowerCase() === safe.toLowerCase());
+  return mine
+    .filter((e) => e.event === "AgentExecuted" || e.event === "Denied")
+    .map((e) => {
+      const ok = e.event === "AgentExecuted";
+      return { time: null, block: BigInt(e.block), tx: e.tx, source: "agent" as const, type: `Agent ${short(String(e.args.agent))}`, amount: "–", ok, result: ok ? "Allowed" : "Refused", reason: ok ? "within the agent's limits" : plainReason(String(e.args.reason ?? "")) };
     });
+}
+
+export async function withTimes(rows: ActivityRow[]): Promise<ActivityRow[]> {
+  await Promise.all(rows.filter((r) => r.time === null && r.block !== null).map(async (r) => (r.time = await timeOf(r.block!).catch(() => null))));
+  return rows;
+}
+
+const byTime = (x: ActivityRow, y: ActivityRow) => (y.time ?? 0) - (x.time ?? 0);
+export function mergeRows(...lists: ActivityRow[][]): ActivityRow[] {
+  const seen = new Set<string>();
+  const out: ActivityRow[] = [];
+  for (const r of lists.flat()) {
+    const k = r.tx ? r.tx.toLowerCase() : `${r.source}:${r.time}:${r.type}:${r.amount}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    out.push(r);
   }
-  return rows.sort((x, y) => (y.time ?? 0) - (x.time ?? 0));
+  return out.sort(byTime);
+}
+
+/** Instant: the snapshot's rows for this Safe and this browser's simulated attempts, no RPC call (null without a seed). */
+export async function seedRows(safe: Address): Promise<ActivityRow[] | null> {
+  const { loadSnapshot } = await import("./reads");
+  const snap = (await loadSnapshot()) as { activity?: Record<string, SeedEntry> } | null;
+  const seed = snap?.activity?.[safe.toLowerCase()];
+  if (!seed) return null;
+  const base = seed.rows.map(fromSeedRow);
+  const seen = new Set(base.map((r) => r.tx?.toLowerCase()));
+  const local = attempts(safe)
+    .filter((a) => !a.tx)
+    .map((a) => ({ time: Math.floor(a.time / 1000), block: null, tx: null, source: "browser" as const, type: a.action, amount: a.amount, ok: a.ok, result: "Refused · simulated, not sent", reason: a.reason }) as ActivityRow);
+  return mergeRows(base, local);
+}
+
+/** First paint (fast): the snapshot's rows for this Safe plus any Safe transaction since, and this browser's rows. */
+export async function safeActivity(safe: Address, limit = 25): Promise<ActivityRow[]> {
+  const { loadSnapshot } = await import("./reads");
+  const snap = (await loadSnapshot()) as (Awaited<ReturnType<typeof loadSnapshot>> & { activity?: Record<string, SeedEntry> }) | null;
+  const seed = snap?.activity?.[safe.toLowerCase()] ?? null;
+  const { rows } = await collect(safe, limit, seed);
+  const agent = seed ? [] : await withTimes(agentRowsFrom(safe, (snap?.events ?? []) as never));
+  const base = mergeRows(rows, agent);
+  return mergeRows(base, await browserRows(safe, new Set(base.map((r) => r.tx?.toLowerCase()))));
+}
+
+/** Background (slower): owner refusals after the snapshot and agent calls from the live event history. */
+export async function laterRows(safe: Address): Promise<ActivityRow[]> {
+  const { loadSnapshot, safeHistory } = await import("./reads");
+  const snap = (await loadSnapshot()) as (Awaited<ReturnType<typeof loadSnapshot>> & { activity?: Record<string, SeedEntry> }) | null;
+  const seed = snap?.activity?.[safe.toLowerCase()];
+  const [refused, hist] = await Promise.all([refusalsSince(safe, seed ? BigInt(seed.head) : DEPLOY_BLOCK), safeHistory(safe).catch(() => null)]);
+  const agent = hist ? await withTimes(agentRowsFrom(safe, hist.h.events as never)) : [];
+  return mergeRows(refused, agent);
 }
 
 const short = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;

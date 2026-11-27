@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import { decodeFunctionData, encodeFunctionData, getAddress, parseAbi, type Address, type Hex } from "viem";
+import { decodeFunctionData, encodeFunctionData, getAddress, isAddress, parseAbi, type Address, type Hex } from "viem";
 import { FengceGuardArtifact } from "@fengce/sdk";
 import { DEPLOYMENT, client } from "../lib/chain";
 import { ActivityTable, useActivity } from "../okun/ActivityTable";
 import { attempts, type Attempt } from "../okun/activity";
 import { ENGINE } from "../okun/engine";
 import { readInstalled, safeHistory, usdt0, type Installed } from "../okun/reads";
-import { CopyButton, href, mount, short } from "../okun/ui";
+import { CopyButton, href, mount, param, short } from "../okun/ui";
 import { EXPLORER_TX, sendFromWallet, simulateSafeTx, useWallet } from "../okun/wallet";
 
 const regAbi = parseAbi(["function isPinned(bytes32) view returns (bool)"]);
@@ -30,8 +30,13 @@ function describe(data: Hex): string {
 
 function Wallet() {
   const w = useWallet();
-  const safe = w.safe ?? DEMO;
-  const demo = !w.safe;
+  // ?safe=0x... opens any Safe read-only (for judges and shared links); otherwise the connected Safe, else the demo Safe
+  const viewing = (() => {
+    const q = param("safe");
+    return q && isAddress(q) ? (getAddress(q) as Address) : null;
+  })();
+  const safe = viewing ?? w.safe ?? DEMO;
+  const demo = !viewing && !w.safe;
   const [inst, setInst] = useState<Installed | null>(null);
   const [pinned, setPinned] = useState<boolean | null>(null);
   const [hist, setHist] = useState<Awaited<ReturnType<typeof safeHistory>> | null>(null);
@@ -49,7 +54,6 @@ function Wallet() {
       },
       (e) => setErr((e as Error).message),
     );
-    safeHistory(safe).then(setHist, () => setHist(null));
   };
   useEffect(reload, [safe]);
   useEffect(() => {
@@ -58,6 +62,12 @@ function Wallet() {
   }, []);
 
   const act = useActivity(safe, 100, bump);
+  // the event history (scheduled changes) scans logs; start it once Activity has its rows, so they share no rate limit
+  const actReady = act.rows !== null;
+  useEffect(() => {
+    if (!actReady) return;
+    safeHistory(safe).then(setHist, () => setHist(null));
+  }, [safe, actReady, bump]);
   const local: Attempt[] = attempts(safe);
   const pending = (hist?.scheduled ?? []).filter((s) => !s.done);
   const bound = !!inst && inst.set && inst.guardOn && inst.moduleGuardOn;

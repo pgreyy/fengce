@@ -8,8 +8,8 @@
   "catalog": "0x26C5437428cdD7e4854614DC5DDEFE2776B51dFe"
  },
  "fromBlock": "76250360",
- "toBlock": "76955584",
- "generatedAt": "2026-11-26T20:24:10.428Z",
+ "toBlock": "76985588",
+ "generatedAt": "2026-11-27T04:45:29.561Z",
  "events": [
   {
    "source": "catalog",
@@ -241,5 +241,151 @@
     "groupId": "0x28153aea28fbad03266a44d540485a1220a2285f4834ebab570af756890c98d6"
    }
   }
- ]
+ ],
+ "activity": {
+  "0x0bb926dc7f79e4ceffb30a67e8291c56c3f50707": {
+   "head": "76985641",
+   "nonce": "6",
+   "rows": [
+    {
+     "time": 1795019693,
+     "block": "76250657",
+     "tx": "0x7a70f5c9713fd9236ecdd81287bcf775253d2cbea19c857524bb1047acfcccab",
+     "source": "agent",
+     "type": "Agent 0x81De…F91E",
+     "amount": "–",
+     "ok": true,
+     "result": "Allowed",
+     "reason": "within the agent's limits"
+    },
+    {
+     "time": 1795019689,
+     "block": "76250653",
+     "tx": "0x9b70d386a2782e269ab1d3b1df6de767534a5b5b7904998abd92a651d2584a1b",
+     "source": "agent",
+     "type": "Agent 0x81De…F91E",
+     "amount": "–",
+     "ok": false,
+     "result": "Refused",
+     "reason": "over the limit"
+    },
+    {
+     "time": 1795019624,
+     "block": "76250588",
+     "tx": "0xb83e3f771c21034dcdf2bdddc5e4784eca24164ddef432e152fefd1a3c989d60",
+     "source": "safe",
+     "type": "Safe transaction",
+     "amount": "–",
+     "ok": null,
+     "result": "Done",
+     "reason": ""
+    },
+    {
+     "time": 1795019621,
+     "block": "76250585",
+     "tx": "0xae4ceb7298936b5f8608ff4344044ff8765cb790f8b1dc11f415ad8b697264ef",
+     "source": "safe",
+     "type": "Safe transaction",
+     "amount": "–",
+     "ok": null,
+     "result": "Done",
+     "reason": ""
+    },
+    {
+     "time": 1795019618,
+     "block": "76250582",
+     "tx": "0x020f676574b4120184690ca528f09cfe98d020c4a1344d9536a9100da6d507b6",
+     "source": "safe",
+     "type": "Safe transaction",
+     "amount": "–",
+     "ok": null,
+     "result": "Done",
+     "reason": ""
+    },
+    {
+     "time": 1795019615,
+     "block": "76250579",
+     "tx": "0xf7eeee8d9a94e55f3b0a2a52227bc96ab9cca96b43ce0ff109c5f61068603cdb",
+     "source": "safe",
+     "type": "Safe transaction",
+     "amount": "–",
+     "ok": null,
+     "result": "Done",
+     "reason": ""
+    },
+    {
+     "time": 1795019611,
+     "block": "76250575",
+     "tx": "0xd403811630963a741592020823c122fd250c8ad01b34df55356e43d138531e8b",
+     "source": "safe",
+     "type": "Limits installed",
+     "amount": "–",
+     "ok": null,
+     "result": "Done",
+     "reason": "guard and policy set"
+    },
+    {
+     "time": 1795019607,
+     "block": "76250571",
+     "tx": "0x95a7a2bb31fbeb02e33606856127a5a20d8804eb08613fe5416ef79fe8a99f54",
+     "source": "safe",
+     "type": "Safe transaction",
+     "amount": "–",
+     "ok": null,
+     "result": "Done",
+     "reason": ""
+    }
+   ]
+  },
+  "0x5641da334011832feec997875781a3d40239465e": {
+   "head": "76985662",
+   "nonce": "4",
+   "rows": [
+    {
+     "time": 1795752776,
+     "block": "76983740",
+     "tx": "0x060b052bac049a6ede133352f00026b8cc662aa6166e202af8234b320961dc62",
+     "source": "safe",
+     "type": "Send to 0x6eac…6087",
+     "amount": "2 USDT0",
+     "ok": true,
+     "result": "Allowed",
+     "reason": "within your limits"
+    },
+    {
+     "time": 1795752724,
+     "block": "76983688",
+     "tx": "0x42949fb578699f357417002a0c321ab629f97bb17af8775bc040fbebd5e273fe",
+     "source": "safe",
+     "type": "Swap",
+     "amount": "0.012 OKB → 1.0101 USDT0",
+     "ok": true,
+     "result": "Allowed",
+     "reason": "within your limits"
+    },
+    {
+     "time": 1795722558,
+     "block": "76953522",
+     "tx": "0x9414b8f3c850cfa7479ac679e90d707875ef47de7628c4dd8a6bdc5882dbe7d9",
+     "source": "safe",
+     "type": "Swap",
+     "amount": "1 USDT0 → 0.012037 OKB",
+     "ok": true,
+     "result": "Allowed",
+     "reason": "within your limits"
+    },
+    {
+     "time": 1795717063,
+     "block": "76948027",
+     "tx": "0xf73d0fbbb2d094b027d7447baa7e30340c64fea6e6c401131123c162f287e319",
+     "source": "safe",
+     "type": "Limits installed",
+     "amount": "–",
+     "ok": null,
+     "result": "Done",
+     "reason": "guard and policy set"
+    }
+   ]
+  }
+ }
 }
