@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getAddress, isAddress, parseAbi, parseUnits, type Address, type Hex } from "viem";
 import { DEPLOYMENT, client } from "../lib/chain";
+import { check } from "@fengce/sdk";
 import { ActivityTable, useActivity } from "../okun/ActivityTable";
 import { record } from "../okun/activity";
 import { TOKENS, multiSend, sendCall, swapCalls } from "../okun/engine";
@@ -15,6 +16,9 @@ const FACTORY = "0x4B2ab38DBF28D31D467aA8993f6c2585981D6804" as Address;
 const factoryAbi = parseAbi(["function getPool(address,address,uint24) view returns (address)"]);
 const poolAbi = parseAbi(["function slot0() view returns (uint160 sqrtPriceX96, int24, uint16, uint16, uint16, uint8, bool)", "function liquidity() view returns (uint128)", "function token0() view returns (address)"]);
 const DEMO = getAddress(DEPLOYMENT.demoSafe) as Address;
+/** The mainnet acceptance Safe (max per buy 30 USDT0): what /try checks against when no wallet is connected. */
+const SIM_SAFE = getAddress("0x5641DA334011832Feec997875781a3D40239465e") as Address;
+const SIM_PAYEE = "0x000000000000000000000000000000000000dEaD" as Address;
 
 /** Deepest Uniswap V3 pool for a pair and its mid price (tokenOut per tokenIn, in whole units). */
 async function quote(a: Sym, b: Sym): Promise<{ fee: number; price: number } | null> {
@@ -53,7 +57,7 @@ function Try() {
   const [inst, setInst] = useState<Installed | null>(null);
   const [bal, setBal] = useState<Record<string, bigint> | null>(null);
   const [busy, setBusy] = useState(false);
-  const [res, setRes] = useState<{ ok: boolean; reason: string; tx?: Hex; canRecord?: { data: Hex } } | null>(null);
+  const [res, setRes] = useState<{ ok: boolean; reason: string; tx?: Hex; canRecord?: { data: Hex }; simulated?: boolean; code?: string | null } | null>(null);
   const [seen, setSeen] = useState(0);
   useEffect(() => void (res && setSeen((x) => x + 1)), [res]);
   const recent = useActivity(safe ?? DEMO, 10, seen);
@@ -77,6 +81,34 @@ function Try() {
     }
   })();
   const recipient = recipKind === "mine" ? w.account : isAddress(recip) ? getAddress(recip) : null;
+
+  /** No wallet: run the transaction against the acceptance Safe's guard (one eth_call, nothing sent). */
+  async function simulate() {
+    setBusy(true);
+    setRes(null);
+    try {
+      if (amount === 0n) throw new Error("Enter an amount.");
+      const tx = mode === "swap"
+        ? { ...multiSend(swapCalls(SIM_SAFE, TOKENS[from].address, TOKENS[to].address, amount, 0n, q?.fee ?? 500)), operation: 1 as const }
+        : (() => {
+            const c = sendCall(TOKENS[from].address, recipKind === "other" && isAddress(recip) ? getAddress(recip) : SIM_PAYEE, amount);
+            return { to: c.to, data: c.data, operation: 0 as const };
+          })();
+      const r = await check(client as never, SIM_SAFE, tx);
+      const why = r.allowed
+        ? `within its limits${r.limit ? "" : ""}`
+        : r.reason === "MAX_PER_BUY" && r.limit !== undefined
+          ? `over its max per buy of ${Number(r.limit) / 1e6} USDT0`
+          : r.reason === "TRADES_PER_HOUR"
+            ? "too many trades this clock hour"
+            : (r.reason ?? "refused").toLowerCase().replace(/_/g, " ");
+      setRes({ ok: r.allowed, reason: `Simulated on the demo Safe ${short(SIM_SAFE)}: ${why}.`, simulated: true, code: r.allowed ? null : r.reason });
+    } catch (e) {
+      setRes({ ok: false, reason: (e as Error).message, simulated: true });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function go(forceOnChain = false, data?: Hex) {
     setBusy(true);
@@ -199,12 +231,19 @@ function Try() {
             </div>
           )}
           <div className="kv"><span className="muted">Value</span><span className="num">≈ ${usd === null ? "–" : usd.toLocaleString("en-US", { maximumFractionDigits: 2 })}</span></div>
-          <button type="button" className="pill accent big" style={{ borderRadius: 12 }} disabled={busy || !w.account || !safe} onClick={() => go()}>
-            {busy ? "Confirm in your wallet" : mode === "swap" ? `Swap ${label(from)} → ${label(to)}` : `Send ${amt || 0} ${label(from)}`}
-          </button>
+          {w.account && safe ? (
+            <button type="button" className="pill accent big" style={{ borderRadius: 12 }} disabled={busy} onClick={() => go()}>
+              {busy ? "Confirm in your wallet" : mode === "swap" ? `Swap ${label(from)} → ${label(to)}` : `Send ${amt || 0} ${label(from)}`}
+            </button>
+          ) : (
+            <button type="button" className="pill accent big" style={{ borderRadius: 12 }} disabled={busy} onClick={simulate}>
+              {busy ? "Checking on X Layer" : "Test it (simulated)"}
+            </button>
+          )}
           {res && (
             <div className="result">
               <span className="mono" style={{ color: res.ok ? "var(--allow)" : "var(--deny)" }}>{res.ok ? "ALLOWED" : res.tx ? "REVERTED" : "REFUSED"}</span>
+              {res.code && <span className="tag n mono">{res.code}</span>}
               <span style={{ fontSize: 15, color: "var(--muted)", flex: "1 1 220px" }}>
                 {res.reason}
                 {res.tx && (
@@ -214,6 +253,12 @@ function Try() {
                   </>
                 )}
               </span>
+              {res.simulated && (
+                <span style={{ display: "flex", gap: 12, alignItems: "center", flexBasis: "100%" }}>
+                  <span className="tag n">Simulated · nothing sent</span>
+                  <StartLink className="alink accent">Do it for real</StartLink>
+                </span>
+              )}
               {res.canRecord && (
                 <button type="button" className="alink" disabled={busy} onClick={() => go(true, res.canRecord!.data)} title="Sends the transaction anyway with a fixed gas limit, so the refusal is recorded on X Layer as a reverted transaction (costs gas).">
                   Record this on chain
