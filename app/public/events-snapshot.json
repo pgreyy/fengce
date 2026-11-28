@@ -8,8 +8,8 @@
   "catalog": "0x26C5437428cdD7e4854614DC5DDEFE2776B51dFe"
  },
  "fromBlock": "76250360",
- "toBlock": "77060322",
- "generatedAt": "2026-11-28T01:30:23.285Z",
+ "toBlock": "77093085",
+ "generatedAt": "2026-11-28T10:36:19.241Z",
  "events": [
   {
    "source": "catalog",
@@ -649,7 +649,7 @@
  ],
  "activity": {
   "0x0bb926dc7f79e4ceffb30a67e8291c56c3f50707": {
-   "head": "77060373",
+   "head": "77093137",
    "nonce": "6",
    "rows": [
     {
@@ -743,7 +743,7 @@
    ]
   },
   "0x5641da334011832feec997875781a3d40239465e": {
-   "head": "77060373",
+   "head": "77093137",
    "nonce": "5",
    "rows": [
     {
@@ -804,7 +804,7 @@
    ]
   },
   "0x637a7bee8a71a750923cd023d4666eb89a2a5208": {
-   "head": "77060380",
+   "head": "77093137",
    "nonce": "10",
    "rows": [
     {
@@ -953,7 +953,7 @@
    ]
   },
   "0xf702253f0bad45b8a07cd7b6499eb7ecb2f4aa87": {
-   "head": "77060380",
+   "head": "77093141",
    "nonce": "6",
    "rows": [
     {
