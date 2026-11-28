@@ -179,7 +179,7 @@
         },
         {
           "label": "live status page",
-          "url": "https://getfengce.vercel.app/wallet/"
+          "url": "https://fengce.greyy.cc/wallet/"
         }
       ]
     },
@@ -503,7 +503,7 @@
       "evidence": [
         {
           "label": "live app",
-          "url": "https://getfengce.vercel.app"
+          "url": "https://fengce.greyy.cc"
         },
         {
           "label": "chain client",

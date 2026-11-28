@@ -4,7 +4,7 @@ TypeScript tools for [Fengce](https://github.com/pgreyy/fengce): check a Safe tr
 before you send it, TapeOut circuit schemas, Quote certificates and Safe guard install calldata. Built on
 [viem](https://viem.sh). Node 20 or later.
 
-App: [getfengce.vercel.app](https://getfengce.vercel.app) (limits on your Safe) and the [docs](https://getfengce.vercel.app/docs/). Changes: [CHANGELOG.md](CHANGELOG.md).
+App: [fengce.greyy.cc](https://fengce.greyy.cc) (limits on your Safe) and the [docs](https://fengce.greyy.cc/docs/). Changes: [CHANGELOG.md](CHANGELOG.md).
 
 ## Install
 
@@ -102,7 +102,7 @@ await preSign(client, { processor, circuitId, schema }, safe, { to, value, data 
 The interpreter follows TAP-02 (NAND, LATCH with state, REF sub-circuits) on the netlist bytes read from chain.
 `scripts/differential.ts` compares it with on-chain `eval` on random inputs (`npm run test:live`);
 `scripts/trace-check.ts` compares `evaluateTrace` with on-chain `eval` (`npx tsx scripts/trace-check.ts`).
-`preSign` covers native transfers, ERC-20 transfer and approve offline; use the app's [Try it](https://getfengce.vercel.app/try/) page for real calls through a Safe.
+`preSign` covers native transfers, ERC-20 transfer and approve offline; use the app's [Try it](https://fengce.greyy.cc/try/) page for real calls through a Safe.
 
 ## Development
 

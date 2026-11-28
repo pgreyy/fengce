@@ -1,7 +1,7 @@
 # For judges
 
 Everything below is on X Layer mainnet (chain 196) and readable on [OKLink](https://www.oklink.com/x-layer). The same list
-is on the site: [getfengce.vercel.app/docs/?tab=judges](https://getfengce.vercel.app/docs/?tab=judges).
+is on the site: [fengce.greyy.cc/docs/?tab=judges](https://fengce.greyy.cc/docs/?tab=judges).
 
 ## Contracts (release v2, live)
 
@@ -46,7 +46,7 @@ FengceRulesV3 [`0xbc07773b7a19b2a8e8f89adc97bde9d7752b1c2c`](https://www.oklink.
 
 ## Milestone 2 on X Layer mainnet (guard v3)
 
-Demo Safe [`0x637A7BEe8a71A750923Cd023d4666eb89A2a5208`](https://www.oklink.com/x-layer/address/0x637A7BEe8a71A750923Cd023d4666eb89A2a5208) ([open read-only](https://getfengce.vercel.app/wallet/?safe=0x637A7BEe8a71A750923Cd023d4666eb89A2a5208)), FengceGuardV3
+Demo Safe [`0x637A7BEe8a71A750923Cd023d4666eb89A2a5208`](https://www.oklink.com/x-layer/address/0x637A7BEe8a71A750923Cd023d4666eb89A2a5208) ([open read-only](https://fengce.greyy.cc/wallet/?safe=0x637A7BEe8a71A750923Cd023d4666eb89A2a5208)), FengceGuardV3
 [`0x8f2Bee582260dF363AAfaE77cb2e1cdB63110941`](https://www.oklink.com/x-layer/address/0x8f2Bee582260dF363AAfaE77cb2e1cdB63110941), AgentExecutorV3 [`0x3FFd99E3E2386C863fbcC16362aF233648D6695A`](https://www.oklink.com/x-layer/address/0x3FFd99E3E2386C863fbcC16362aF233648D6695A), agent (OKX Agentic Wallet) `0x7dd2eA948c13C1CF6045DDBc3c674A6ed2E6d879`. Every row below is in
 [deployments/m2-demo-xlayer-196.json](../deployments/m2-demo-xlayer-196.json); amounts and reason codes were decoded from the
 transactions on chain.
@@ -79,7 +79,7 @@ transactions on chain.
 
 ## Milestone 2c on X Layer mainnet (Catalog install and Build your own, fresh Safe)
 
-Second Safe [`0xF702253f0bad45b8a07cD7B6499eb7EcB2f4aA87`](https://www.oklink.com/x-layer/address/0xF702253f0bad45b8a07cD7B6499eb7EcB2f4aA87) ([open read-only](https://getfengce.vercel.app/wallet/?safe=0xF702253f0bad45b8a07cD7B6499eb7EcB2f4aA87)), created through FengceSetupV3
+Second Safe [`0xF702253f0bad45b8a07cD7B6499eb7EcB2f4aA87`](https://www.oklink.com/x-layer/address/0xF702253f0bad45b8a07cD7B6499eb7EcB2f4aA87) ([open read-only](https://fengce.greyy.cc/wallet/?safe=0xF702253f0bad45b8a07cD7B6499eb7EcB2f4aA87)), created through FengceSetupV3
 [`0x591E804770b0819AF1d3Ce14289215d1c3dC8dA3`](https://www.oklink.com/x-layer/address/0x591E804770b0819AF1d3Ce14289215d1c3dC8dA3). The partner role is played by the deployer key in this demo. From
 [scripts/m2c-onchain.sh](../scripts/m2c-onchain.sh); every row is in [deployments/m2-demo-xlayer-196.json](../deployments/m2-demo-xlayer-196.json).
 
@@ -122,8 +122,8 @@ Safes with a FengceGuard configuration (`Configured` events), as of the last sna
 | [`0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707`](https://www.oklink.com/x-layer/address/0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707) (demo Safe) | [`0xd4038116…531e8b`](https://www.oklink.com/x-layer/tx/0xd403811630963a741592020823c122fd250c8ad01b34df55356e43d138531e8b) |
 | [`0x5641DA334011832Feec997875781a3D40239465e`](https://www.oklink.com/x-layer/address/0x5641DA334011832Feec997875781a3D40239465e) (acceptance Safe) | [`0xf73d0fbb…87e319`](https://www.oklink.com/x-layer/tx/0xf73d0fbbb2d094b027d7447baa7e30340c64fea6e6c401131123c162f287e319) |
 
-The live list is on [/docs, For judges](https://getfengce.vercel.app/docs/?tab=judges). Open any Safe read-only:
-`https://getfengce.vercel.app/wallet/?safe=<address>`.
+The live list is on [/docs, For judges](https://fengce.greyy.cc/docs/?tab=judges). Open any Safe read-only:
+`https://fengce.greyy.cc/wallet/?safe=<address>`.
 
 ## Checks you can run
 

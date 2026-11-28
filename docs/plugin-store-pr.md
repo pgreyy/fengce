@@ -18,7 +18,7 @@ the agent key on a Fengce-bound Safe gets each call checked; an over-limit call 
 
 ## Interfaces
 
-- HTTP (read-only): `POST https://getfengce.vercel.app/api/preflight`, `/api/simulate`, `GET /api/catalog`, `/api/safe/<address>`
+- HTTP (read-only): `POST https://fengce.greyy.cc/api/preflight`, `/api/simulate`, `GET /api/catalog`, `/api/safe/<address>`
 - SDK: `npm i @fengce/sdk`, `check(client, safe, tx)` (one eth_call, nothing sent)
 - Install: `npx skills add pgreyy/fengce --skill fengce`
 

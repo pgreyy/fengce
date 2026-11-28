@@ -10,7 +10,7 @@ Safe addresses are the canonical v1.5.0 deployments from `safe-global/safe-deplo
 Current release v2 (salts `fengce.<Name>.v2.0.0`), deployed at block 76250360 from commit `e260a37`.
 Source of truth: [deployments/xlayer-196-v2.json](../deployments/xlayer-196-v2.json) (compiler settings per contract:
 [deployments/manifest-xlayer-196-v2.json](../deployments/manifest-xlayer-196-v2.json)). Demo Safe: `0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707`;
-treasury Safe: `0x5c53CDaED1cd64fc25AcC071b0Ca7ef891bB5661`. Read-only app over these contracts: [getfengce.vercel.app](https://getfengce.vercel.app).
+treasury Safe: `0x5c53CDaED1cd64fc25AcC071b0Ca7ef891bB5661`. Read-only app over these contracts: [fengce.greyy.cc](https://fengce.greyy.cc).
 
 | Contract | Address |
 |---|---|

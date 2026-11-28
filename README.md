@@ -9,7 +9,7 @@
 <a href="#demo-video"><img src="https://img.shields.io/badge/Watch%20the%202%20minute%20demo-F0533F?style=for-the-badge" alt="Watch the 2 minute demo" height="36"></a>
 <!-- demo-video: replace the #demo-video link above with the video URL -->
 
-[Live app](https://getfengce.vercel.app) · [For judges](docs/judges.md) · [Docs](https://getfengce.vercel.app/docs/) · [On X Layer: 6.2.180.tape](https://6-2-180.tapekit.org/) · [SDK on npm](https://www.npmjs.com/package/@fengce/sdk)
+[Live app](https://fengce.greyy.cc) · [For judges](docs/judges.md) · [Docs](https://fengce.greyy.cc/docs/) · [On X Layer: 6.2.180.tape](https://6-2-180.tapekit.org/) · [SDK on npm](https://www.npmjs.com/package/@fengce/sdk)
 
 <p>
   <img src="https://img.shields.io/badge/network-X%20Layer%20mainnet%20(196)-101010?style=flat-square" alt="X Layer mainnet">
@@ -22,9 +22,9 @@
 
 ## Try it in 2 minutes
 
-1. Open [getfengce.vercel.app/try](https://getfengce.vercel.app/try/) with no wallet. Enter **31** USDT0 and press **Test it (simulated)**: the
+1. Open [fengce.greyy.cc/try](https://fengce.greyy.cc/try/) with no wallet. Enter **31** USDT0 and press **Test it (simulated)**: the
    acceptance Safe's guard answers **REFUSED · MAX_PER_BUY** (its cap is 30). Enter **5**: **ALLOWED**. One eth_call, nothing sent.
-2. Open the [acceptance Safe's activity](https://getfengce.vercel.app/wallet/?safe=0x5641DA334011832Feec997875781a3D40239465e): every row
+2. Open the [acceptance Safe's activity](https://fengce.greyy.cc/wallet/?safe=0x5641DA334011832Feec997875781a3D40239465e): every row
    is read from X Layer, with its transaction ID.
 3. With OKX Wallet or MetaMask: **Connect**, create a Safe, set max per buy and trades per hour on **Limits**, press **Test before you
    sign**, then **Install with one signature**.
@@ -53,14 +53,14 @@ Tightening is instant (guard v3), loosening waits 1 day, removing the guard wait
 
 | Rule | Status | Circuit | Evidence |
 |---|---|---|---|
-| Max per buy | LIVE | [NAND #2](https://getfengce.vercel.app/docs/?tab=circuits#c-max-per-buy) | [`0x9414b8f3…dbe7d9`](https://www.oklink.com/x-layer/tx/0x9414b8f3c850cfa7479ac679e90d707875ef47de7628c4dd8a6bdc5882dbe7d9) allowed; [`0x78dd364b…021283`](https://www.oklink.com/x-layer/tx/0x78dd364b256c32b70eebbac717dd5c8ed7b5876def35ba6118be7a81d4021283) refused (guard v3) |
-| Trades per clock hour | LIVE | [Counter #7](https://getfengce.vercel.app/docs/?tab=circuits#c-trades-per-hour) | [contracts/test/fork/LimitsInstall.t.sol](contracts/test/fork/LimitsInstall.t.sol) |
-| Quiet hours | LIVE (v3) | [NAND #2](https://getfengce.vercel.app/docs/?tab=circuits#c-max-per-buy) | [`0x9e9115a9…1ce798`](https://www.oklink.com/x-layer/tx/0x9e9115a971ee51146251464e5bebf527ebacd2dd91af35f17d11e24a9b1ce798) refused (QUIET_HOURS); `test_quietHours_nandCircuit` |
-| Hold lock | LIVE (v3) | [NAND #2](https://getfengce.vercel.app/docs/?tab=circuits#c-max-per-buy) | [`0x3b1d2f6b…3e61d5`](https://www.oklink.com/x-layer/tx/0x3b1d2f6b7f8ce24fb910f2011d5377daa127eb413b81bdc3d1ddab12743e61d5) refused (HOLD_LOCK); `test_holdLock_nandCircuit` |
-| Tilt-shield | LIVE (v3) | [Counter #7](https://getfengce.vercel.app/docs/?tab=circuits#c-trades-per-hour) + [latch](https://getfengce.vercel.app/docs/?tab=circuits#c-tilt-latch) | [`0x52fa8d40…de0b2b`](https://www.oklink.com/x-layer/tx/0x52fa8d40882b75e6561a029afde8fc31a8498a911202253e3313e38959de0b2b) refused after 4 buys in the same half hour; `test_tiltShield_counterAndLatchCircuits` |
-| Agent cap | LIVE (v3) | [NAND #2](https://getfengce.vercel.app/docs/?tab=circuits#c-max-per-buy) | [`0xbde663dc…d728ae`](https://www.oklink.com/x-layer/tx/0xbde663dcf559fa162d1bf406836a84859f893dccd805fbac9cd92882c7d728ae) denied (OKX Agentic Wallet); `test_agentCap_nandCircuit` |
+| Max per buy | LIVE | [NAND #2](https://fengce.greyy.cc/docs/?tab=circuits#c-max-per-buy) | [`0x9414b8f3…dbe7d9`](https://www.oklink.com/x-layer/tx/0x9414b8f3c850cfa7479ac679e90d707875ef47de7628c4dd8a6bdc5882dbe7d9) allowed; [`0x78dd364b…021283`](https://www.oklink.com/x-layer/tx/0x78dd364b256c32b70eebbac717dd5c8ed7b5876def35ba6118be7a81d4021283) refused (guard v3) |
+| Trades per clock hour | LIVE | [Counter #7](https://fengce.greyy.cc/docs/?tab=circuits#c-trades-per-hour) | [contracts/test/fork/LimitsInstall.t.sol](contracts/test/fork/LimitsInstall.t.sol) |
+| Quiet hours | LIVE (v3) | [NAND #2](https://fengce.greyy.cc/docs/?tab=circuits#c-max-per-buy) | [`0x9e9115a9…1ce798`](https://www.oklink.com/x-layer/tx/0x9e9115a971ee51146251464e5bebf527ebacd2dd91af35f17d11e24a9b1ce798) refused (QUIET_HOURS); `test_quietHours_nandCircuit` |
+| Hold lock | LIVE (v3) | [NAND #2](https://fengce.greyy.cc/docs/?tab=circuits#c-max-per-buy) | [`0x3b1d2f6b…3e61d5`](https://www.oklink.com/x-layer/tx/0x3b1d2f6b7f8ce24fb910f2011d5377daa127eb413b81bdc3d1ddab12743e61d5) refused (HOLD_LOCK); `test_holdLock_nandCircuit` |
+| Tilt-shield | LIVE (v3) | [Counter #7](https://fengce.greyy.cc/docs/?tab=circuits#c-trades-per-hour) + [latch](https://fengce.greyy.cc/docs/?tab=circuits#c-tilt-latch) | [`0x52fa8d40…de0b2b`](https://www.oklink.com/x-layer/tx/0x52fa8d40882b75e6561a029afde8fc31a8498a911202253e3313e38959de0b2b) refused after 4 buys in the same half hour; `test_tiltShield_counterAndLatchCircuits` |
+| Agent cap | LIVE (v3) | [NAND #2](https://fengce.greyy.cc/docs/?tab=circuits#c-max-per-buy) | [`0xbde663dc…d728ae`](https://www.oklink.com/x-layer/tx/0xbde663dcf559fa162d1bf406836a84859f893dccd805fbac9cd92882c7d728ae) denied (OKX Agentic Wallet); `test_agentCap_nandCircuit` |
 | Partner approval | v3 on mainnet (fork-tested) | guard timelock | `test_tiltShield_sizeTrip_andPartnerClear` |
-| Add a circuit / Build your own | LIVE (app) | [Catalog](https://getfengce.vercel.app/docs/?tab=circuits#c-catalog) / taped out from your wallet | Catalog contract below |
+| Add a circuit / Build your own | LIVE (app) | [Catalog](https://fengce.greyy.cc/docs/?tab=circuits#c-catalog) / taped out from your wallet | Catalog contract below |
 
 Guard v3 is deployed on X Layer mainnet by [scripts/m2-onchain.sh](scripts/m2-onchain.sh) (Milestone 2 below). Partner approval runs in that guard and is
 fork-tested; on mainnet the demo Safe's partner is scheduled (it applies after the 1-day wait), and the early approval follows.
@@ -92,7 +92,7 @@ All 18: [docs/judges.md](docs/judges.md) · manifest: [deployments/manifest-xlay
 
 ## Milestone 2 on X Layer mainnet (guard v3)
 
-Demo Safe [`0x637A7BEe8a71A750923Cd023d4666eb89A2a5208`](https://www.oklink.com/x-layer/address/0x637A7BEe8a71A750923Cd023d4666eb89A2a5208) ([open read-only](https://getfengce.vercel.app/wallet/?safe=0x637A7BEe8a71A750923Cd023d4666eb89A2a5208)), FengceGuardV3
+Demo Safe [`0x637A7BEe8a71A750923Cd023d4666eb89A2a5208`](https://www.oklink.com/x-layer/address/0x637A7BEe8a71A750923Cd023d4666eb89A2a5208) ([open read-only](https://fengce.greyy.cc/wallet/?safe=0x637A7BEe8a71A750923Cd023d4666eb89A2a5208)), FengceGuardV3
 [`0x8f2Bee582260dF363AAfaE77cb2e1cdB63110941`](https://www.oklink.com/x-layer/address/0x8f2Bee582260dF363AAfaE77cb2e1cdB63110941), AgentExecutorV3 [`0x3FFd99E3E2386C863fbcC16362aF233648D6695A`](https://www.oklink.com/x-layer/address/0x3FFd99E3E2386C863fbcC16362aF233648D6695A), agent (OKX Agentic Wallet) `0x7dd2eA948c13C1CF6045DDBc3c674A6ed2E6d879`. Every row below is in
 [deployments/m2-demo-xlayer-196.json](deployments/m2-demo-xlayer-196.json); amounts and reason codes were decoded from the
 transactions on chain.
@@ -125,7 +125,7 @@ transactions on chain.
 
 ## Milestone 2c on X Layer mainnet (Catalog install and Build your own, fresh Safe)
 
-Second Safe [`0xF702253f0bad45b8a07cD7B6499eb7EcB2f4aA87`](https://www.oklink.com/x-layer/address/0xF702253f0bad45b8a07cD7B6499eb7EcB2f4aA87) ([open read-only](https://getfengce.vercel.app/wallet/?safe=0xF702253f0bad45b8a07cD7B6499eb7EcB2f4aA87)), created through FengceSetupV3
+Second Safe [`0xF702253f0bad45b8a07cD7B6499eb7EcB2f4aA87`](https://www.oklink.com/x-layer/address/0xF702253f0bad45b8a07cD7B6499eb7EcB2f4aA87) ([open read-only](https://fengce.greyy.cc/wallet/?safe=0xF702253f0bad45b8a07cD7B6499eb7EcB2f4aA87)), created through FengceSetupV3
 [`0x591E804770b0819AF1d3Ce14289215d1c3dC8dA3`](https://www.oklink.com/x-layer/address/0x591E804770b0819AF1d3Ce14289215d1c3dC8dA3). The partner role is played by the deployer key in this demo. From
 [scripts/m2c-onchain.sh](scripts/m2c-onchain.sh); every row is in [deployments/m2-demo-xlayer-196.json](deployments/m2-demo-xlayer-196.json).
 
@@ -163,7 +163,7 @@ Safe [`0x5641DA334011832Feec997875781a3D40239465e`](https://www.oklink.com/x-lay
 ## For agents
 
 - **OKX Agentic Wallet**: the agentic wallet is the agent key on a Fengce-bound Safe; calls go through AgentExecutorV3 and an
-  over-cap call is recorded as Denied with `AGENT_CAP` ([/agents](https://getfengce.vercel.app/agents/), [scripts/m2-agent-calls.sh](scripts/m2-agent-calls.sh)).
+  over-cap call is recorded as Denied with `AGENT_CAP` ([/agents](https://fengce.greyy.cc/agents/), [scripts/m2-agent-calls.sh](scripts/m2-agent-calls.sh)).
 - **SDK**: `npm i @fengce/sdk`, then `check(client, safe, tx)` returns `allowed` or a reason code ([sdk/README.md](sdk/README.md)).
 - **Skill**: `npx skills add pgreyy/fengce --skill fengce` ([skills/fengce/SKILL.md](skills/fengce/SKILL.md)).
 - **MCP server** (Claude Desktop, Cursor, Claude Code): `check` (allowed or a reason code), `explain_refusal` (plain words and which limit
@@ -203,7 +203,7 @@ Fork tests read live X Layer state: `forge test --match-path 'test/fork/*.t.sol'
 | Freysa (Nov 2024) | $47K | the circuit doesn't read prompts | [no-prompt-input](docs/CLAIMS.md#no-prompt-input) |
 | AIXBT (Mar 2025) | ~$106K | over-limit agent transfers revert; the rule can't change quietly | [agent-executor](docs/CLAIMS.md#agent-executor) |
 
-Every incident with its source: [getfengce.vercel.app/docs/?tab=inc](https://getfengce.vercel.app/docs/?tab=inc).
+Every incident with its source: [fengce.greyy.cc/docs/?tab=inc](https://fengce.greyy.cc/docs/?tab=inc).
 
 ## Business model
 

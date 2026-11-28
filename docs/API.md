@@ -1,6 +1,6 @@
 # Public API
 
-`https://getfengce.vercel.app/api/...`, specified in [openapi.yaml](openapi.yaml) (OpenAPI 3.1). Read-only: every endpoint
+`https://fengce.greyy.cc/api/...`, specified in [openapi.yaml](openapi.yaml) (OpenAPI 3.1). Read-only: every endpoint
 reads X Layer mainnet (chain 196, release v2) through the public RPCs and sends nothing. It runs the same code as the app's
 pages ([app/src/lib/data.ts](../app/src/lib/data.ts)) as Vercel functions ([app/api-src](../app/api-src)); the pages
 themselves read the chain from the browser and never call this API.
@@ -31,8 +31,8 @@ blocks it covers (`history`).
 `405` for a GET on a POST route.
 
 ```sh
-curl -s https://getfengce.vercel.app/api/catalog | jq '.entries[] | {name, tier, installs}'
-curl -s https://getfengce.vercel.app/api/safe/0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707 | jq '.deniedAgentCalls'
-curl -s -X POST https://getfengce.vercel.app/api/simulate -H 'content-type: application/json' \
+curl -s https://fengce.greyy.cc/api/catalog | jq '.entries[] | {name, tier, installs}'
+curl -s https://fengce.greyy.cc/api/safe/0x0bb926DC7F79e4CEFFB30a67E8291C56C3F50707 | jq '.deniedAgentCalls'
+curl -s -X POST https://fengce.greyy.cc/api/simulate -H 'content-type: application/json' \
   -d '{"preset":"nand-limit","cap":"1000000","to":"0x779Ded0c9e1022225f8E0630b35a9b54bE713736","data":"0xa9059cbb000000000000000000000000000000000000000000000000000000000000beef000000000000000000000000000000000000000000000000000000000016e360"}'
 ```
